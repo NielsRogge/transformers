@@ -378,9 +378,9 @@ def _single_column_cell_selection_loss(token_logits, column_logits, label_ids,
         torch.zeros_like(selected_column_mask),
         selected_column_mask
     )
-    logits_per_cell += CLOSE_ENOUGH_TO_LOG_ZERO * (
+    new_logits_per_cell = logits_per_cell + CLOSE_ENOUGH_TO_LOG_ZERO * (
         1.0 - cell_mask * selected_column_mask)
-    logits = gather(logits_per_cell, cell_index)
+    logits = gather(new_logits_per_cell, cell_index)
     
     return selection_loss_per_example, logits
 
