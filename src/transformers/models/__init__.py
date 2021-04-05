@@ -47,6 +47,7 @@ from . import (
     layoutlm,
     led,
     longformer,
+    luke,
     lxmert,
     m2m_100,
     marian,
