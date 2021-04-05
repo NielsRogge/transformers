@@ -19,6 +19,8 @@ import warnings
 from collections import OrderedDict
 
 from ...utils import logging
+
+# Add modeling imports here
 from ..albert.modeling_albert import (
     AlbertForMaskedLM,
     AlbertForMultipleChoice,
@@ -133,8 +135,6 @@ from ..funnel.modeling_funnel import (
     FunnelModel,
 )
 from ..gpt2.modeling_gpt2 import GPT2ForSequenceClassification, GPT2LMHeadModel, GPT2Model
-
-# Add modeling imports here
 from ..gpt_neo.modeling_gpt_neo import GPTNeoForCausalLM, GPTNeoModel
 from ..ibert.modeling_ibert import (
     IBertForMaskedLM,
@@ -164,6 +164,7 @@ from ..longformer.modeling_longformer import (
     LongformerForTokenClassification,
     LongformerModel,
 )
+from ..luke.modeling_luke import LukeModel
 from ..lxmert.modeling_lxmert import LxmertForPreTraining, LxmertForQuestionAnswering, LxmertModel
 from ..m2m_100.modeling_m2m_100 import M2M100ForConditionalGeneration, M2M100Model
 from ..marian.modeling_marian import MarianForCausalLM, MarianModel, MarianMTModel
@@ -294,6 +295,7 @@ from .configuration_auto import (
     LayoutLMConfig,
     LEDConfig,
     LongformerConfig,
+    LukeConfig,
     LxmertConfig,
     M2M100Config,
     MarianConfig,
@@ -327,6 +329,7 @@ logger = logging.get_logger(__name__)
 MODEL_MAPPING = OrderedDict(
     [
         # Base model mapping
+        (LukeConfig, LukeModel),
         (GPTNeoConfig, GPTNeoModel),
         (BigBirdConfig, BigBirdModel),
         (Speech2TextConfig, Speech2TextModel),
