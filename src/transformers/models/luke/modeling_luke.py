@@ -1177,7 +1177,7 @@ class LukeForEntityPairClassification(LukePreTrainedModel):
 
             >>> tokenizer = LukeTokenizer.from_pretrained("studio-ousia/luke-base", task="entity_pair_classification")
             >>> model = LukeForEntityPairClassification.from_pretrained("studio-ousia/luke-base")
-            
+
             >>> text = "Beyoncé lives in New York."
             >>> entity_spans = [(0, 7), (17, 25)]  # character-based entity spans corresponding to "Beyoncé" and "New York"
             >>> inputs = tokenizer(text, entity_spans=entity_spans, return_tensors="pt")
