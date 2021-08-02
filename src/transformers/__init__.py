@@ -133,6 +133,7 @@ _import_structure = {
         "load_tf2_weights_in_pytorch_model",
     ],
     # Models
+    "models.perceiver": ["PERCEIVER_PRETRAINED_CONFIG_ARCHIVE_MAP", "PerceiverConfig", "PerceiverTokenizer"],
     "models": [],
     "models.albert": ["ALBERT_PRETRAINED_CONFIG_ARCHIVE_MAP", "AlbertConfig"],
     "models.auto": [
@@ -333,6 +334,7 @@ else:
 # tokenizers-backed objects
 if is_tokenizers_available():
     # Fast tokenizers
+    _import_structure["models.perceiver"].append("PerceiverTokenizerFast")
     _import_structure["models.roformer"].append("RoFormerTokenizerFast")
     _import_structure["models.clip"].append("CLIPTokenizerFast")
     _import_structure["models.convbert"].append("ConvBertTokenizerFast")
@@ -495,6 +497,22 @@ if is_torch_available():
     _import_structure["modeling_utils"] = ["Conv1D", "PreTrainedModel", "apply_chunking_to_forward", "prune_layer"]
 
     # PyTorch models structure
+
+    _import_structure["models.perceiver"].extend(
+        [
+            "PERCEIVER_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "PerceiverForMaskedLM",
+            "PerceiverForCausalLM",
+            "PerceiverForMultipleChoice",
+            "PerceiverForQuestionAnswering",
+            "PerceiverForSequenceClassification",
+            "PerceiverForTokenClassification",
+            "PerceiverLayer",
+            "PerceiverModel",
+            "PerceiverPreTrainedModel",
+            "load_tf_weights_in_perceiver",
+        ]
+    )
     _import_structure["models.albert"].extend(
         [
             "ALBERT_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -1801,6 +1819,7 @@ if TYPE_CHECKING:
         load_tf2_weights_in_pytorch_model,
     )
     from .models.albert import ALBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, AlbertConfig
+    from .models.perceiver import PERCEIVER_PRETRAINED_CONFIG_ARCHIVE_MAP, PerceiverConfig, PerceiverTokenizer
     from .models.auto import (
         ALL_PRETRAINED_CONFIG_ARCHIVE_MAP,
         CONFIG_MAPPING,
@@ -1989,6 +2008,7 @@ if TYPE_CHECKING:
         from .utils.dummy_sentencepiece_objects import *
 
     if is_tokenizers_available():
+        from .models.perceiver import PerceiverTokenizerFast
         from .models.albert import AlbertTokenizerFast
         from .models.bart import BartTokenizerFast
         from .models.barthez import BarthezTokenizerFast
@@ -2066,6 +2086,20 @@ if TYPE_CHECKING:
         from .utils.dummy_timm_objects import *
 
     if is_torch_available():
+
+        from .models.perceiver import (
+            PERCEIVER_PRETRAINED_MODEL_ARCHIVE_LIST,
+            PerceiverForMaskedLM,
+            PerceiverForCausalLM,
+            PerceiverForMultipleChoice,
+            PerceiverForQuestionAnswering,
+            PerceiverForSequenceClassification,
+            PerceiverForTokenClassification,
+            PerceiverLayer,
+            PerceiverModel,
+            PerceiverPreTrainedModel,
+            load_tf_weights_in_perceiver,
+        )
         # Benchmarks
         from .benchmark.benchmark import PyTorchBenchmark
         from .benchmark.benchmark_args import PyTorchBenchmarkArguments
