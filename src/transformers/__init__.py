@@ -1038,12 +1038,15 @@ if is_torch_available():
         [
             "PERCEIVER_PRETRAINED_MODEL_ARCHIVE_LIST",
             "PerceiverBasicDecoder",
+            "PerceiverClassificationDecoder",
+            "PerceiverForImageClassification",
+            "PerceiverForMaskedLM",
+            "PerceiverImagePreprocessor",
             "PerceiverLayer",
             "PerceiverModel",
             "PerceiverPreTrainedModel",
             "PerceiverTextPostprocessor",
             "PerceiverTextPreprocessor",
-            "PerceiverImagePreprocessor",
         ]
     )
     _import_structure["models.prophetnet"].extend(
@@ -2750,12 +2753,15 @@ if TYPE_CHECKING:
         from .models.perceiver import (
             PERCEIVER_PRETRAINED_MODEL_ARCHIVE_LIST,
             PerceiverBasicDecoder,
+            PerceiverClassificationDecoder,
+            PerceiverForImageClassification,
+            PerceiverForMaskedLM,
+            PerceiverImagePreprocessor,
             PerceiverLayer,
             PerceiverModel,
             PerceiverPreTrainedModel,
             PerceiverTextPostprocessor,
             PerceiverTextPreprocessor,
-            PerceiverImagePreprocessor,
         )
         from .models.prophetnet import (
             PROPHETNET_PRETRAINED_MODEL_ARCHIVE_LIST,
