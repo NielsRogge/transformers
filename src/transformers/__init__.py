@@ -1051,6 +1051,7 @@ if is_torch_available():
             "PerceiverLayer",
             "PerceiverModel",
             "PerceiverPreTrainedModel",
+            "PerceiverOneHotPreprocessor",
             "PerceiverTextPostprocessor",
             "PerceiverTextPreprocessor",
         ]
@@ -2771,6 +2772,7 @@ if TYPE_CHECKING:
             PerceiverImagePreprocessor,
             PerceiverLayer,
             PerceiverModel,
+            PerceiverOneHotPreprocessor,
             PerceiverPreTrainedModel,
             PerceiverTextPostprocessor,
             PerceiverTextPreprocessor,

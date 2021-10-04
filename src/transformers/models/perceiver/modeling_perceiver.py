@@ -1234,12 +1234,13 @@ class PerceiverForMultimodalAutoencoding(PerceiverPreTrainedModel):
                         max_resolution=(config.num_frames, config.image_size, config.image_size),
                         sine_only=False,
                         concat_pos=True,
+                        is_temporal=True,
                     ),
                     prep_type="patches",
                     spatial_downsample=4,
                     temporal_downsample=1,
                 ),
-                "label": PerceiverOneHotPreprocessor(),
+                "label": PerceiverOneHotPreprocessor(config),
             },
             mask_probs={"image": 0.0, "audio": 0.0, "label": 1.0},
         )
@@ -1966,6 +1967,10 @@ class PerceiverAbstractPositionEncoding(nn.Module, metaclass=abc.ABCMeta):
     """Perceiver abstract position encoding."""
 
     @abc.abstractmethod
+    def output_size(self, *args, **kwargs) -> int:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def forward(self, batch_size, pos):
         raise NotImplementedError
 
@@ -1975,14 +1980,17 @@ class PerceiverTrainablePositionEncoding(PerceiverAbstractPositionEncoding):
 
     def __init__(self, index_dim, num_channels=128):
         super().__init__()
+        self._num_channels = num_channels
         self.position_embeddings = nn.Parameter(torch.randn(index_dim, num_channels))
+
+    def output_size(self, *args, **kwargs) -> int:
+        return self._num_channels
 
     def forward(self, batch_size):
         position_embeddings = self.position_embeddings
 
         if batch_size is not None:
             position_embeddings = position_embeddings.expand(batch_size, -1, -1)
-
         return position_embeddings
 
 
@@ -2023,6 +2031,25 @@ class PerceiverFourierPositionEncoding(PerceiverAbstractPositionEncoding):
         self.concat_pos = concat_pos
         self.sine_only = sine_only
 
+    def output_size(self, num_dims: int, pos_dim: Optional[int] = None):
+        """Returns size of positional encodings last dimension.
+
+        Args:
+            num_dims: Number of input dimensions.
+            pos_dim: Size of the original position encoding. If None, will be equal to number of input dimensions.
+                Defaults to None.
+        """
+        # num_dims = len(self.max_resolution) ???
+        encoding_size = self.num_bands * num_dims
+        if not self.sine_only:
+            encoding_size *= 2
+        if self.concat_pos:
+            if pos_dim is None:
+                encoding_size += self.concat_pos * num_dims
+            else:
+                encoding_size += self.concat_pos * pos_dim
+        return encoding_size
+
     def forward(self, index_dims, batch_size, device, pos=None):
         pos = _check_or_build_spatial_positions(pos, index_dims, batch_size)
         fourier_pos_enc = generate_fourier_features(
@@ -2035,7 +2062,14 @@ class PerceiverFourierPositionEncoding(PerceiverAbstractPositionEncoding):
         return fourier_pos_enc
 
 
-class PerceiverTextPreprocessor(nn.Module):
+class AbstractPreprocessor(nn.Module):
+    @property
+    def output_size(self) -> int:
+        """Returns size of preprocessor output."""
+        raise NotImplementedError()
+
+
+class PerceiverTextPreprocessor(AbstractPreprocessor):
     """Text preprocessing for Perceiver Encoder."""
 
     def __init__(self, config):
@@ -2043,6 +2077,10 @@ class PerceiverTextPreprocessor(nn.Module):
         self.embeddings = nn.Embedding(num_embeddings=config.vocab_size, embedding_dim=config.d_model)
         self.position_embeddings = nn.Embedding(config.seq_len, config.d_model)
         self.seq_len = config.seq_len
+
+    @property
+    def output_size(self) -> int:
+        return self.embeddings.embedding_dim
 
     def forward(self, inputs):
 
@@ -2150,7 +2188,7 @@ class PerceiverProjectionPostprocessor(nn.Module):
         return logits
 
 
-class PerceiverImagePreprocessor(nn.Module):
+class PerceiverImagePreprocessor(AbstractPreprocessor):
     """
     Image preprocessing for Perceiver Encoder.
 
@@ -2175,6 +2213,7 @@ class PerceiverImagePreprocessor(nn.Module):
         concat_or_add_pos: str = "concat",
         project_pos_dim: int = -1,
         index_dims=50176,  # only relevant when position_encoding_type = "trainable"
+        is_temporal: bool = False,
         **position_encoding_kwargs,
     ):
         super().__init__()
@@ -2186,6 +2225,7 @@ class PerceiverImagePreprocessor(nn.Module):
         if concat_or_add_pos not in ["concat", "add"]:
             raise ValueError(f"Invalid value {concat_or_add_pos} for concat_or_add_pos.")
 
+        self.in_channels = in_channels
         self.prep_type = prep_type
         self.spatial_downsample = spatial_downsample
         self.temporal_downsample = temporal_downsample
@@ -2193,6 +2233,11 @@ class PerceiverImagePreprocessor(nn.Module):
         self.concat_or_add_pos = concat_or_add_pos
         self.conv_after_patching = conv_after_patching
         self.out_channels = out_channels
+
+        # This parameter is needed for the correct dimension matching in output size.
+        # Maybe better to take the number of dimensions from the `max_resolution` parameter.
+        # But in this case we need to restrict to set this parameter as sequence with single value.
+        self.is_temporal = is_temporal
 
         if self.prep_type == "conv":
             # Downsampling with conv is currently restricted
@@ -2203,7 +2248,8 @@ class PerceiverImagePreprocessor(nn.Module):
                     "Only powers of 4 expected for spatial " "and 1 expected for temporal " "downsampling with conv."
                 )
             self.convnet = Conv2DDownsample(
-                num_layers=int(convnet_num_layers), out_channels=out_channels, use_batchnorm=conv2d_use_batchnorm
+                in_channels=in_channels, num_layers=int(convnet_num_layers),
+                out_channels=out_channels, use_batchnorm=conv2d_use_batchnorm
             )
 
         elif self.prep_type == "conv1x1":
@@ -2218,6 +2264,7 @@ class PerceiverImagePreprocessor(nn.Module):
             )
 
         # Position embeddings
+        self.project_pos_dim = project_pos_dim
         self.position_embeddings, self.positions_projection = build_position_encoding(
             position_encoding_type=position_encoding_type,
             index_dims=index_dims,
@@ -2230,6 +2277,34 @@ class PerceiverImagePreprocessor(nn.Module):
         self.conv_after_patches = (
             nn.Linear(conv_after_patching_in_channels, self.out_channels) if conv_after_patching else nn.Identity()
         )
+
+    @property
+    def output_size(self) -> int:
+        # position embedding
+        if self.project_pos_dim > 0:
+            pos_dim = self.project_pos_dim
+        else:
+            pos_dim = self.position_embeddings.output_size(num_dims=(3 if self.is_temporal else 2))
+        print(f'Precalculated pos dim: {pos_dim}')
+        if self.concat_or_add_pos == 'add':
+            return pos_dim
+
+        # inputs
+        if self.conv_after_patching or self.prep_type in ('conv1x1', 'conv'):
+            inp_dim = self.out_channels
+        elif self.prep_type == 'pixels':
+            inp_dim = self.in_channels
+            if not self.is_temporal:
+                inp_dim = math.ceil(inp_dim / self.spatial_downsample)
+        elif self.prep_type == 'patches':
+            if self.conv_after_patching:
+                inp_dim = self.out_channels
+            else:
+                inp_dim = self.in_channels * self.spatial_downsample ** 2
+                if self.is_temporal:
+                    inp_dim *= self.temporal_downsample
+
+        return inp_dim + pos_dim
 
     def _build_network_inputs(self, inputs: torch.Tensor, pos: torch.Tensor, network_input_is_1d: bool = True):
         """
@@ -2267,10 +2342,17 @@ class PerceiverImagePreprocessor(nn.Module):
             inputs_with_pos = torch.cat([inputs, pos_enc], dim=-1)
         elif self.concat_or_add_pos == "add":
             inputs_with_pos = inputs + pos_enc
-
+        print(f'Forward pos dim: {pos_enc.size(-1)}')
         return inputs_with_pos, inputs
 
     def forward(self, inputs: torch.Tensor, pos: Optional[torch.Tensor] = None, network_input_is_1d: bool = True):
+
+        # Make sure what input shape corresponds to `is_temporal` parameter
+        if self.is_temporal != (inputs.ndim == 5):
+            raise ValueError(
+                'Seems like input data is not temporal, but the `is_temporal` parameter is specified as `True`.'
+            )
+
         if self.prep_type == "conv":
             # Convnet image featurization.
             # Downsamples spatially by a factor of 4
@@ -2327,11 +2409,16 @@ class PerceiverImagePreprocessor(nn.Module):
         return inputs, modality_sizes, inputs_without_pos
 
 
-class PerceiverOneHotPreprocessor(nn.Module):
+class PerceiverOneHotPreprocessor(AbstractPreprocessor):
     """One-hot preprocessor for Perceiver Encoder."""
 
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
+        self.config: PerceiverConfig = config
+
+    @property
+    def output_size(self) -> int:
+        return self.config.num_labels
 
     def forward(self, inputs: torch.Tensor, pos: Optional[torch.Tensor] = None, network_input_is_1d: bool = True):
         # Add a dummy index dimension.
@@ -2342,7 +2429,7 @@ class PerceiverOneHotPreprocessor(nn.Module):
         return inputs, None, inputs
 
 
-class PerceiverAudioPreprocessor(nn.Module):
+class PerceiverAudioPreprocessor(AbstractPreprocessor):
     """Audio preprocessing for Perceiver Encoder."""
 
     def __init__(
@@ -2369,6 +2456,7 @@ class PerceiverAudioPreprocessor(nn.Module):
         self.samples_per_patch = samples_per_patch
         self.position_encoding_type = position_encoding_type
         self.concat_or_add_pos = concat_or_add_pos
+        self.project_pos_dim = project_pos_dim
 
         # Position embeddings
         self.position_embeddings, self.positions_projection = build_position_encoding(
@@ -2378,6 +2466,18 @@ class PerceiverAudioPreprocessor(nn.Module):
             project_pos_dim=project_pos_dim,
             **position_encoding_kwargs,
         )
+
+    @property
+    def output_size(self) -> int:
+        # position embedding
+        if self.project_pos_dim > 0:
+            pos_dim = self.project_pos_dim
+        else:
+            pos_dim = self.position_embeddings.output_size(1)
+        print(f'Precalculated pos dim: {pos_dim}')
+        if self.concat_or_add_pos == 'add':
+            return pos_dim
+        return self.samples_per_patch + pos_dim
 
     def _build_network_inputs(self, inputs, pos):
         """Construct the final input, including position encoding."""
@@ -2396,6 +2496,8 @@ class PerceiverAudioPreprocessor(nn.Module):
         print("Shape of pos enc in audio preprocessor:", pos_enc.shape)
         
         if self.concat_or_add_pos == "concat":
+            print(inputs.shape)
+            print(pos_enc.shape)
             inputs_with_pos = torch.cat([inputs, pos_enc], dim=-1)
         elif self.concat_or_add_pos == "add":
             inputs_with_pos = inputs + pos_enc
@@ -2413,7 +2515,7 @@ class PerceiverAudioPreprocessor(nn.Module):
         return inputs, modality_sizes, inputs_without_pos
 
 
-class PerceiverMultimodalPreprocessor(nn.Module):
+class PerceiverMultimodalPreprocessor(AbstractPreprocessor):
     """
     Multimodal preprocessing for Perceiver Encoder.
 
