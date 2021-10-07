@@ -2096,7 +2096,7 @@ class PerceiverFourierPositionEncoding(PerceiverAbstractPositionEncoding):
 
 class AbstractPreprocessor(nn.Module):
     @property
-    def output_size(self) -> int:
+    def num_channels(self) -> int:
         """Returns size of preprocessor output."""
         raise NotImplementedError()
 
@@ -2110,8 +2110,8 @@ class PerceiverTextPreprocessor(AbstractPreprocessor):
         self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.d_model)
 
     @property
-    def output_size(self) -> int:
-        return self.embeddings.embedding_dim
+    def num_channels(self) -> int:
+        return self.config.d_model
 
     def forward(self, inputs):
         embeddings = self.embeddings(inputs)
@@ -2311,13 +2311,12 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         )
 
     @property
-    def output_size(self) -> int:
+    def num_channels(self) -> int:
         # position embedding
         if self.project_pos_dim > 0:
             pos_dim = self.project_pos_dim
         else:
             pos_dim = self.position_embeddings.output_size(num_dims=(3 if self.is_temporal else 2))
-        print(f'Precalculated pos dim: {pos_dim}')
         if self.concat_or_add_pos == 'add':
             return pos_dim
 
@@ -2449,7 +2448,7 @@ class PerceiverOneHotPreprocessor(AbstractPreprocessor):
         self.config: PerceiverConfig = config
 
     @property
-    def output_size(self) -> int:
+    def num_channels(self) -> int:
         return self.config.num_labels
 
     def forward(self, inputs: torch.Tensor, pos: Optional[torch.Tensor] = None, network_input_is_1d: bool = True):
@@ -2500,7 +2499,7 @@ class PerceiverAudioPreprocessor(AbstractPreprocessor):
         )
 
     @property
-    def output_size(self) -> int:
+    def num_channels(self) -> int:
         # position embedding
         if self.project_pos_dim > 0:
             pos_dim = self.project_pos_dim
@@ -2570,65 +2569,46 @@ class PerceiverMultimodalPreprocessor(AbstractPreprocessor):
         super().__init__()
         self.modalities = modalities
         self.min_padding_size = min_padding_size
-        self.mask_probs = mask_probs
+        self.mask_probs = mask_probs if mask_probs is not None else dict()
+        self.padding = nn.ParameterDict({
+            modality: nn.Parameter(torch.randn(1, self.num_channels - preprocessor.num_channels))
+            for modality, preprocessor in modalities.items()
+        })
+        self.mask = nn.ParameterDict({
+            modality: nn.Parameter(torch.randn(1, self.num_channels))
+            for modality, _ in self.mask_probs.items()
+        })
 
-        # we need to register 2 parameters for each modality: mask + padding
-        # see https://discuss.pytorch.org/t/dynamic-parameter-declaration-in-forward-function/427
-        for modality in self.modalities.keys():
-            self.register_parameter(modality + "_mask", None)
-            self.register_parameter(modality + "_padding", None)
+    @property
+    def num_channels(self) -> int:
+        max_channel_size = max(processor.num_channels for _, processor in self.modalities.items())
+        common_channel_size = max_channel_size + self.min_padding_size
+        return common_channel_size
 
-    def forward(self, inputs: torch.Tensor, pos: Optional[torch.Tensor] = None, network_input_is_1d: bool = True):
-        # preprocess each modality using the respective preprocessor.
-        outputs = {}
+    def forward(self, inputs: Mapping[str, torch.Tensor], pos: Optional[torch.Tensor] = None, network_input_is_1d: bool = True):
+        padded = {}
+        modality_sizes = {}
         inputs_without_pos = {}
         for modality, preprocessor in self.modalities.items():
-            print(f"Preprocessing modality {modality}:")
-            outputs[modality], _, inputs_without_pos[modality] = preprocessor(
+            # preprocess each modality using the respective preprocessor.
+            output, _, inputs_without_pos[modality] = preprocessor(
                 inputs[modality], pos=pos, network_input_is_1d=network_input_is_1d
             )
 
-        common_channel_size = max(o.shape[2] for o in outputs.values()) + self.min_padding_size
-
-        # for k,v in outputs.items():
-        # print(f"Shape of modality {k} before padding:", v.shape)
-
-        # pad to the same common_channel_size.
-        padded = {}
-        modality_sizes = {}
-        for modality, output in outputs.items():
-            parameter_name = modality + "_padding"
-            if hasattr(self, parameter_name) and getattr(self, parameter_name) is None:
-                setattr(
-                    self,
-                    parameter_name,
-                    # PerceiverTrainablePositionEncoding(1, num_channels=common_channel_size - output.shape[2]),
-                    nn.Parameter(torch.randn(1, common_channel_size - output.shape[2])),
-                )
-            batch_size = output.shape[0]
-            pos_enc = getattr(self, parameter_name).expand(batch_size, -1, -1)
-            # pos_enc = getattr(self, parameter_name)(batch_size=output.shape[0])
+            # pad to the same common_channel_size.
+            batch_size, num_samples, num_channels = output.shape
+            pos_enc = self.padding[modality].expand(batch_size, -1, -1)
             padding = torch.broadcast_to(
                 pos_enc,
-                [output.shape[0], output.shape[1], common_channel_size - output.shape[2]],
+                [batch_size, num_samples, self.num_channels - num_channels],
             )
             output_padded = torch.cat([output, padding], dim=2)
 
-            if self.mask_probs is not None:
-                # Randomly mask out each token corresponding to this modality
-                parameter_name = modality + "_mask"
-                if hasattr(self, parameter_name) and getattr(self, parameter_name) is None:
-                    setattr(
-                        self,
-                        parameter_name,
-                        # PerceiverTrainablePositionEncoding(1, num_channels=output_padded.shape[2]),
-                        nn.Parameter(torch.randn(1, output_padded.shape[2])),
-                    )
-                batch_size = output.shape[0]
-                mask_token = getattr(self, parameter_name).expand(batch_size, -1, -1)
-                # mask_token = getattr(self, parameter_name)(output.shape[0])
+            # mask if required
+            if modality in self.mask_probs:
+                mask_token = self.mask[modality].expand(batch_size, -1, -1)
                 mask_prob = self.mask_probs[modality]
-                mask = torch.bernoulli(torch.full([output.shape[0], output.shape[1]], mask_prob))
+                mask = torch.bernoulli(torch.full([batch_size, num_samples], mask_prob))
                 mask = torch.unsqueeze(mask, dim=2)
                 output_padded = (1 - mask) * output_padded + mask * mask_token
 
@@ -2643,4 +2623,4 @@ class PerceiverMultimodalPreprocessor(AbstractPreprocessor):
         # Finally, concatenate along the time dimension
         final_inputs = torch.cat(padded_ls, dim=1)
 
-        return (final_inputs, modality_sizes, inputs_without_pos)
+        return final_inputs, modality_sizes, inputs_without_pos
