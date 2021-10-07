@@ -226,12 +226,14 @@ MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING_NAMES = OrderedDict(
         ("vit", "ViTForImageClassification"),
         ("deit", ("DeiTForImageClassification", "DeiTForImageClassificationWithTeacher")),
         ("beit", "BeitForImageClassification"),
+        ("perceiver", "PerceiverForImageClassification"),
     ]
 )
 
 MODEL_FOR_MASKED_LM_MAPPING_NAMES = OrderedDict(
     [
         # Model for Masked LM mapping
+        ("perceiver", "PerceiverForMaskedLM"),
         ("fnet", "FNetForMaskedLM"),
         ("rembert", "RemBertForMaskedLM"),
         ("roformer", "RoFormerForMaskedLM"),
