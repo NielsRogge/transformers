@@ -226,6 +226,7 @@ MODEL_FOR_IMAGE_CLASSIFICATION_MAPPING_NAMES = OrderedDict(
         ("vit", "ViTForImageClassification"),
         ("deit", ("DeiTForImageClassification", "DeiTForImageClassificationWithTeacher")),
         ("beit", "BeitForImageClassification"),
+        ("perceiver", "PerceiverForImageClassification"),
     ]
 )
 
