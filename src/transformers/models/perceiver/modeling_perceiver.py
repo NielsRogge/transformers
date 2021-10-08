@@ -1224,6 +1224,7 @@ class PerceiverForOpticalFlow(PerceiverPreTrainedModel):
                     sine_only=False,
                     concat_pos=True,
                 ),
+                is_temporal=True,
             ),
             decoder=PerceiverFlowDecoder(
                 config,
@@ -2396,7 +2397,8 @@ class PerceiverImagePreprocessor(AbstractPreprocessor):
         if self.project_pos_dim > 0:
             pos_dim = self.project_pos_dim
         else:
-            pos_dim = self.position_embeddings.output_size(num_dims=(3 if self.is_temporal else 2))
+            num_dims = 3 if self.is_temporal else 2
+            pos_dim = self.position_embeddings.output_size(num_dims=num_dims)
         if self.concat_or_add_pos == 'add':
             return pos_dim
 
