@@ -159,6 +159,7 @@ class PerceiverModelTester:
             inputs = floats_tensor([self.batch_size, 2, 27, self.train_size[0], self.train_size[1]])
         elif model_class.__name__ == "PerceiverForMultimodalAutoencoding":
             config.d_model = 409
+            config.num_labels = self.num_labels
             images = torch.randn(
                 (self.batch_size, self.num_frames, self.num_channels, self.image_size, self.image_size)
             )
