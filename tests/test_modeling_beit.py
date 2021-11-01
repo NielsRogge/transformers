@@ -351,6 +351,9 @@ class BeitModelTest(ModelTesterMixin, unittest.TestCase):
 
     def test_hidden_states_output(self):
         def check_hidden_states_output(inputs_dict, config, model_class):
+
+
+            
             model = model_class(config)
             model.to(torch_device)
             model.eval()
