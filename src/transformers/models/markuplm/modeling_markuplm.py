@@ -740,14 +740,10 @@ MARKUPLM_INPUTS_DOCSTRING = r"""
 
             `What are input IDs? <../glossary.html#input-ids>`__
 
-
         xpath_tags_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, 50)`, `optional`):
             None
 
         xpath_subs_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, 50)`, `optional`):
-            None
-
-        tree_index_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, 50)`, `optional`):
             None
 
         attention_mask (:obj:`torch.FloatTensor` of shape :obj:`({0})`, `optional`):
@@ -1054,6 +1050,8 @@ class MarkupLMForQuestionAnswering(MarkupLMPreTrainedModel):
     def forward(
         self,
         input_ids=None,
+        xpath_tags_seq=None,
+        xpath_subs_seq=None,
         attention_mask=None,
         token_type_ids=None,
         position_ids=None,
@@ -1064,8 +1062,6 @@ class MarkupLMForQuestionAnswering(MarkupLMPreTrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        xpath_tags_seq=None,
-        xpath_subs_seq=None,
     ):
         r"""
         start_positions (:obj:`torch.LongTensor` of shape :obj:`(batch_size,)`, `optional`):
@@ -1146,7 +1142,7 @@ class MarkupLMOnlyTokenClassificationHead(nn.Module):
         else:
             self.transform_act_fn = config.hidden_act
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        self.decoder = nn.Linear(config.hidden_size, config.node_type_size)
+        self.decoder = nn.Linear(config.hidden_size, config.num_labels)
 
     def forward(self, sequence_output):
         # sequence_output : (bs,seq_len,dim)
@@ -1172,6 +1168,8 @@ class MarkupLMForTokenClassification(MarkupLMPreTrainedModel):
     def forward(
         self,
         input_ids=None,
+        xpath_tags_seq=None,
+        xpath_subs_seq=None,
         attention_mask=None,
         token_type_ids=None,
         position_ids=None,
@@ -1181,14 +1179,12 @@ class MarkupLMForTokenClassification(MarkupLMPreTrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
-        xpath_tags_seq=None,
-        xpath_subs_seq=None,
     ):
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
             Labels for computing the token classification loss. Indices should be in ``[-100, 0, ...,
-            config.node_type_size]`` (see ``input_ids`` docstring) Tokens with indices set to ``-100`` are ignored
-            (masked), the loss is only computed for the tokens with labels in ``[0, ..., config.node_type_size]``
+            config.num_labels]`` (see ``input_ids`` docstring) Tokens with indices set to ``-100`` are ignored
+            (masked), the loss is only computed for the tokens with labels in ``[0, ..., config.num_labels]``
 
         Returns:
 
@@ -1220,7 +1216,7 @@ class MarkupLMForTokenClassification(MarkupLMPreTrainedModel):
         if labels is not None:
             loss_fct = CrossEntropyLoss()
             token_cls_loss = loss_fct(
-                prediction_scores.view(-1, self.config.node_type_size),
+                prediction_scores.view(-1, self.config.num_labels),
                 labels.view(-1),
             )
 
