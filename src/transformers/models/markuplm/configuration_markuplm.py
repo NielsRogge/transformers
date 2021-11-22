@@ -69,30 +69,23 @@ class MarkupLMConfig(RobertaConfig):
             If True, use gradient checkpointing to save memory at the expense of slower backward pass.
 
         max_tree_id_unit_embeddings (:obj:`int`, `optional`, defaults to 1024):
-            The maximum value that the tree id unit embedding might ever used. Typically set this to something large
+            The maximum value that the tree id unit embedding might ever use. Typically set this to something large
             just in case (e.g., 1024).
 
         max_xpath_tag_unit_embeddings (:obj:`int`, `optional`, defaults to 256):
-            The maximum value that the xpath tag unit embedding might ever used. Typically set this to something large
+            The maximum value that the xpath tag unit embedding might ever use. Typically set this to something large
             just in case (e.g., 256).
 
         max_xpath_subs_unit_embeddings (:obj:`int`, `optional`, defaults to 1024):
-            The maximum value that the xpath subscript unit embedding might ever used. Typically set this to something
+            The maximum value that the xpath subscript unit embedding might ever use. Typically set this to something
             large just in case (e.g., 1024).
-
-        tree_id_unit_hidden_size (:obj:`int`, `optional`, defaults to 32):
-            The hidden size of each tree id unit, since we set max_depth as 50, then we weill have
-            (50*tree_id_unit_hidden_size)-dim for one complete tree index.
 
         xpath_tag_unit_hidden_size (:obj:`int`, `optional`, defaults to 32):
             The hidden size of each tree id unit, since we set max_depth as 50, then we weill have
             (50*xpath_tag_unit_hidden_size)-dim for one complete tree index.
 
-        xpath_subs_unit_hidden_size (:obj:`int`, `optional`, defaults to 32):
-            The hidden size of each tree id unit, since we set max_depth as 50, then we weill have
-            (50*xpath_subs_unit_hidden_size)-dim for one complete tree index.
-
-        max_depth : maximum depth in xpath
+        max_depth (:obj:`int`, `optional`, defaults to 50):
+            The maximum depth in xpath.
 
     Examples::
 

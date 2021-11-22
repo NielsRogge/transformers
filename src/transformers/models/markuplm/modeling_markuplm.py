@@ -14,7 +14,6 @@
 # limitations under the License.
 """ PyTorch MarkupLM model. """
 
-import copy
 import math
 import os
 from typing import Optional, Union
@@ -34,7 +33,6 @@ from transformers.file_utils import (
 from transformers.modeling_outputs import (
     BaseModelOutputWithPastAndCrossAttentions,
     BaseModelOutputWithPoolingAndCrossAttentions,
-    CausalLMOutputWithCrossAttentions,
     MaskedLMOutput,
     MultipleChoiceModelOutput,
     QuestionAnsweringModelOutput,
@@ -740,11 +738,11 @@ MARKUPLM_INPUTS_DOCSTRING = r"""
 
             `What are input IDs? <../glossary.html#input-ids>`__
 
-        xpath_tags_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, 50)`, `optional`):
-            None
+        xpath_tags_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, config.max_depth)`, `optional`):
+            Tag IDs for each token in the input sequence, padded up to config.max_depth.
 
-        xpath_subs_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, 50)`, `optional`):
-            None
+        xpath_subs_seq (:obj:`torch.LongTensor` of shape :obj:`({0}, config.max_depth)`, `optional`):
+            Subscript IDs for each token in the input sequence, padded up to config.max_depth.
 
         attention_mask (:obj:`torch.FloatTensor` of shape :obj:`({0})`, `optional`):
             Mask to avoid performing attention on padding token indices. Mask values selected in ``[0, 1]``: ``1`` for

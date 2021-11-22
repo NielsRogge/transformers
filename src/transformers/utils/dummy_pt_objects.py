@@ -3163,30 +3163,6 @@ class MarianMTModel:
 MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST = None
 
 
-class MarkupLMForCausalLM:
-    def __init__(self, *args, **kwargs):
-        requires_backends(self, ["torch"])
-
-    @classmethod
-    def from_pretrained(cls, *args, **kwargs):
-        requires_backends(cls, ["torch"])
-
-    def forward(self, *args, **kwargs):
-        requires_backends(self, ["torch"])
-
-
-class MarkupLMForMaskedLM:
-    def __init__(self, *args, **kwargs):
-        requires_backends(self, ["torch"])
-
-    @classmethod
-    def from_pretrained(cls, *args, **kwargs):
-        requires_backends(cls, ["torch"])
-
-    def forward(self, *args, **kwargs):
-        requires_backends(self, ["torch"])
-
-
 class MarkupLMForMultipleChoice:
     def __init__(self, *args, **kwargs):
         requires_backends(self, ["torch"])

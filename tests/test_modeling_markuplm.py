@@ -23,7 +23,7 @@ from .test_configuration_common import ConfigTester
 from .test_modeling_common import ModelTesterMixin, ids_tensor
 
 
-if is_torch_available():    
+if is_torch_available():
     from transformers import (
         MarkupLMForMultipleChoice,
         MarkupLMForQuestionAnswering,
