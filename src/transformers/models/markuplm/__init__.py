@@ -32,8 +32,6 @@ if is_tokenizers_available():
 if is_torch_available():
     _import_structure["modeling_markuplm"] = [
         "MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST",
-        "MarkupLMForCausalLM",
-        "MarkupLMForMaskedLM",
         "MarkupLMForMultipleChoice",
         "MarkupLMForQuestionAnswering",
         "MarkupLMForSequenceClassification",
@@ -55,8 +53,6 @@ if TYPE_CHECKING:
     if is_torch_available():
         from .modeling_markuplm import (
             MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST,
-            MarkupLMForCausalLM,
-            MarkupLMForMaskedLM,
             MarkupLMForMultipleChoice,
             MarkupLMForQuestionAnswering,
             MarkupLMForSequenceClassification,
