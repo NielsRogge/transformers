@@ -236,6 +236,15 @@ class LxmertTokenizerFast:
         requires_backends(cls, ["tokenizers"])
 
 
+class MarkupLMTokenizerFast:
+    def __init__(self, *args, **kwargs):
+        requires_backends(self, ["tokenizers"])
+
+    @classmethod
+    def from_pretrained(cls, *args, **kwargs):
+        requires_backends(cls, ["tokenizers"])
+
+
 class MBartTokenizerFast:
     def __init__(self, *args, **kwargs):
         requires_backends(self, ["tokenizers"])

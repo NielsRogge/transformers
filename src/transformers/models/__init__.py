@@ -67,6 +67,7 @@ from . import (
     lxmert,
     m2m_100,
     marian,
+    markuplm,
     mbart,
     mbart50,
     megatron_bert,
