@@ -14,8 +14,9 @@
 # limitations under the License.
 """ Tokenization class for model MarkupLM."""
 
-from transformers.utils import logging
 from transformers import RobertaTokenizer
+from transformers.utils import logging
+
 
 logger = logging.get_logger(__name__)
 

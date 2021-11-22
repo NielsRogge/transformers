@@ -18,8 +18,7 @@
 from typing import TYPE_CHECKING
 
 # rely on isort to merge the imports
-from ...file_utils import _LazyModule, is_tokenizers_available
-from ...file_utils import is_torch_available
+from ...file_utils import _LazyModule, is_tokenizers_available, is_torch_available
 
 
 _import_structure = {
@@ -46,8 +45,6 @@ if is_torch_available():
     ]
 
 
-
-
 if TYPE_CHECKING:
     from .configuration_markuplm import MARKUPLM_PRETRAINED_CONFIG_ARCHIVE_MAP, MarkupLMConfig
     from .tokenization_markuplm import MarkupLMTokenizer
@@ -58,8 +55,8 @@ if TYPE_CHECKING:
     if is_torch_available():
         from .modeling_markuplm import (
             MARKUPLM_PRETRAINED_MODEL_ARCHIVE_LIST,
-            MarkupLMForMaskedLM,
             MarkupLMForCausalLM,
+            MarkupLMForMaskedLM,
             MarkupLMForMultipleChoice,
             MarkupLMForQuestionAnswering,
             MarkupLMForSequenceClassification,
@@ -69,7 +66,6 @@ if TYPE_CHECKING:
             MarkupLMPreTrainedModel,
             load_tf_weights_in_markuplm,
         )
-
 
 
 else:

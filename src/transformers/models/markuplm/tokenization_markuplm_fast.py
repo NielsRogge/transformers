@@ -15,8 +15,9 @@
 """ Tokenization class for model MarkupLM."""
 
 
-from transformers.utils import logging
 from transformers.models.roberta.tokenization_roberta_fast import RobertaTokenizerFast
+from transformers.utils import logging
+
 from .tokenization_markuplm import MarkupLMTokenizer
 
 

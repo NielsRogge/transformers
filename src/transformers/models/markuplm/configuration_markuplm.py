@@ -14,8 +14,9 @@
 # limitations under the License.
 """ MarkupLM model configuration """
 
-from transformers.utils import logging
 from transformers.models.roberta.configuration_roberta import RobertaConfig
+from transformers.utils import logging
+
 
 logger = logging.get_logger(__name__)
 
@@ -101,26 +102,26 @@ class MarkupLMConfig(RobertaConfig):
     model_type = "markuplm"
 
     def __init__(
-            self,
-            vocab_size=30522,
-            hidden_size=768,
-            num_hidden_layers=12,
-            num_attention_heads=12,
-            intermediate_size=3072,
-            hidden_act="gelu",
-            hidden_dropout_prob=0.1,
-            attention_probs_dropout_prob=0.1,
-            max_position_embeddings=512,
-            type_vocab_size=2,
-            initializer_range=0.02,
-            layer_norm_eps=1e-12,
-            pad_token_id=0,
-            gradient_checkpointing=False,
-            max_xpath_tag_unit_embeddings=256,
-            max_xpath_subs_unit_embeddings=1024,
-            xpath_unit_hidden_size=32,
-            max_depth=50,
-            **kwargs
+        self,
+        vocab_size=30522,
+        hidden_size=768,
+        num_hidden_layers=12,
+        num_attention_heads=12,
+        intermediate_size=3072,
+        hidden_act="gelu",
+        hidden_dropout_prob=0.1,
+        attention_probs_dropout_prob=0.1,
+        max_position_embeddings=512,
+        type_vocab_size=2,
+        initializer_range=0.02,
+        layer_norm_eps=1e-12,
+        pad_token_id=0,
+        gradient_checkpointing=False,
+        max_xpath_tag_unit_embeddings=256,
+        max_xpath_subs_unit_embeddings=1024,
+        xpath_unit_hidden_size=32,
+        max_depth=50,
+        **kwargs
     ):
         super().__init__(
             vocab_size=vocab_size,
