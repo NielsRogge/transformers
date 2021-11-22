@@ -81,7 +81,7 @@ class MarkupLMConfig(RobertaConfig):
             large just in case (e.g., 1024).
 
         xpath_tag_unit_hidden_size (:obj:`int`, `optional`, defaults to 32):
-            The hidden size of each tree id unit, since we set max_depth as 50, then we weill have
+            The hidden size of each tree id unit, since we set max_depth as 50, then we will have
             (50*xpath_tag_unit_hidden_size)-dim for one complete tree index.
 
         max_depth (:obj:`int`, `optional`, defaults to 50):
@@ -89,7 +89,16 @@ class MarkupLMConfig(RobertaConfig):
 
     Examples::
 
-        no examples~
+        >>> from transformers import MarkupLMModel, MarkupLMConfig
+
+        >>> # Initializing a MarkupLM microsoft/markuplm-base style configuration
+        >>> configuration = MarkupLMConfig()
+
+        >>> # Initializing a model from the microsoft/markuplm-base style configuration
+        >>> model = MarkupLMModel(configuration)
+
+        >>> # Accessing the model configuration
+        >>> configuration = model.config
 
     """
     model_type = "markuplm"

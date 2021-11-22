@@ -650,6 +650,7 @@ Flax), PyTorch, and/or TensorFlow.
     model_doc/luke
     model_doc/lxmert
     model_doc/marian
+    model_doc/markuplm
     model_doc/m2m_100
     model_doc/mbart
     model_doc/megatron_bert
