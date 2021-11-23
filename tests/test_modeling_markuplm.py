@@ -25,7 +25,6 @@ from .test_modeling_common import ModelTesterMixin, ids_tensor
 
 if is_torch_available():
     from transformers import (
-        MarkupLMForMultipleChoice,
         MarkupLMForQuestionAnswering,
         MarkupLMForSequenceClassification,
         MarkupLMForTokenClassification,
@@ -58,9 +57,8 @@ class MarkupLMModelTester:
         type_sequence_label_size=2,
         initializer_range=0.02,
         num_labels=3,
-        num_choices=4,
         scope=None,
-        range_bbox=1000,
+        max_depth=10,
     ):
         self.parent = parent
         self.batch_size = batch_size
@@ -82,12 +80,15 @@ class MarkupLMModelTester:
         self.type_sequence_label_size = type_sequence_label_size
         self.initializer_range = initializer_range
         self.num_labels = num_labels
-        self.num_choices = num_choices
         self.scope = scope
-        self.range_bbox = range_bbox
+        self.max_depth = max_depth
 
     def prepare_config_and_inputs(self):
         input_ids = ids_tensor([self.batch_size, self.seq_length], self.vocab_size)
+
+        xpath_tags_seq = ids_tensor([self.batch_size, self.seq_length, self.max_depth], self.vocab_size)
+
+        xpath_subs_seq = ids_tensor([self.batch_size, self.seq_length, self.max_depth], self.vocab_size)
 
         input_mask = None
         if self.use_input_mask:
@@ -99,15 +100,22 @@ class MarkupLMModelTester:
 
         sequence_labels = None
         token_labels = None
-        choice_labels = None
         if self.use_labels:
             sequence_labels = ids_tensor([self.batch_size], self.type_sequence_label_size)
             token_labels = ids_tensor([self.batch_size, self.seq_length], self.num_labels)
-            choice_labels = ids_tensor([self.batch_size], self.num_choices)
 
         config = self.get_config()
 
-        return config, input_ids, token_type_ids, input_mask, sequence_labels, token_labels, choice_labels
+        return (
+            config,
+            input_ids,
+            xpath_tags_seq,
+            xpath_subs_seq,
+            token_type_ids,
+            input_mask,
+            sequence_labels,
+            token_labels,
+        )
 
     def get_config(self):
         return MarkupLMConfig(
@@ -122,10 +130,19 @@ class MarkupLMModelTester:
             max_position_embeddings=self.max_position_embeddings,
             type_vocab_size=self.type_vocab_size,
             initializer_range=self.initializer_range,
+            max_depth=self.max_depth,
         )
 
     def create_and_check_model(
-        self, config, input_ids, token_type_ids, input_mask, sequence_labels, token_labels, choice_labels
+        self,
+        config,
+        input_ids,
+        xpath_tags_seq,
+        xpath_subs_seq,
+        token_type_ids,
+        input_mask,
+        sequence_labels,
+        token_labels,
     ):
         model = MarkupLMModel(config=config)
         model.to(torch_device)
@@ -137,7 +154,15 @@ class MarkupLMModelTester:
         self.parent.assertEqual(result.pooler_output.shape, (self.batch_size, self.hidden_size))
 
     def create_and_check_for_sequence_classification(
-        self, config, input_ids, token_type_ids, input_mask, sequence_labels, token_labels, choice_labels
+        self,
+        config,
+        input_ids,
+        xpath_tags_seq,
+        xpath_subs_seq,
+        token_type_ids,
+        input_mask,
+        sequence_labels,
+        token_labels,
     ):
         config.num_labels = self.num_labels
         model = MarkupLMForSequenceClassification(config)
@@ -147,7 +172,15 @@ class MarkupLMModelTester:
         self.parent.assertEqual(result.logits.shape, (self.batch_size, self.num_labels))
 
     def create_and_check_for_token_classification(
-        self, config, input_ids, token_type_ids, input_mask, sequence_labels, token_labels, choice_labels
+        self,
+        config,
+        input_ids,
+        xpath_tags_seq,
+        xpath_subs_seq,
+        token_type_ids,
+        input_mask,
+        sequence_labels,
+        token_labels,
     ):
         config.num_labels = self.num_labels
         model = MarkupLMForTokenClassification(config=config)
@@ -157,7 +190,15 @@ class MarkupLMModelTester:
         self.parent.assertEqual(result.logits.shape, (self.batch_size, self.seq_length, self.num_labels))
 
     def create_and_check_for_question_answering(
-        self, config, input_ids, token_type_ids, input_mask, sequence_labels, token_labels, choice_labels
+        self,
+        config,
+        input_ids,
+        xpath_tags_seq,
+        xpath_subs_seq,
+        token_type_ids,
+        input_mask,
+        sequence_labels,
+        token_labels,
     ):
         model = MarkupLMForQuestionAnswering(config=config)
         model.to(torch_device)
@@ -172,37 +213,22 @@ class MarkupLMModelTester:
         self.parent.assertEqual(result.start_logits.shape, (self.batch_size, self.seq_length))
         self.parent.assertEqual(result.end_logits.shape, (self.batch_size, self.seq_length))
 
-    def create_and_check_for_multiple_choice(
-        self, config, input_ids, token_type_ids, input_mask, sequence_labels, token_labels, choice_labels
-    ):
-        config.num_choices = self.num_choices
-        model = MarkupLMForMultipleChoice(config=config)
-        model.to(torch_device)
-        model.eval()
-        multiple_choice_inputs_ids = input_ids.unsqueeze(1).expand(-1, self.num_choices, -1).contiguous()
-        multiple_choice_token_type_ids = token_type_ids.unsqueeze(1).expand(-1, self.num_choices, -1).contiguous()
-        multiple_choice_input_mask = input_mask.unsqueeze(1).expand(-1, self.num_choices, -1).contiguous()
-        result = model(
-            multiple_choice_inputs_ids,
-            attention_mask=multiple_choice_input_mask,
-            token_type_ids=multiple_choice_token_type_ids,
-            labels=choice_labels,
-        )
-        self.parent.assertEqual(result.logits.shape, (self.batch_size, self.num_choices))
-
     def prepare_config_and_inputs_for_common(self):
         config_and_inputs = self.prepare_config_and_inputs()
         (
             config,
             input_ids,
+            xpath_tags_seq,
+            xpath_subs_seq,
             token_type_ids,
             input_mask,
             sequence_labels,
             token_labels,
-            choice_labels,
         ) = config_and_inputs
         inputs_dict = {
             "input_ids": input_ids,
+            "xpath_tags_seq": xpath_tags_seq,
+            "xpath_subs_seq": xpath_subs_seq,
             "token_type_ids": token_type_ids,
             "attention_mask": input_mask,
         }
@@ -217,7 +243,6 @@ class MarkupLMModelTest(ModelTesterMixin, unittest.TestCase):
             MarkupLMModel,
             MarkupLMForSequenceClassification,
             MarkupLMForTokenClassification,
-            MarkupLMForMultipleChoice,
             MarkupLMForQuestionAnswering,
         )
         if is_torch_available()
@@ -246,10 +271,6 @@ class MarkupLMModelTest(ModelTesterMixin, unittest.TestCase):
     def test_for_question_answering(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_for_question_answering(*config_and_inputs)
-
-    def test_for_multiple_choice(self):
-        config_and_inputs = self.model_tester.prepare_config_and_inputs()
-        self.model_tester.create_and_check_for_multiple_choice(*config_and_inputs)
 
 
 @require_torch
