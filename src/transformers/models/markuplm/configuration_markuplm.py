@@ -67,23 +67,22 @@ class MarkupLMConfig(RobertaConfig):
             The epsilon used by the layer normalization layers.
         gradient_checkpointing (:obj:`bool`, `optional`, defaults to :obj:`False`):
             If True, use gradient checkpointing to save memory at the expense of slower backward pass.
-
         max_tree_id_unit_embeddings (:obj:`int`, `optional`, defaults to 1024):
             The maximum value that the tree id unit embedding might ever use. Typically set this to something large
             just in case (e.g., 1024).
-
         max_xpath_tag_unit_embeddings (:obj:`int`, `optional`, defaults to 256):
             The maximum value that the xpath tag unit embedding might ever use. Typically set this to something large
             just in case (e.g., 256).
-
         max_xpath_subs_unit_embeddings (:obj:`int`, `optional`, defaults to 1024):
             The maximum value that the xpath subscript unit embedding might ever use. Typically set this to something
             large just in case (e.g., 1024).
-
+        tag_pad_id (:obj:`int`, `optional`, defaults to 216):
+            The id of the padding token in the xpath tags.
+        subs_pad_id (:obj:`int`, `optional`, defaults to 1001):
+            The id of the padding token in the xpath subscripts.
         xpath_tag_unit_hidden_size (:obj:`int`, `optional`, defaults to 32):
-            The hidden size of each tree id unit, since we set max_depth as 50, then we will have
-            (50*xpath_tag_unit_hidden_size)-dim for one complete tree index.
-
+            The hidden size of each tree id unit. One complete tree index will have
+            (50*xpath_tag_unit_hidden_size)-dim.
         max_depth (:obj:`int`, `optional`, defaults to 50):
             The maximum depth in xpath.
 
@@ -121,6 +120,8 @@ class MarkupLMConfig(RobertaConfig):
         gradient_checkpointing=False,
         max_xpath_tag_unit_embeddings=256,
         max_xpath_subs_unit_embeddings=1024,
+        tag_pad_id=216,
+        subs_pad_id=1001,
         xpath_unit_hidden_size=32,
         max_depth=50,
         **kwargs
@@ -146,4 +147,6 @@ class MarkupLMConfig(RobertaConfig):
         self.max_depth = max_depth
         self.max_xpath_tag_unit_embeddings = max_xpath_tag_unit_embeddings
         self.max_xpath_subs_unit_embeddings = max_xpath_subs_unit_embeddings
+        self.tag_pad_id = tag_pad_id
+        self.subs_pad_id = subs_pad_id
         self.xpath_unit_hidden_size = xpath_unit_hidden_size

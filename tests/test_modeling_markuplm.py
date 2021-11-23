@@ -58,6 +58,10 @@ class MarkupLMModelTester:
         initializer_range=0.02,
         num_labels=3,
         scope=None,
+        max_xpath_tag_unit_embeddings=20,
+        max_xpath_subs_unit_embeddings=30,
+        tag_pad_id=2,
+        subs_pad_id=2,
         max_depth=10,
     ):
         self.parent = parent
@@ -81,14 +85,22 @@ class MarkupLMModelTester:
         self.initializer_range = initializer_range
         self.num_labels = num_labels
         self.scope = scope
+        self.max_xpath_tag_unit_embeddings = max_xpath_tag_unit_embeddings
+        self.max_xpath_subs_unit_embeddings = max_xpath_subs_unit_embeddings
+        self.tag_pad_id = tag_pad_id
+        self.subs_pad_id = subs_pad_id
         self.max_depth = max_depth
 
     def prepare_config_and_inputs(self):
         input_ids = ids_tensor([self.batch_size, self.seq_length], self.vocab_size)
 
-        xpath_tags_seq = ids_tensor([self.batch_size, self.seq_length, self.max_depth], self.vocab_size)
+        xpath_tags_seq = ids_tensor(
+            [self.batch_size, self.seq_length, self.max_depth], self.max_xpath_tag_unit_embeddings
+        )
 
-        xpath_subs_seq = ids_tensor([self.batch_size, self.seq_length, self.max_depth], self.vocab_size)
+        xpath_subs_seq = ids_tensor(
+            [self.batch_size, self.seq_length, self.max_depth], self.max_xpath_subs_unit_embeddings
+        )
 
         input_mask = None
         if self.use_input_mask:
@@ -130,6 +142,10 @@ class MarkupLMModelTester:
             max_position_embeddings=self.max_position_embeddings,
             type_vocab_size=self.type_vocab_size,
             initializer_range=self.initializer_range,
+            max_xpath_tag_unit_embeddings=self.max_xpath_tag_unit_embeddings,
+            max_xpath_subs_unit_embeddings=self.max_xpath_subs_unit_embeddings,
+            tag_pad_id=self.tag_pad_id,
+            subs_pad_id=self.subs_pad_id,
             max_depth=self.max_depth,
         )
 
@@ -147,6 +163,7 @@ class MarkupLMModelTester:
         model = MarkupLMModel(config=config)
         model.to(torch_device)
         model.eval()
+        print("Configs:", model.config.tag_pad_id, model.config.subs_pad_id)
         result = model(input_ids, attention_mask=input_mask, token_type_ids=token_type_ids)
         result = model(input_ids, token_type_ids=token_type_ids)
         result = model(input_ids)
@@ -168,7 +185,14 @@ class MarkupLMModelTester:
         model = MarkupLMForSequenceClassification(config)
         model.to(torch_device)
         model.eval()
-        result = model(input_ids, attention_mask=input_mask, token_type_ids=token_type_ids, labels=sequence_labels)
+        result = model(
+            input_ids,
+            xpath_tags_seq=xpath_tags_seq,
+            xpath_subs_seq=xpath_subs_seq,
+            attention_mask=input_mask,
+            token_type_ids=token_type_ids,
+            labels=sequence_labels,
+        )
         self.parent.assertEqual(result.logits.shape, (self.batch_size, self.num_labels))
 
     def create_and_check_for_token_classification(
@@ -186,7 +210,14 @@ class MarkupLMModelTester:
         model = MarkupLMForTokenClassification(config=config)
         model.to(torch_device)
         model.eval()
-        result = model(input_ids, attention_mask=input_mask, token_type_ids=token_type_ids, labels=token_labels)
+        result = model(
+            input_ids,
+            xpath_tags_seq=xpath_tags_seq,
+            xpath_subs_seq=xpath_subs_seq,
+            attention_mask=input_mask,
+            token_type_ids=token_type_ids,
+            labels=token_labels,
+        )
         self.parent.assertEqual(result.logits.shape, (self.batch_size, self.seq_length, self.num_labels))
 
     def create_and_check_for_question_answering(
@@ -205,6 +236,8 @@ class MarkupLMModelTester:
         model.eval()
         result = model(
             input_ids,
+            xpath_tags_seq=xpath_tags_seq,
+            xpath_subs_seq=xpath_subs_seq,
             attention_mask=input_mask,
             token_type_ids=token_type_ids,
             start_positions=sequence_labels,

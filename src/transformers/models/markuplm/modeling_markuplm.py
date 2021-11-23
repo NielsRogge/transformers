@@ -187,14 +187,16 @@ class MarkupLMEmbeddings(nn.Module):
         # xpath seq prepare
 
         if xpath_tags_seq is None:
-            xpath_tags_seq = 216 * torch.ones(
+            xpath_tags_seq = self.config.tag_pad_id * torch.ones(
                 tuple(list(input_shape) + [self.max_depth]), dtype=torch.long, device=device
             )
+            print("Xpath tags seq:", xpath_tags_seq)
 
         if xpath_subs_seq is None:
-            xpath_subs_seq = 1001 * torch.ones(
+            xpath_subs_seq = self.config.subs_pad_id * torch.ones(
                 tuple(list(input_shape) + [self.max_depth]), dtype=torch.long, device=device
             )
+            print("Xpath subs seq:", xpath_subs_seq)
         # xpath seq prepare
 
         words_embeddings = inputs_embeds
