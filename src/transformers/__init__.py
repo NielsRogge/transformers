@@ -181,6 +181,10 @@ _import_structure = {
     "models.deberta": ["DEBERTA_PRETRAINED_CONFIG_ARCHIVE_MAP", "DebertaConfig", "DebertaTokenizer"],
     "models.deberta_v2": ["DEBERTA_V2_PRETRAINED_CONFIG_ARCHIVE_MAP", "DebertaV2Config"],
     "models.decision_transformer": ["DECISION_TRANSFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP", "DecisionTransformerConfig"],
+    "models.deformable_detr": [
+        "DEFORMABLE_DETR_PRETRAINED_CONFIG_ARCHIVE_MAP",
+        "DeformableDetrConfig",
+    ],
     "models.deit": ["DEIT_PRETRAINED_CONFIG_ARCHIVE_MAP", "DeiTConfig"],
     "models.detr": ["DETR_PRETRAINED_CONFIG_ARCHIVE_MAP", "DetrConfig"],
     "models.dialogpt": [],
@@ -611,6 +615,15 @@ except OptionalDependencyNotAvailable:
         name for name in dir(dummy_timm_objects) if not name.startswith("_")
     ]
 else:
+     _import_structure["models.deformable_detr"].extend(
+        [
+            "DEFORMABLE_DETR_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "DeformableDetrForObjectDetection",
+            "DeformableDetrForSegmentation",
+            "DeformableDetrModel",
+            "DeformableDetrPreTrainedModel",
+        ]
+    )
     _import_structure["models.detr"].extend(
         [
             "DETR_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -703,6 +716,7 @@ else:
     _import_structure["modeling_utils"] = ["PreTrainedModel"]
 
     # PyTorch models structure
+
     _import_structure["models.albert"].extend(
         [
             "ALBERT_PRETRAINED_MODEL_ARCHIVE_LIST",
@@ -2707,6 +2721,7 @@ if TYPE_CHECKING:
         DECISION_TRANSFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP,
         DecisionTransformerConfig,
     )
+    from .models.deformable_detr import DEFORMABLE_DETR_PRETRAINED_CONFIG_ARCHIVE_MAP, DeformableDetrConfig
     from .models.deit import DEIT_PRETRAINED_CONFIG_ARCHIVE_MAP, DeiTConfig
     from .models.detr import DETR_PRETRAINED_CONFIG_ARCHIVE_MAP, DetrConfig
     from .models.distilbert import DISTILBERT_PRETRAINED_CONFIG_ARCHIVE_MAP, DistilBertConfig, DistilBertTokenizer
@@ -3076,6 +3091,13 @@ if TYPE_CHECKING:
     except OptionalDependencyNotAvailable:
         from .utils.dummy_timm_objects import *
     else:
+        from .models.deformable_detr import(
+            DEFORMABLE_DETR_PRETRAINED_MODEL_ARCHIVE_LIST,
+            DeformableDetrForObjectDetection,
+            DeformableDetrForSegmentation,
+            DeformableDetrModel,
+            DeformableDetrPreTrainedModel,
+        )
         from .models.detr import (
             DETR_PRETRAINED_MODEL_ARCHIVE_LIST,
             DetrForObjectDetection,
