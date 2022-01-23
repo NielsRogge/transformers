@@ -43,6 +43,7 @@ from . import (
     data2vec,
     deberta,
     deberta_v2,
+    deformable_detr,
     deit,
     detr,
     dialogpt,
