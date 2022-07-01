@@ -222,6 +222,8 @@
       title: DeBERTa-v2
     - local: model_doc/decision_transformer
       title: Decision Transformer
+    - local: model_doc/deformable_detr
+      title: Deformable DETR
     - local: model_doc/deit
       title: DeiT
     - local: model_doc/detr
