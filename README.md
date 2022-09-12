@@ -49,9 +49,13 @@ limitations under the License.
 <h3 align="center">
     <a href="https://hf.co/course"><img src="https://raw.githubusercontent.com/huggingface/transformers/master/docs/source/imgs/course_banner.png"></a>
 </h3>
-------------------------------------------------------------------------------------------------------------------------------------------------
 
-NOTE: This branch also contains code for launching your streamlit application to convert PDF-page-images that contain tables, to pandas dataframe that can be visualized and saved.
+# Table transformer to CSV
+
+## NOTE: This branch also contains code for launching your streamlit application to convert PDF-page-images that contain tables, to pandas dataframe that can be visualized and saved.
+Credits: Creators of table-transformer (MSR) https://github.com/microsoft/table-transformer
+and @NielsRogge who Integrated table-transformer to HuggingFace.
+My contribution: Added code to extract bounding boxes from the TSR model, use pytesseract and project to pandas dataframe.
 
 The OCR is done by pytesseract (on Windows 11), please make necessary changes to the image paths and model checkpoint paths.
 
@@ -69,7 +73,7 @@ Pandas Dataframe (can be exported to CSV)
 ![image](https://user-images.githubusercontent.com/31631107/189662133-272ce876-8efa-44de-bb43-8f900b3ee0bc.png)
 
 
--------------------------------------------------------------------------------------------------------------------------------------------------
+
 🤗 Transformers provides thousands of pretrained models to perform tasks on texts such as classification, information extraction, question answering, summarization, translation, text generation and more in over 100 languages. Its aim is to make cutting-edge NLP easier to use for everyone.
 
 🤗 Transformers provides APIs to quickly download and use those pretrained models on a given text, fine-tune them on your own datasets and then share them with the community on our [model hub](https://huggingface.co/models). At the same time, each python module defining an architecture is fully standalone and can be modified to enable quick research experiments.
