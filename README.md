@@ -49,7 +49,27 @@ limitations under the License.
 <h3 align="center">
     <a href="https://hf.co/course"><img src="https://raw.githubusercontent.com/huggingface/transformers/master/docs/source/imgs/course_banner.png"></a>
 </h3>
+------------------------------------------------------------------------------------------------------------------------------------------------
 
+NOTE: This branch also contains code for launching your streamlit application to convert PDF-page-images that contain tables, to pandas dataframe that can be visualized and saved.
+
+The OCR is done by pytesseract (on Windows 11), please make necessary changes to the image paths and model checkpoint paths.
+
+
+
+The model checkpoint can be found on: 
+Dashboard overview:
+![image](https://user-images.githubusercontent.com/31631107/189661386-2a173cf4-9d0a-4c3b-9877-4f6439ed119d.png)
+Specific example:
+Table detection
+![image](https://user-images.githubusercontent.com/31631107/189661619-1bac28bd-1d56-4989-81e6-726e93409194.png)
+Table Structure Recognition
+![image](https://user-images.githubusercontent.com/31631107/189661745-32bb808d-e1a0-4549-bf41-2494d010ace2.png)
+Pandas Dataframe (can be exported to CSV)
+![image](https://user-images.githubusercontent.com/31631107/189662133-272ce876-8efa-44de-bb43-8f900b3ee0bc.png)
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
 🤗 Transformers provides thousands of pretrained models to perform tasks on texts such as classification, information extraction, question answering, summarization, translation, text generation and more in over 100 languages. Its aim is to make cutting-edge NLP easier to use for everyone.
 
 🤗 Transformers provides APIs to quickly download and use those pretrained models on a given text, fine-tune them on your own datasets and then share them with the community on our [model hub](https://huggingface.co/models). At the same time, each python module defining an architecture is fully standalone and can be modified to enable quick research experiments.
