@@ -60,9 +60,9 @@ and https://github.com/NielsRogge/ who Integrated table-transformer to HuggingFa
 > My contribution: Added code to extract bounding boxes from the TSR model, use pytesseract and project to pandas dataframe.
 
 The OCR is done by pytesseract (on Windows 11), please make necessary changes to the image paths and model checkpoint paths.
+The model checkpoint can be found on HuggingFace: https://huggingface.co/nielsr/detr-table-detection and https://huggingface.co/nielsr/detr-table-structure-recognition
 
 
-The model checkpoint can be found on HuggingFace: 
 ## Dashboard overview:
 ![image](https://user-images.githubusercontent.com/31631107/189661386-2a173cf4-9d0a-4c3b-9877-4f6439ed119d.png)
 ## Specific example:
