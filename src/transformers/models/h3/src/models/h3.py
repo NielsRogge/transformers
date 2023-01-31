@@ -123,7 +123,7 @@ class H3(nn.Module):
         k_og = k
         ssm_k_kernel, _ = self.ssm_k_kernel(L=L_kernel, state=state_k, rate=1.0)  # (C H L) (B C H L)
         # ssm_k_kernel = rearrange(ssm_k_kernel, "1 h l -> h l")
-        ssm_k_kernel = ssm_k_kernel.unsqueeze(0)
+        ssm_k_kernel = ssm_k_kernel.squeeze(0)
         if not use_fast_fftconv:
             fft_size = L_kernel + L
             ssm_k_kernel_f = torch.fft.rfft(ssm_k_kernel, n=fft_size)  # (H 2L)

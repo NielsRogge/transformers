@@ -185,7 +185,7 @@ class SSKernelDiag(OptimModule):
                 # K = rearrange(
                 #     log_vandermonde_fast(rearrange(C, "c h d -> (c h) d"), dA_log, L), "(c h) d -> c h d", c=C.shape[0]
                 # )
-                K = log_vandermonde_fast(torch.flatten(C, 0, 1), dA_log, L).view(C.shape)
+                K = log_vandermonde_fast(torch.flatten(C, 0, 1), dA_log, L).view(*C.shape[:2], -1)
             else:
                 K = log_vandermonde(C, dA.log(), L)
         elif self.disc == "dss":
