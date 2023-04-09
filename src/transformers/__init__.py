@@ -428,6 +428,7 @@ _import_structure = {
         "Mask2FormerConfig",
     ],
     "models.maskformer": ["MASKFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP", "MaskFormerConfig", "MaskFormerSwinConfig"],
+    "models.mask_rcnn": ["MASK_RCNN_PRETRAINED_CONFIG_ARCHIVE_MAP", "MaskRCNNConfig"],
     "models.mbart": ["MBartConfig"],
     "models.mbart50": [],
     "models.mega": ["MEGA_PRETRAINED_CONFIG_ARCHIVE_MAP", "MegaConfig"],
@@ -982,6 +983,7 @@ else:
     _import_structure["models.levit"].extend(["LevitFeatureExtractor", "LevitImageProcessor"])
     _import_structure["models.mask2former"].append("Mask2FormerImageProcessor")
     _import_structure["models.maskformer"].extend(["MaskFormerFeatureExtractor", "MaskFormerImageProcessor"])
+    _import_structure["models.mask_rcnn"].append("MaskRCNNImageProcessor")
     _import_structure["models.mobilenet_v1"].extend(["MobileNetV1FeatureExtractor", "MobileNetV1ImageProcessor"])
     _import_structure["models.mobilenet_v2"].extend(["MobileNetV2FeatureExtractor", "MobileNetV2ImageProcessor"])
     _import_structure["models.mobilevit"].extend(["MobileViTFeatureExtractor", "MobileViTImageProcessor"])
@@ -2186,6 +2188,14 @@ else:
             "MaskFormerModel",
             "MaskFormerPreTrainedModel",
             "MaskFormerSwinBackbone",
+        ]
+    )
+    _import_structure["models.mask_rcnn"].extend(
+        [
+            "MASKRCNN_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "MaskRCNNForObjectDetection",
+            "MaskRCNNModel",
+            "MaskRCNNPreTrainedModel",
         ]
     )
     _import_structure["models.mbart"].extend(
@@ -4573,6 +4583,7 @@ if TYPE_CHECKING:
     )
     from .models.mask2former import MASK2FORMER_PRETRAINED_CONFIG_ARCHIVE_MAP, Mask2FormerConfig
     from .models.maskformer import MASKFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP, MaskFormerConfig, MaskFormerSwinConfig
+    from .models.mask_rcnn import MASK_RCNN_PRETRAINED_CONFIG_ARCHIVE_MAP, MaskRCNNConfig
     from .models.mbart import MBartConfig
     from .models.mega import MEGA_PRETRAINED_CONFIG_ARCHIVE_MAP, MegaConfig
     from .models.megatron_bert import MEGATRON_BERT_PRETRAINED_CONFIG_ARCHIVE_MAP, MegatronBertConfig
@@ -5066,6 +5077,7 @@ if TYPE_CHECKING:
         from .models.levit import LevitFeatureExtractor, LevitImageProcessor
         from .models.mask2former import Mask2FormerImageProcessor
         from .models.maskformer import MaskFormerFeatureExtractor, MaskFormerImageProcessor
+        from .models.mask_rcnn import MaskRCNNImageProcessor
         from .models.mobilenet_v1 import MobileNetV1FeatureExtractor, MobileNetV1ImageProcessor
         from .models.mobilenet_v2 import MobileNetV2FeatureExtractor, MobileNetV2ImageProcessor
         from .models.mobilevit import MobileViTFeatureExtractor, MobileViTImageProcessor
@@ -6076,6 +6088,12 @@ if TYPE_CHECKING:
             MaskFormerModel,
             MaskFormerPreTrainedModel,
             MaskFormerSwinBackbone,
+        )
+        from .models.mask_rcnn import (
+            MASKRCNN_PRETRAINED_MODEL_ARCHIVE_LIST,
+            MaskRCNNForObjectDetection,
+            MaskRCNNModel,
+            MaskRCNNPreTrainedModel,
         )
         from .models.mbart import (
             MBartForCausalLM,
