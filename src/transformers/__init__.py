@@ -2185,7 +2185,6 @@ else:
         [
             "MASKRCNN_PRETRAINED_MODEL_ARCHIVE_LIST",
             "MaskRCNNForObjectDetection",
-            "MaskRCNNModel",
             "MaskRCNNPreTrainedModel",
         ]
     )
@@ -6079,7 +6078,6 @@ if TYPE_CHECKING:
         from .models.mask_rcnn import (
             MASKRCNN_PRETRAINED_MODEL_ARCHIVE_LIST,
             MaskRCNNForObjectDetection,
-            MaskRCNNModel,
             MaskRCNNPreTrainedModel,
         )
         from .models.maskformer import (
