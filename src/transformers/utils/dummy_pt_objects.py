@@ -4836,7 +4836,7 @@ class Mask2FormerPreTrainedModel(metaclass=DummyObject):
         requires_backends(self, ["torch"])
 
 
-MASKRCNN_PRETRAINED_MODEL_ARCHIVE_LIST = None
+MASK_RCNN_PRETRAINED_MODEL_ARCHIVE_LIST = None
 
 
 class MaskRCNNForObjectDetection(metaclass=DummyObject):
