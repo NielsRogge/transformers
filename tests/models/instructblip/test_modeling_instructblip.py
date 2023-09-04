@@ -527,6 +527,8 @@ class InstructBlipModelIntegrationTest(unittest.TestCase):
         model = InstructBlipForConditionalGeneration.from_pretrained(
             "Salesforce/instructblip-vicuna-7b", load_in_8bit=True
         )
+        # model.config.qformer_config.pad_token_id = 0
+        # model.config.text_config.pad_token_id = 0
 
         url = "https://raw.githubusercontent.com/salesforce/LAVIS/main/docs/_static/Confusing-Pictures.jpg"
         image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
