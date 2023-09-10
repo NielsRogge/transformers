@@ -3324,6 +3324,11 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
 
         # the FPN outputs feature maps at 5 different scales
         feature_maps = outputs.feature_maps if return_dict else outputs[0]
+
+        print("Feature maps:")
+        for i in feature_maps:
+            print(i.shape)
+
         hidden_states = self.neck(feature_maps)
 
         # next, RPN computes a tuple of (class, bounding box) features for each of the 5 feature maps

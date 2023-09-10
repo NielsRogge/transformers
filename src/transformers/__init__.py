@@ -1238,6 +1238,7 @@ else:
     _import_structure["models.beit"].extend(
         [
             "BEIT_PRETRAINED_MODEL_ARCHIVE_LIST",
+            "BeitBackbone",
             "BeitForImageClassification",
             "BeitForMaskedImageModeling",
             "BeitForSemanticSegmentation",
@@ -5307,6 +5308,7 @@ if TYPE_CHECKING:
         )
         from .models.beit import (
             BEIT_PRETRAINED_MODEL_ARCHIVE_LIST,
+            BeitBackbone,
             BeitForImageClassification,
             BeitForMaskedImageModeling,
             BeitForSemanticSegmentation,
