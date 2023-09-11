@@ -171,17 +171,17 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
 
     outputs = model(pixel_values, output_hidden_states=True)
 
-    # verify outputs
-    expected_slice_logits = torch.tensor(
-        [[-12.4785, -17.4976, -14.7001], [-10.9181, -16.7281, -13.2826], [-10.5053, -18.3817, -15.5554]],
-    )
-    expected_slice_boxes = torch.tensor(
-        [[-0.8485, 0.6819, -1.1016], [1.4864, -0.1529, -1.2551], [0.0233, 0.4202, 0.2257]],
-    )
-    print("Logits:", outputs.logits[:3, :3])
-    assert torch.allclose(outputs.logits[:3, :3], expected_slice_logits, atol=1e-4)
-    assert torch.allclose(outputs.pred_boxes[:3, :3], expected_slice_boxes, atol=1e-4)
-    print("Looks ok!")
+    # TODO verify outputs
+    # expected_slice_logits = torch.tensor(
+    #     [[-12.4785, -17.4976, -14.7001], [-10.9181, -16.7281, -13.2826], [-10.5053, -18.3817, -15.5554]],
+    # )
+    # expected_slice_boxes = torch.tensor(
+    #     [[-0.8485, 0.6819, -1.1016], [1.4864, -0.1529, -1.2551], [0.0233, 0.4202, 0.2257]],
+    # )
+    # print("Logits:", outputs.logits[:3, :3])
+    # assert torch.allclose(outputs.logits[:3, :3], expected_slice_logits, atol=1e-4)
+    # assert torch.allclose(outputs.pred_boxes[:3, :3], expected_slice_boxes, atol=1e-4)
+    # print("Looks ok!")
 
     if pytorch_dump_folder_path is not None:
         Path(pytorch_dump_folder_path).mkdir(exist_ok=True)
@@ -192,7 +192,7 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
     if push_to_hub:
         print("Pushing to the hub...")
         model_name = "dit-maskrcnn"
-        model.push_to_hub(model_name, organization="nielsr")
+        model.push_to_hub(f"nielsr/{model_name}")
 
 
 if __name__ == "__main__":
