@@ -18,13 +18,11 @@ URL: https://github.com/microsoft/unilm/tree/master/dit/object_detection"""
 
 
 import argparse
-import json
 from pathlib import Path
 
 import requests
 import torch
 import torchvision.transforms as T
-from huggingface_hub import hf_hub_download
 from PIL import Image
 
 from transformers import BeitConfig, MaskRCNNConfig, MaskRCNNForObjectDetection, MaskRCNNImageProcessor
@@ -36,7 +34,9 @@ logger = logging.get_logger(__name__)
 
 
 def get_beit_maskrcnn_config():
-    backbone_config = BeitConfig(use_absolute_position_embeddings=True, add_fpn=True, out_features=["stage4", "stage6", "stage8", "stage12"])
+    backbone_config = BeitConfig(
+        use_absolute_position_embeddings=True, add_fpn=True, out_features=["stage4", "stage6", "stage8", "stage12"]
+    )
     config = MaskRCNNConfig(backbone_config=backbone_config)
 
     config.num_labels = 5
@@ -93,14 +93,14 @@ def read_in_q_k_v(state_dict, config):
         # next, add query, keys and values (in that order) to the state dict
         # note that only the query and value weights have a bias
         hidden_size = config.backbone_config.hidden_size
-        v_bias =  state_dict.pop(f"backbone.blocks.{i}.attn.v_bias")
+        v_bias = state_dict.pop(f"backbone.blocks.{i}.attn.v_bias")
         q_bias = state_dict.pop(f"backbone.blocks.{i}.attn.q_bias")
-        state_dict[f"backbone.encoder.layer.{i}.attention.attention.query.weight"] = in_proj_weight[: hidden_size, :]
+        state_dict[f"backbone.encoder.layer.{i}.attention.attention.query.weight"] = in_proj_weight[:hidden_size, :]
         state_dict[f"backbone.encoder.layer.{i}.attention.attention.query.bias"] = q_bias
         state_dict[f"backbone.encoder.layer.{i}.attention.attention.key.weight"] = in_proj_weight[
             hidden_size : hidden_size * 2, :
         ]
-        state_dict[f"backbone.encoder.layer.{i}.attention.attention.value.weight"] = in_proj_weight[-hidden_size :, :]
+        state_dict[f"backbone.encoder.layer.{i}.attention.attention.value.weight"] = in_proj_weight[-hidden_size:, :]
         state_dict[f"backbone.encoder.layer.{i}.attention.attention.value.bias"] = v_bias
 
 
@@ -169,7 +169,7 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
     # verify image processor
     assert torch.allclose(pixel_values, original_pixel_values)
 
-    outputs = model(pixel_values, output_hidden_states=True)
+    model(pixel_values, output_hidden_states=True)
 
     # TODO verify outputs
     # expected_slice_logits = torch.tensor(

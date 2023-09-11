@@ -151,9 +151,11 @@ class BeitEmbeddings(nn.Module):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
     def forward(self, pixel_values: torch.Tensor, bool_masked_pos: Optional[torch.BoolTensor] = None) -> torch.Tensor:
-        embeddings, (patch_height, patch_width) = self.patch_embeddings(pixel_values, self.position_embeddings[:, 1:, :] if self.position_embeddings is not None else None)
+        embeddings, (patch_height, patch_width) = self.patch_embeddings(
+            pixel_values, self.position_embeddings[:, 1:, :] if self.position_embeddings is not None else None
+        )
         batch_size, seq_len, _ = embeddings.size()
-        
+
         if bool_masked_pos is not None:
             mask_tokens = self.mask_token.expand(batch_size, seq_len, -1)
             # replace the masked visual tokens by mask_tokens
@@ -163,9 +165,9 @@ class BeitEmbeddings(nn.Module):
         cls_tokens = self.cls_token.expand(batch_size, -1, -1)
         if self.position_embeddings is not None:
             cls_tokens = cls_tokens + self.position_embeddings[:, :1, :]
-        
+
         embeddings = torch.cat((cls_tokens, embeddings), dim=1)
-        
+
         embeddings = self.dropout(embeddings)
 
         return embeddings, (patch_height, patch_width)
@@ -201,14 +203,18 @@ class BeitPatchEmbeddings(nn.Module):
             raise ValueError(
                 "Make sure that the channel dimension of the pixel values match with the one set in the configuration."
             )
-        
+
         embeddings = self.projection(pixel_values)
         patch_height, patch_width = embeddings.shape[2], embeddings.shape[3]
 
         if position_embedding is not None:
             # interpolate the position embedding to the corresponding size
-            position_embedding = position_embedding.view(1, self.patch_shape[0], self.patch_shape[1], -1).permute(0, 3, 1, 2)
-            position_embedding = nn.functional.interpolate(position_embedding, size=(patch_height, patch_width), mode='bicubic')
+            position_embedding = position_embedding.view(1, self.patch_shape[0], self.patch_shape[1], -1).permute(
+                0, 3, 1, 2
+            )
+            position_embedding = nn.functional.interpolate(
+                position_embedding, size=(patch_height, patch_width), mode="bicubic"
+            )
             embeddings = embeddings + position_embedding
 
         embeddings = embeddings.flatten(2).transpose(1, 2)
@@ -689,7 +695,7 @@ class BeitModel(BeitPreTrainedModel):
         # and head_mask is converted to shape [num_hidden_layers x batch x num_heads x seq_length x seq_length]
         head_mask = self.get_head_mask(head_mask, self.config.num_hidden_layers)
 
-        embedding_output = self.embeddings(pixel_values, bool_masked_pos)
+        embedding_output, (patch_height, patch_width) = self.embeddings(pixel_values, bool_masked_pos)
 
         encoder_outputs = self.encoder(
             embedding_output,
@@ -1320,11 +1326,11 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
         if config.add_fpn:
             hidden_size = config.hidden_size
             self.fpn1 = nn.Sequential(
-                    nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
-                    nn.BatchNorm2d(hidden_size),
-                    nn.GELU(),
-                    nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
-                )
+                nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
+                nn.BatchNorm2d(hidden_size),
+                nn.GELU(),
+                nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
+            )
 
             self.fpn2 = nn.Sequential(nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2))
             self.fpn3 = nn.Identity()
@@ -1392,13 +1398,19 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
         for stage, hidden_state in zip(self.stage_names, hidden_states):
             if stage in self.out_features:
                 if self.config.reshape_hidden_states:
-                    num_patches_one_direction = self.config.image_size // self.config.patch_size
-                    hidden_state = hidden_state[:, 1:, :].permute(0, 2, 1).reshape(batch_size, -1, patch_height, patch_width)
+                    hidden_state = (
+                        hidden_state[:, 1:, :].permute(0, 2, 1).reshape(batch_size, -1, patch_height, patch_width)
+                    )
 
                 feature_maps.append(hidden_state)
 
         if self.config.add_fpn:
-            feature_maps = [self.fpn1(feature_maps[0]), self.fpn2(feature_maps[1]), self.fpn3(feature_maps[2]), self.fpn4(feature_maps[3])]
+            feature_maps = [
+                self.fpn1(feature_maps[0]),
+                self.fpn2(feature_maps[1]),
+                self.fpn3(feature_maps[2]),
+                self.fpn4(feature_maps[3]),
+            ]
             feature_maps = tuple(feature_maps)
 
         if not return_dict:

@@ -34,7 +34,7 @@ BEIT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
 }
 
 
-class BeitConfig(PretrainedConfig, BackboneConfigMixin):
+class BeitConfig(BackboneConfigMixin, PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`BeitModel`]. It is used to instantiate an BEiT
     model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
