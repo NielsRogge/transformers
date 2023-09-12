@@ -3325,11 +3325,17 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
         # the FPN outputs feature maps at 5 different scales
         feature_maps = outputs.feature_maps if return_dict else outputs[0]
 
-        print("Feature maps:")
+        print("Backbone features:")
         for i in feature_maps:
             print(i.shape)
+            print(i[0,0,:3,:3])
 
         hidden_states = self.neck(feature_maps)
+
+        print("Neck features:")
+        for i in hidden_states:
+            print(i.shape)
+            print(i[0,0,:3,:3])
 
         # next, RPN computes a tuple of (class, bounding box) features for each of the 5 feature maps
         # rpn_outs[0] are the class features for each of the feature maps
@@ -3363,6 +3369,7 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
             loss = self.aggregate_loss(loss_dict)
         else:
             rpn_outputs = self.rpn_head(hidden_states, img_metas)
+            print("Number of RPN proposals:", len(rpn_outputs.proposals))
             rois, proposals, logits, pred_boxes = self.roi_head.forward_test(hidden_states, rpn_outputs.proposals)
 
         if not return_dict:

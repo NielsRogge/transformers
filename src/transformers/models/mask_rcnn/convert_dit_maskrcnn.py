@@ -169,7 +169,15 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
     # verify image processor
     assert torch.allclose(pixel_values, original_pixel_values)
 
-    model(pixel_values, output_hidden_states=True)
+    from huggingface_hub import hf_hub_download
+
+    filepath = hf_hub_download(repo_id="nielsr/dit-maskrcnn", filename="batch.pt", repo_type="model")
+    pixel_values = torch.load(filepath)
+    print(pixel_values.shape)
+
+    outputs = model(pixel_values, output_hidden_states=True)
+
+    print("First values of scores:", outputs.logits[:3, :3])
 
     # TODO verify outputs
     # expected_slice_logits = torch.tensor(
