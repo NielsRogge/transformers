@@ -2472,11 +2472,14 @@ class MaskRCNNRPN(nn.Module):
                 ids = ids[valid_mask]
 
         print("Shape of proposals before NMS:", proposals.shape)
+        print("First values of boxes:", proposals[:3, :3])
         print("Mean of proposals before NMS:", proposals.mean(dim=0))
         print("Shape of scores before NMS:", scores.shape)
+        print("First values of scores:", scores[:3])
         print("Mean of scores before NMS:", scores.mean(dim=0))
         print("Shape of ids before NMS:", ids.shape)
         print("Mean of ids before NMS:", ids.float().mean(dim=0))
+        print("First values of ids:", ids[:3])
 
         if proposals.numel() > 0:
             dets, keep_indices = batched_nms(proposals, scores, ids, cfg["nms"])
