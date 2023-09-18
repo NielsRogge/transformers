@@ -45,7 +45,8 @@ from .configuration_maskrcnn import MaskRCNNConfig
 if is_torchvision_available():
     import torchvision
 
-    from transformers.models.mask_rcnn.image_processing_maskrcnn import batched_nms
+    # from transformers.models.mask_rcnn.image_processing_maskrcnn import batched_nms
+    from mmcv.ops import batched_nms
 
 
 logger = logging.get_logger(__name__)
