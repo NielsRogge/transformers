@@ -178,6 +178,7 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
     outputs = model(pixel_values, output_hidden_states=True)
 
     print("First values of scores:", outputs.logits[:3, :3])
+    print("First values of boxes:", outputs.pred_boxes[:3, :3])
 
     # TODO verify outputs
     # expected_slice_logits = torch.tensor(
