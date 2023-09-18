@@ -1841,12 +1841,12 @@ class MaskRCNNRPN(nn.Module):
         print("RPN cls scores:")
         for cls_score in cls_scores:
             print(cls_score.shape)
-            print(cls_score[0, :3, :3])
+            print(cls_score[0, 0, :3, :3])
 
         print("RPN bbox predictions:")
         for bbox_pred in bbox_preds:
             print(bbox_pred.shape)
-            print(bbox_pred[0, :3, :3])
+            print(bbox_pred[0, 0, :3, :3])
 
         losses = None
         if gt_bboxes is not None:
@@ -2410,6 +2410,21 @@ class MaskRCNNRPN(nn.Module):
             multilevel_valid_anchors.append(anchors)
             level_ids.append(scores.new_full((scores.size(0),), level_idx, dtype=torch.long))
 
+        print("Multilevel scores:")
+        for score in multilevel_scores:
+            print(score.shape)
+            print(score[:3])
+
+        print("Multilevel boxes:")
+        for box in multilevel_bbox_preds:
+            print(box.shape)
+            print(box[:3,:3])
+
+        print("Multilevel anchors:")
+        for anchor in multilevel_valid_anchors:
+            print(anchor.shape)
+            print(anchor[:3,:3])
+
         return self._bbox_post_process(
             multilevel_scores, multilevel_bbox_preds, multilevel_valid_anchors, level_ids, cfg, img_shape
         )
@@ -2455,10 +2470,22 @@ class MaskRCNNRPN(nn.Module):
                 scores = scores[valid_mask]
                 ids = ids[valid_mask]
 
+        print("Shape of proposals before NMS:", proposals.shape)
+        print("Mean of proposals before NMS:", proposals.mean(dim=0))
+        print("Shape of scores before NMS:", scores.shape)
+        print("Mean of scores before NMS:", scores.mean(dim=0))
+        print("Shape of ids before NMS:", ids.shape)
+        print("Mean of ids before NMS:", ids.float().mean(dim=0))
+
         if proposals.numel() > 0:
-            dets, _ = batched_nms(proposals, scores, ids, cfg["nms"])
+            dets, keep_indices = batched_nms(proposals, scores, ids, cfg["nms"])
         else:
             return proposals.new_zeros(0, 5)
+
+        print("Keep indices:", keep_indices)
+        print("RPN configuration:", cfg)
+        print("Shape of detections after NMS:")
+        print(dets.shape)
 
         return dets[: cfg["max_per_img"]]
 
