@@ -1837,7 +1837,7 @@ class MaskRCNNRPN(nn.Module):
         outputs = self.forward_features(hidden_states)
 
         cls_scores, bbox_preds = outputs
-        
+
         print("RPN cls scores:")
         for cls_score in cls_scores:
             print(cls_score.shape)
@@ -2313,9 +2313,11 @@ class MaskRCNNRPN(nn.Module):
 
         from huggingface_hub import hf_hub_download
 
-        filepath = hf_hub_download(repo_id="nielsr/test-maskrcnn", repo_type="dataset", filename="multilevel_initial_priors.pt")
+        filepath = hf_hub_download(
+            repo_id="nielsr/test-maskrcnn", repo_type="dataset", filename="multilevel_initial_priors.pt"
+        )
         original_multilevel_priors = torch.load(filepath)
-        
+
         for i in range(len(multilevel_priors)):
             assert torch.allclose(multilevel_priors[i], original_multilevel_priors[i])
 
@@ -2429,17 +2431,19 @@ class MaskRCNNRPN(nn.Module):
         print("Multilevel boxes:")
         for box in multilevel_bbox_preds:
             print(box.shape)
-            print(box[:3,:3])
+            print(box[:3, :3])
 
         print("Multilevel anchors:")
         for anchor in multilevel_valid_anchors:
             print(anchor.shape)
-            print(anchor[:3,:3])
+            print(anchor[:3, :3])
 
         from huggingface_hub import hf_hub_download
 
         # verify multilevel scores
-        filepath = hf_hub_download(repo_id="nielsr/test-maskrcnn", repo_type="dataset", filename="multilevel_scores.pt")
+        filepath = hf_hub_download(
+            repo_id="nielsr/test-maskrcnn", repo_type="dataset", filename="multilevel_scores.pt"
+        )
         original_multilevel_scores = torch.load(filepath)
         for i in range(len(multilevel_scores)):
             assert torch.allclose(multilevel_scores[i], original_multilevel_scores[i], atol=1e-5)
@@ -3323,6 +3327,7 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
     def forward(
         self,
         pixel_values: torch.FloatTensor = None,
+        img_metas: List[dict] = None,
         labels: Optional[torch.LongTensor] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -3368,13 +3373,14 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
 
         # TODO this is wrong
-        if labels is not None:
-            img_metas = [
-                {"img_shape": (3, *target["size"].tolist()), "pad_shape": (3, *target["size"].tolist())}
-                for target in labels
-            ]
-        else:
-            img_metas = [{"img_shape": pixel_values.shape[1:]} for _ in range(pixel_values.shape[0])]
+        # img_shape and pad_shape are not the same!!
+        # if labels is not None:
+        #     img_metas = [
+        #         {"img_shape": (3, *target["size"].tolist()), "pad_shape": (3, *target["size"].tolist())}
+        #         for target in labels
+        #     ]
+        # else:
+        #     img_metas = [{"img_shape": (1035, 800)} for _ in range(pixel_values.shape[0])]
 
         # send pixel_values through backbone
         outputs = self.backbone.forward_with_filtered_kwargs(
@@ -3390,14 +3396,14 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
         print("Backbone features:")
         for i in feature_maps:
             print(i.shape)
-            print(i[0,0,:3,:3])
+            print(i[0, 0, :3, :3])
 
         hidden_states = self.neck(feature_maps)
 
         print("Neck features:")
         for i in hidden_states:
             print(i.shape)
-            print(i[0,0,:3,:3])
+            print(i[0, 0, :3, :3])
 
         # next, RPN computes a tuple of (class, bounding box) features for each of the 5 feature maps
         # rpn_outs[0] are the class features for each of the feature maps
@@ -3437,7 +3443,9 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
             # TODO something wrong with RPN proposals - boxes not matching
             from huggingface_hub import hf_hub_download
 
-            filepath = hf_hub_download(repo_id="nielsr/test-maskrcnn", repo_type="dataset", filename="det_bboxes_after_rpn_nms.pt")
+            filepath = hf_hub_download(
+                repo_id="nielsr/test-maskrcnn", repo_type="dataset", filename="det_bboxes_after_rpn_nms.pt"
+            )
             original_proposals = torch.load(filepath)
             print("Shape of original proposals:", original_proposals.shape)
 

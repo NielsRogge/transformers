@@ -139,7 +139,7 @@ def convert_convnext_maskrcnn_checkpoint(checkpoint_url, pytorch_dump_folder_pat
     # verify image processor
     assert torch.allclose(pixel_values, original_pixel_values)
 
-    outputs = model(pixel_values, output_hidden_states=True)
+    outputs = model(pixel_values)
 
     # verify outputs
     expected_slice_logits = torch.tensor(

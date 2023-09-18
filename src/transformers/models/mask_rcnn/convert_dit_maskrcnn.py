@@ -175,24 +175,36 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
     pixel_values = torch.load(filepath)
     print(pixel_values.shape)
 
-    outputs = model(pixel_values, output_hidden_states=True)
+    img_metas = [
+        {
+            "img_path": None,
+            "img_shape": (1035, 800),
+            "pad_shape": (1056, 800),
+            "batch_input_shape": (1056, 800),
+            "ori_shape": (1100, 850),
+            "img_id": 0,
+            "scale_factor": (0.9411764705882353, 0.9409090909090909),
+        }
+    ]
+
+    outputs = model(pixel_values, img_metas=img_metas)
 
     print("Shape of logits:", outputs.logits.shape)
     print("First values of logits:", outputs.logits[:3, :3])
     print("Shape of boxes:", outputs.pred_boxes.shape)
     print("First values of boxes:", outputs.pred_boxes[:3, :3])
 
-    # TODO verify outputs
-    # expected_slice_logits = torch.tensor(
-    #     [[-12.4785, -17.4976, -14.7001], [-10.9181, -16.7281, -13.2826], [-10.5053, -18.3817, -15.5554]],
-    # )
-    # expected_slice_boxes = torch.tensor(
-    #     [[-0.8485, 0.6819, -1.1016], [1.4864, -0.1529, -1.2551], [0.0233, 0.4202, 0.2257]],
-    # )
-    # print("Logits:", outputs.logits[:3, :3])
-    # assert torch.allclose(outputs.logits[:3, :3], expected_slice_logits, atol=1e-4)
-    # assert torch.allclose(outputs.pred_boxes[:3, :3], expected_slice_boxes, atol=1e-4)
-    # print("Looks ok!")
+    # verify outputs
+    expected_slice_logits = torch.tensor(
+        [[1.4332, -3.6317, -6.8550], [-1.3802, 2.4716, -4.0814], [4.0155, -6.8953, -3.7289]]
+    )
+    expected_slice_boxes = torch.tensor(
+        [[0.1432, 0.0289, 0.1541], [0.2192, -0.0050, 0.1929], [0.0149, 0.0010, 0.0984]]
+    )
+    print("Logits:", outputs.logits[:3, :3])
+    assert torch.allclose(outputs.logits[:3, :3], expected_slice_logits, atol=1e-4)
+    assert torch.allclose(outputs.pred_boxes[:3, :3], expected_slice_boxes, atol=1e-4)
+    print("Looks ok!")
 
     if pytorch_dump_folder_path is not None:
         Path(pytorch_dump_folder_path).mkdir(exist_ok=True)
