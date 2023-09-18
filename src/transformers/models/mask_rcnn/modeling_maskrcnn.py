@@ -3367,6 +3367,7 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
         )
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
 
+        # TODO this is wrong
         if labels is not None:
             img_metas = [
                 {"img_shape": (3, *target["size"].tolist()), "pad_shape": (3, *target["size"].tolist())}
