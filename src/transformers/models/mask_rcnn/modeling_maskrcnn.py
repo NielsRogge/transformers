@@ -1836,6 +1836,18 @@ class MaskRCNNRPN(nn.Module):
 
         outputs = self.forward_features(hidden_states)
 
+        cls_scores, bbox_preds = outputs
+        
+        print("RPN cls scores:")
+        for cls_score in cls_scores:
+            print(cls_score.shape)
+            print(cls_score[0, :3, :3])
+
+        print("RPN bbox predictions:")
+        for bbox_pred in bbox_preds:
+            print(bbox_pred.shape)
+            print(bbox_pred[0, :3, :3])
+
         losses = None
         if gt_bboxes is not None:
             if gt_labels is None:
@@ -3370,6 +3382,7 @@ class MaskRCNNForObjectDetection(MaskRCNNPreTrainedModel):
         else:
             rpn_outputs = self.rpn_head(hidden_states, img_metas)
             print("Number of RPN proposals:", len(rpn_outputs.proposals))
+            print("Shape of RPN proposal:", rpn_outputs.proposals[0].shape)
             rois, proposals, logits, pred_boxes = self.roi_head.forward_test(hidden_states, rpn_outputs.proposals)
 
         if not return_dict:
