@@ -35,9 +35,6 @@ if is_levenshtein_available():
 if is_nltk_available():
     import nltk
 
-import logging
-
-logger = logging.getLogger(__name__)
 
 logger = logging.get_logger(__name__)
 
