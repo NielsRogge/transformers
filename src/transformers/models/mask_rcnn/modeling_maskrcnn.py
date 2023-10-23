@@ -44,8 +44,7 @@ from .configuration_maskrcnn import MaskRCNNConfig
 
 if is_torchvision_available():
     import torchvision
-
-    from ...utils import batched_nms
+    from torchvision.ops import batched_nms
 
 
 logger = logging.get_logger(__name__)
@@ -2446,11 +2445,12 @@ class MaskRCNNRPN(nn.Module):
                 ids = ids[valid_mask]
 
         if proposals.numel() > 0:
-            dets, keep_indices = batched_nms(proposals, scores, ids, cfg["nms"])
+            keep = batched_nms(proposals, scores, ids, cfg["nms"]["iou_threshold"])
+            detections = torch.cat((proposals[keep], scores[keep].reshape(-1, 1)), dim=1)
         else:
             return proposals.new_zeros(0, 5)
 
-        return dets[: cfg["max_per_img"]]
+        return detections[: cfg["max_per_img"]]
 
 
 class RoIAlign(nn.Module):

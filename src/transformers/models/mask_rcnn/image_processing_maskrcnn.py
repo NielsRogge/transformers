@@ -804,7 +804,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         else:
             # it's here that we create a different amount of objects per image in a batch
             detected_bboxes, detected_labels, _ = multiclass_nms(
-                bboxes, scores, cfg["score_threshold"], cfg["nms"], cfg["max_per_img"]
+                bboxes, scores, cfg["score_threshold"], cfg["nms"]["iou_threshold"], cfg["max_per_img"]
             )
 
             return detected_bboxes, detected_labels

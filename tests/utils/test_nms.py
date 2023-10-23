@@ -17,7 +17,13 @@ import unittest
 
 import torch
 
-from transformers.utils import batched_nms, multiclass_nms
+from transformers import is_torchvision_available
+from transformers.testing_utils import require_torchvision
+from transformers.utils import multiclass_nms
+
+
+if is_torchvision_available():
+    from torchvision.ops.boxes import batched_nms
 
 
 class NMSTester:
@@ -36,33 +42,32 @@ class NMSTester:
         scores = torch.tensor([0.9, 0.8, 0.7])
         idxs = torch.tensor([0, 1, 0])
 
-        nms_cfg = {
-            "iou_threshold": self.iou_threshold,
-            "split_threshold": self.split_threshold,
-            "class_agnostic": self.class_agnostic,
-        }
-
-        return boxes, scores, idxs, nms_cfg
+        return boxes, scores, idxs
 
 
+@require_torchvision
 class NMSTest(unittest.TestCase):
     def setUp(self):
         self.tester = NMSTester(self)
 
     def test_batched_nms(self):
-        boxes, scores, idxs, nms_cfg = self.tester.prepare_config_and_inputs()
+        boxes, scores, idxs = self.tester.prepare_config_and_inputs()
+        iou_threshold = self.tester.iou_threshold
 
-        detections, keep = batched_nms(boxes, scores, idxs, nms_cfg)
+        keep = batched_nms(boxes, scores, idxs, iou_threshold)
 
-        self.assertTrue(len(detections) == len(keep))
+        self.assertTrue(len(keep) <= len(boxes))
 
     def test_multiclass_nms(self):
-        _, _, _, nms_cfg = self.tester.prepare_config_and_inputs()
-
         multi_bboxes = torch.tensor([[10, 10, 20, 20, 30, 30, 40, 40], [15, 15, 25, 25, 35, 35, 45, 45]]).float()
         multi_scores = torch.tensor([[0.9, 0.8], [0.85, 0.75]])
+
+        iou_threshold = self.tester.iou_threshold
         score_threshold = self.tester.score_threshold
         max_num = self.tester.max_num
-        detections, labels, indices = multiclass_nms(multi_bboxes, multi_scores, score_threshold, nms_cfg, max_num)
+
+        detections, labels, indices = multiclass_nms(
+            multi_bboxes, multi_scores, score_threshold, iou_threshold, max_num
+        )
 
         self.assertTrue(len(detections) == len(labels) == len(indices))
