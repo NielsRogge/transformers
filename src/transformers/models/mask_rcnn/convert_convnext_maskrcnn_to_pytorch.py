@@ -133,7 +133,7 @@ def convert_convnext_maskrcnn_checkpoint(checkpoint_url, pytorch_dump_folder_pat
     transform = T.Compose([T.Resize(800), T.ToTensor(), T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
     original_pixel_values = transform(image).unsqueeze(0)
 
-    image_processor = MaskRCNNImageProcessor()
+    image_processor = MaskRCNNImageProcessor(do_pad_size_divisor=False)
     pixel_values = image_processor(image, return_tensors="pt").pixel_values
 
     # verify image processor

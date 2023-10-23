@@ -14,7 +14,19 @@
 # limitations under the License.
 """Convert DiT Mask R-CNN checkpoints from the unilm repository.
 
-URL: https://github.com/microsoft/unilm/tree/master/dit/object_detection"""
+URL: https://github.com/microsoft/unilm/tree/master/dit/object_detection.
+
+
+Note: to get the DiT object detection in mmdetection, I used the following branch:
+
+https://github.com/NielsRogge/mmdetection/tree/convert_dit_bis.
+
+A notebook to run inference with the original mmdetection checkpoint called "Read original checkpoint, convert to
+mmdetection and run in mmdetection.ipynb" can be found at:
+
+https://colab.research.google.com/drive/1w7j1tHOQcCOPEzN7MpjWKdXV1W62WNp_.
+
+"""
 
 
 import argparse
@@ -163,7 +175,7 @@ def convert_beit_maskrcnn_checkpoint(checkpoint_path, pytorch_dump_folder_path, 
     transform = T.Compose([T.Resize(800), T.ToTensor(), T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
     original_pixel_values = transform(image).unsqueeze(0)
 
-    image_processor = MaskRCNNImageProcessor()
+    image_processor = MaskRCNNImageProcessor(do_pad_size_divisor=False)
     pixel_values = image_processor(image, return_tensors="pt").pixel_values
 
     # verify image processor

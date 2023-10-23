@@ -50,6 +50,7 @@ def multiclass_nms(multi_bboxes, multi_scores, score_threshold, iou_threshold, m
     print("Shape of multi_bboxes:", multi_bboxes.shape)
 
     num_classes = multi_scores.size(1) - 1
+    # make sure boxes are of shape (N, num_classes, 4)
     # exclude background category
     if multi_bboxes.shape[1] > 4:
         bboxes = multi_bboxes.view(multi_scores.size(0), -1, 4)
@@ -61,6 +62,7 @@ def multiclass_nms(multi_bboxes, multi_scores, score_threshold, iou_threshold, m
     labels = torch.arange(num_classes, dtype=torch.long, device=scores.device)
     labels = labels.view(1, -1).expand_as(scores)
 
+    # reshape to boxes to (N*num_classes, 4) and scores, labels to (N*num_classes)
     bboxes = bboxes.reshape(-1, 4)
     scores = scores.reshape(-1)
     labels = labels.reshape(-1)

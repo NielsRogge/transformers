@@ -420,6 +420,8 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         do_normalize: bool = True,
         image_mean: Union[float, List[float]] = None,
         image_std: Union[float, List[float]] = None,
+        do_pad_size_divisor: bool = True,
+        size_divisor: int = 32,
         do_pad: bool = True,
         test_cfg: Dict = None,
         num_classes=80,
@@ -438,6 +440,8 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         self.do_normalize = do_normalize
         self.image_mean = image_mean if image_mean is not None else IMAGENET_DEFAULT_MEAN
         self.image_std = image_std if image_std is not None else IMAGENET_DEFAULT_STD
+        self.do_pad_size_divisor = do_pad_size_divisor
+        self.size_divisor = size_divisor
         self.do_pad = do_pad
         self.test_cfg = (
             test_cfg
@@ -525,6 +529,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             data_format=data_format,
             input_data_format=input_data_format,
         )
+
         return image
 
     # Copied from transformers.models.detr.image_processing_detr.DetrImageProcessor._pad_image
@@ -586,6 +591,33 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
 
         return BatchFeature(data=data, tensor_type=return_tensors)
 
+    def pad_to_size_divisor(
+        self,
+        image,
+        size_divisor: int = 32,
+        constant_values: int = 0,
+        data_format: Optional[ChannelDimension] = None,
+        input_data_format: Optional[Union[str, ChannelDimension]] = None,
+    ):
+        """Source: https://github.com/open-mmlab/mmcv/blob/main/mmcv/transforms/processing.py#L358C11-L358C11."""
+
+        height, width = get_image_size(image)
+        pad_height = int(np.ceil(height / size_divisor)) * size_divisor
+        pad_width = int(np.ceil(width / size_divisor)) * size_divisor
+
+        padding = ((0, pad_height - height), (0, pad_width - width))
+
+        padded_image = pad(
+            image,
+            padding,
+            mode=PaddingMode.CONSTANT,
+            constant_values=constant_values,
+            data_format=data_format,
+            input_data_format=input_data_format,
+        )
+
+        return padded_image
+
     def preprocess(
         self,
         images: ImageInput,
@@ -599,6 +631,8 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         do_normalize: Optional[bool] = None,
         image_mean: Optional[Union[float, List[float]]] = None,
         image_std: Optional[Union[float, List[float]]] = None,
+        do_pad_size_divisor: Optional[bool] = None,
+        size_divisor: Optional[int] = None,
         do_pad: Optional[bool] = None,
         format: Optional[Union[str, AnnotionFormat]] = None,
         return_tensors: Optional[Union[TensorType, str]] = None,
@@ -670,6 +704,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         do_normalize = self.do_normalize if do_normalize is None else do_normalize
         image_mean = self.image_mean if image_mean is None else image_mean
         image_std = self.image_std if image_std is None else image_std
+        do_pad_size_divisor = self.do_pad_size_divisor if do_pad_size_divisor is None else do_pad_size_divisor
         do_pad = self.do_pad if do_pad is None else do_pad
         format = self.format if format is None else format
 
@@ -712,6 +747,9 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
 
         # All transformations expect numpy arrays
         images = [to_numpy_array(image) for image in images]
+        images_metadata = [{"ori_shape": get_image_size(image)} for image in images]
+
+        print("Initial metadata:", images_metadata)
 
         if input_data_format is None:
             # We assume that all images have the same channel dimension format.
@@ -734,23 +772,25 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         # transformations
         if do_resize:
             if annotations is not None:
-                resized_images, resized_annotations = [], []
-                for image, target in zip(images, annotations):
+                for idx, (image, image_metadata, target) in enumerate(zip(images, images_metadata, annotations)):
                     orig_size = get_image_size(image)
                     resized_image = self.resize(
                         image, size=size, resample=resample, input_data_format=input_data_format
                     )
+                    image_metadata["img_shape"] = get_image_size(resized_image)
                     resized_annotation = self.resize_annotation(target, orig_size, get_image_size(resized_image))
-                    resized_images.append(resized_image)
-                    resized_annotations.append(resized_annotation)
-                images = resized_images
-                annotations = resized_annotations
-                del resized_images, resized_annotations
+                    images[idx] = resized_image
+                    images_metadata[idx] = image_metadata
+                    annotations[idx] = resized_annotation
             else:
-                images = [
-                    self.resize(image, size=size, resample=resample, input_data_format=input_data_format)
-                    for image in images
-                ]
+                for idx, (image, image_metadata) in enumerate(zip(images, images_metadata)):
+                    orig_size = get_image_size(image)
+                    resized_image = self.resize(
+                        image, size=size, resample=resample, input_data_format=input_data_format
+                    )
+                    image_metadata["img_shape"] = get_image_size(resized_image)
+                    images[idx] = resized_image
+                    images_metadata[idx] = image_metadata
 
         if do_rescale:
             images = [
@@ -764,6 +804,15 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
                 for image in images
             ]
 
+        if do_pad_size_divisor:
+            for idx, (image, image_metadata) in enumerate(zip(images, images_metadata)):
+                padded_image = self.pad_to_size_divisor(
+                    image=image, size_divisor=self.size_divisor, input_data_format=input_data_format
+                )
+                image_metadata["pad_shape"] = get_image_size(padded_image)
+                images[idx] = padded_image
+                images_metadata[idx] = image_metadata
+
         if do_pad:
             # Pads images up to the largest image in the batch
             data = self.pad(images, data_format=data_format)
@@ -772,6 +821,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             data = {"pixel_values": images}
 
         encoded_inputs = BatchFeature(data=data, tensor_type=return_tensors)
+        encoded_inputs["image_metas"] = images_metadata
 
         if annotations is not None:
             encoded_inputs["labels"] = [
@@ -930,6 +980,9 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             in the batch as predicted by the model.
         """
         rois, proposals, cls_score, bbox_pred = outputs.rois, outputs.proposals, outputs.logits, outputs.pred_boxes
+
+        print("Shape of logits:", outputs.logits.shape)
+        print("Shape of predicted boxes:", outputs.pred_boxes.shape)
 
         # reshape back to (batch_size*num_proposals_per_image, ...)
         cls_score = cls_score.reshape(-1, cls_score.shape[-1])
