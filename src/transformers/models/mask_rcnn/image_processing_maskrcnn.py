@@ -396,7 +396,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             for each channel. Can be overridden by the `image_std` parameter in the `preprocess` method.
         do_pad (`bool`, *optional*, defaults to `True`):
             Controls whether to pad the image to the largest image in a batch and create a pixel mask. Can be
-            overridden by the `do_pad` parameter in the `preprocess` method. "max_per_img": 100, "mask_thr_binary":
+            overridden by the `do_pad` parameter in the `preprocess` method. "max_per_img": 100, "mask_binary_threshold":
             0.5}`): Test configuration.
         test_cfg (`typing.Dict`, *optional*): <fill_docstring>
         num_classes (`int`, *optional*, defaults to 80):
@@ -443,10 +443,10 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             test_cfg
             if test_cfg is not None
             else {
-                "score_thr": 0.05,
+                "score_threshold": 0.05,
                 "nms": {"type": "nms", "iou_threshold": 0.5},
                 "max_per_img": 100,
-                "mask_thr_binary": 0.5,
+                "mask_binary_threshold": 0.5,
             }
         )
         self.num_classes = num_classes
@@ -804,7 +804,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
         else:
             # it's here that we create a different amount of objects per image in a batch
             detected_bboxes, detected_labels, _ = multiclass_nms(
-                bboxes, scores, cfg["score_thr"], cfg["nms"], cfg["max_per_img"]
+                bboxes, scores, cfg["score_threshold"], cfg["nms"], cfg["max_per_img"]
             )
 
             return detected_bboxes, detected_labels
@@ -877,7 +877,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
                 raise ValueError("Default GPU_MEM_LIMIT is too small; try increasing it")
         chunks = torch.chunk(torch.arange(num_masks, device=device), num_chunks)
 
-        threshold = rcnn_test_cfg["mask_thr_binary"]
+        threshold = rcnn_test_cfg["mask_binary_threshold"]
         im_mask = torch.zeros(
             num_masks, img_h, img_w, device=device, dtype=torch.bool if threshold >= 0 else torch.uint8
         )

@@ -75,8 +75,8 @@ class MaskRCNNConfig(PretrainedConfig):
         rpn_test_cfg (`Dict`, *optional*, defaults to `{'nms_pre':
             1000, 'max_per_img': 1000, 'nms': {'type': 'nms', 'iou_threshold': 0.7}, 'min_bbox_size': 0}`):
             Configuration of the Region Proposal Network (RPN) at inference time.
-        rcnn_test_cfg (`Dict`, *optional*, defaults to `{'score_thr':
-            0.05, 'nms': {'type': 'nms', 'iou_threshold': 0.5}, 'max_per_img': 100, 'mask_thr_binary': 0.5}`):
+        rcnn_test_cfg (`Dict`, *optional*, defaults to `{'score_threshold':
+            0.05, 'nms': {'type': 'nms', 'iou_threshold': 0.5}, 'max_per_img': 100, 'mask_binary_threshold': 0.5}`):
             Configuration of the Region of Interest (RoI) heads at inference time.
         bbox_roi_extractor_roi_layer (`Dict`, *optional*, defaults to `{'type':
             'RoIAlign', 'output_size': 7, 'sampling_ratio': 0}`): Configuration of the RoI layer used by the bounding
@@ -204,10 +204,10 @@ class MaskRCNNConfig(PretrainedConfig):
         },
         # RoI heads (box + mask)
         rcnn_test_cfg={
-            "score_thr": 0.05,
+            "score_threshold": 0.05,
             "nms": {"type": "nms", "iou_threshold": 0.5},
             "max_per_img": 100,
-            "mask_thr_binary": 0.5,
+            "mask_binary_threshold": 0.5,
         },
         bbox_roi_extractor_roi_layer={"type": "RoIAlign", "output_size": 7, "sampling_ratio": 0},
         bbox_roi_extractor_out_channels=256,
