@@ -101,12 +101,13 @@ def batched_nms(
             offsets = idxs.to(boxes) * (max_coordinate + torch.tensor(1).to(boxes))
             boxes_for_nms = boxes + offsets[:, None]
 
+    nms_op = torchvision.ops.nms
     del nms_cfg_["type"]
 
     split_threshold = nms_cfg_.pop("split_threshold", 10000)
     # Won't split to multiple nms nodes when exporting to onnx
     if boxes_for_nms.shape[0] < split_threshold or torch.onnx.is_in_onnx_export():
-        keep = torchvision.ops.nms(boxes_for_nms, scores, **nms_cfg_)
+        keep = nms_op(boxes_for_nms, scores, **nms_cfg_)
         detections = torch.cat((boxes[keep], scores[keep].reshape(-1, 1)), dim=1)
         boxes = boxes[keep]
 
@@ -123,7 +124,7 @@ def batched_nms(
         scores_after_nms = scores.new_zeros(scores.size())
         for id in torch.unique(idxs):
             mask = (idxs == id).nonzero(as_tuple=False).view(-1)
-            keep = torchvision.ops.nms(boxes_for_nms[mask], scores[mask], **nms_cfg_)
+            keep = nms_op(boxes_for_nms[mask], scores[mask], **nms_cfg_)
             detections = torch.cat((boxes[keep], scores[keep].reshape(-1, 1)), dim=1)
             total_mask[mask[keep]] = True
             scores_after_nms[mask[keep]] = detections[:, -1]
@@ -179,32 +180,19 @@ def multiclass_nms(multi_bboxes, multi_scores, score_thr, nms_cfg, max_num=-1, s
     scores = scores.reshape(-1)
     labels = labels.reshape(-1)
 
-    if not torch.onnx.is_in_onnx_export():
-        # NonZero not supported in TensorRT
-        # remove low scoring boxes
-        valid_mask = scores > score_thr
-    # multiply score_factor after threshold to preserve more bboxes, improve
-    # mAP by 1% for YOLOv3
+    # remove low scoring boxes
+    valid_mask = scores > score_thr
+    # multiply score_factor after threshold to preserve more bboxes, improves mAP by 1% for YOLOv3
     if score_factors is not None:
         # expand the shape to match original shape of score
         score_factors = score_factors.view(-1, 1).expand(multi_scores.size(0), num_classes)
         score_factors = score_factors.reshape(-1)
         scores = scores * score_factors
 
-    if not torch.onnx.is_in_onnx_export():
-        # NonZero not supported  in TensorRT
-        indices = valid_mask.nonzero(as_tuple=False).squeeze(1)
-        bboxes, scores, labels = bboxes[indices], scores[indices], labels[indices]
-    else:
-        # TensorRT NMS plugin has invalid output filled with -1
-        # add dummy data to make detection output correct.
-        bboxes = torch.cat([bboxes, bboxes.new_zeros(1, 4)], dim=0)
-        scores = torch.cat([scores, scores.new_zeros(1)], dim=0)
-        labels = torch.cat([labels, labels.new_zeros(1)], dim=0)
+    indices = valid_mask.nonzero(as_tuple=False).squeeze(1)
+    bboxes, scores, labels = bboxes[indices], scores[indices], labels[indices]
 
     if bboxes.numel() == 0:
-        if torch.onnx.is_in_onnx_export():
-            raise RuntimeError("[ONNX Error] Can not record NMS as it has not been executed this time")
         detections = torch.cat([bboxes, scores[:, None]], -1)
         return detections, labels, indices
 

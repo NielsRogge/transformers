@@ -1838,16 +1838,6 @@ class MaskRCNNRPN(nn.Module):
 
         cls_scores, bbox_preds = outputs
 
-        print("RPN cls scores:")
-        for cls_score in cls_scores:
-            print(cls_score.shape)
-            print(cls_score[0, 0, :3, :3])
-
-        print("RPN bbox predictions:")
-        for bbox_pred in bbox_preds:
-            print(bbox_pred.shape)
-            print(bbox_pred[0, 0, :3, :3])
-
         losses = None
         if gt_bboxes is not None:
             if gt_labels is None:
