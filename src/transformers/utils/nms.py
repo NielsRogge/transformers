@@ -72,11 +72,6 @@ def batched_nms(
         - **keep** (`torch.Tensor`):
             The indices of remaining boxes in the input boxes.
     """
-    print("Boxes:", boxes.shape)
-    print("Scores:", scores.shape)
-    print("Idxs:", idxs.shape)
-    print("NMS Cfg:", nms_cfg)
-
     # skip nms when nms_cfg is None
     if nms_cfg is None:
         scores, indices = scores.sort(descending=True)
@@ -200,7 +195,6 @@ def multiclass_nms(multi_bboxes, multi_scores, score_threshold, nms_cfg, max_num
         detections = torch.cat([bboxes, scores[:, None]], -1)
         return detections, labels, indices
 
-    print("Nms cfg just before batched_nms:", nms_cfg)
     detections, keep = batched_nms(bboxes, scores, labels, nms_cfg)
 
     if max_num > 0:
