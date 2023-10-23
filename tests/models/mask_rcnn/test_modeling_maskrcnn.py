@@ -101,6 +101,11 @@ class MaskRCNNModelTester:
         torch.manual_seed(0)
         pixel_values = torch.randn([self.batch_size, self.num_channels, self.image_size, self.image_size])
 
+        img_metas = [
+            {"img_shape": pixel_values.shape[2:], "pad_shape": pixel_values.shape[2:]}
+            for _ in range(pixel_values.shape[0])
+        ]
+
         labels = None
         if self.use_labels:
             labels = []
@@ -119,7 +124,7 @@ class MaskRCNNModelTester:
 
         config = self.get_config()
 
-        return config, pixel_values, labels
+        return config, pixel_values, img_metas, labels
 
     def get_backbone_config(self):
         return ConvNextConfig(
@@ -148,7 +153,7 @@ class MaskRCNNModelTester:
             mask_roi_extractor_out_channels=self.mask_roi_extractor_out_channels,
         )
 
-    def create_and_check_model_for_object_detection(self, config, pixel_values, labels):
+    def create_and_check_model_for_object_detection(self, config, pixel_values, img_metas, labels):
         # we are setting a seed to make sure NMS returns the same number of proposals per image
         torch.manual_seed(2)
 
@@ -157,20 +162,20 @@ class MaskRCNNModelTester:
         model.eval()
 
         # inference
-        result = model(pixel_values)
+        result = model(pixel_values, img_metas=img_metas)
         # expected logits shape: (num_proposals_per_image stacked on top of each other, num_labels + 1)
         self.parent.assertEqual(result.logits.shape, (387, self.num_labels + 1))
         # expected boxes shape: (num_proposals_per_image stacked on top of each other, num_labels * 4)
         self.parent.assertEqual(result.pred_boxes.shape, (387, self.num_labels * 4))
 
         # training
-        result = model(pixel_values, labels=labels)
+        result = model(pixel_values, img_metas=img_metas, labels=labels)
         self.parent.assertTrue(result.loss.item() > 0)
 
     def prepare_config_and_inputs_for_common(self):
         config_and_inputs = self.prepare_config_and_inputs()
-        config, pixel_values, labels = config_and_inputs
-        inputs_dict = {"pixel_values": pixel_values}
+        config, pixel_values, img_metas, labels = config_and_inputs
+        inputs_dict = {"pixel_values": pixel_values, "img_metas": img_metas}
         return config, inputs_dict
 
 
