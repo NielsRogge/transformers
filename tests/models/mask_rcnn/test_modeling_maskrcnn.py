@@ -311,9 +311,11 @@ class MaskRCNNModelIntegrationTest(unittest.TestCase):
         image = prepare_img()
         pixel_values = processor(image, return_tensors="pt").pixel_values.to(torch_device)
 
+        img_metas = [{"img_shape": pixel_values.shape[2:]} for _ in range(pixel_values.shape[0])]
+
         # forward pass
         with torch.no_grad():
-            outputs = model(pixel_values)
+            outputs = model(pixel_values, img_metas=img_metas)
 
         # verify outputs
         self.assertListEqual(
@@ -388,6 +390,8 @@ class MaskRCNNModelIntegrationTest(unittest.TestCase):
         local_path = hf_hub_download(repo_id="nielsr/init-files", filename="pixel_values.pt")
         img = torch.load(local_path).unsqueeze(0)
 
+        img_metas = [{"img_shape": img.shape[2:], "pad_shape": img.shape[2:]} for _ in range(img.shape[0])]
+
         labels = []
         local_path = hf_hub_download(repo_id="nielsr/init-files", filename="boxes.pt")
         target = {}
@@ -401,7 +405,7 @@ class MaskRCNNModelIntegrationTest(unittest.TestCase):
 
         # forward pass
         with torch.no_grad():
-            outputs = model(img.to(torch_device), labels=labels)
+            outputs = model(img.to(torch_device), img_metas=img_metas, labels=labels)
             losses = outputs.loss_dict
 
         # verify the losses
