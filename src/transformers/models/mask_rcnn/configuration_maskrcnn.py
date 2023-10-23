@@ -137,8 +137,8 @@ class MaskRCNNConfig(PretrainedConfig):
             Upper bound of negative/positive ratio for the Region Proposal Network (RPN) sampler at training time.
         rpn_sampler_add_gt_as_proposals (`bool`, *optional*, defaults to `False`):
             Whether to add ground truth boxes as proposals for the Region Proposal Network (RPN) sampler at training
-            time. 2000, "max_per_img": 1000, "nms": {"type": "nms", "iou_threshold": 0.7}, "min_bbox_size": 0}`):
-            Configuration of the Region Proposal Network (RPN) proposals at training time.
+            time. 2000, "max_per_img": 1000, "nms": {"iou_threshold": 0.7}, "min_bbox_size": 0}`): Configuration of the
+            Region Proposal Network (RPN) proposals at training time.
         rpn_proposal (`<fill_type>`, *optional*, defaults to `{'nms_pre':
             2000, 'max_per_img': 1000, 'nms': {'type': 'nms', 'iou_threshold': 0.7}, 'min_bbox_size': 0}`):
             <fill_docstring>
@@ -199,13 +199,13 @@ class MaskRCNNConfig(PretrainedConfig):
         rpn_test_cfg={
             "nms_pre": 1000,
             "max_per_img": 1000,
-            "nms": {"type": "nms", "iou_threshold": 0.7},
+            "nms": {"iou_threshold": 0.7},
             "min_bbox_size": 0,
         },
         # RoI heads (box + mask)
         rcnn_test_cfg={
             "score_threshold": 0.05,
-            "nms": {"type": "nms", "iou_threshold": 0.5},
+            "nms": {"iou_threshold": 0.5},
             "max_per_img": 100,
             "mask_binary_threshold": 0.5,
         },
@@ -242,7 +242,7 @@ class MaskRCNNConfig(PretrainedConfig):
         rpn_proposal={
             "nms_pre": 2000,
             "max_per_img": 1000,
-            "nms": {"type": "nms", "iou_threshold": 0.7},
+            "nms": {"iou_threshold": 0.7},
             "min_bbox_size": 0,
         },
         # Training configurations: RCNN

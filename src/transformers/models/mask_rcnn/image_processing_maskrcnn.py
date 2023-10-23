@@ -396,8 +396,8 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             for each channel. Can be overridden by the `image_std` parameter in the `preprocess` method.
         do_pad (`bool`, *optional*, defaults to `True`):
             Controls whether to pad the image to the largest image in a batch and create a pixel mask. Can be
-            overridden by the `do_pad` parameter in the `preprocess` method. "max_per_img": 100, "mask_binary_threshold":
-            0.5}`): Test configuration.
+            overridden by the `do_pad` parameter in the `preprocess` method. "max_per_img": 100,
+            "mask_binary_threshold": 0.5}`): Test configuration.
         test_cfg (`typing.Dict`, *optional*): <fill_docstring>
         num_classes (`int`, *optional*, defaults to 80):
             Number of classes in the dataset.
@@ -444,7 +444,7 @@ class MaskRCNNImageProcessor(BaseImageProcessor):
             if test_cfg is not None
             else {
                 "score_threshold": 0.05,
-                "nms": {"type": "nms", "iou_threshold": 0.5},
+                "nms": {"iou_threshold": 0.5},
                 "max_per_img": 100,
                 "mask_binary_threshold": 0.5,
             }

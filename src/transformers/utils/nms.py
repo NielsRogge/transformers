@@ -31,7 +31,7 @@ def batched_nms(
     boxes: torch.Tensor,
     scores: torch.Tensor,
     idxs: torch.Tensor,
-    nms_cfg: Optional[Dict],
+    nms_cfg: Optional[Dict] = None,
     class_agnostic: bool = False,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     r"""
@@ -41,7 +41,7 @@ def batched_nms(
     505cd6957711af790211896d32b40291bea1bc21/torchvision/ops/boxes.py#L39). In order to perform NMS independently per
     class, we add an offset to all the boxes. The offset is dependent only on the class idx, and is large enough so
     that boxes from different classes do not overlap.
-    
+
     Note: skipping the NMS is also supported and returns sorted raw results when `nms_cfg` is None.
 
     Args:
@@ -52,7 +52,7 @@ def batched_nms(
         idxs (`torch.Tensor`):
             Each index value corresponds to a bbox cluster, and NMS will not be applied between elements of different
             idxs, shape (N, ).
-        nms_cfg (dict | optional):
+        nms_cfg (`dict`, *optional*):
             Supports skipping the nms when *nms_cfg* is None, otherwise it should specify nms type and other parameters
             like *iou_thr*. Possible keys includes the following.
             - iou_threshold (float): IoU threshold used for NMS.
@@ -72,6 +72,11 @@ def batched_nms(
         - **keep** (`torch.Tensor`):
             The indices of remaining boxes in the input boxes.
     """
+    print("Boxes:", boxes.shape)
+    print("Scores:", scores.shape)
+    print("Idxs:", idxs.shape)
+    print("NMS Cfg:", nms_cfg)
+
     # skip nms when nms_cfg is None
     if nms_cfg is None:
         scores, indices = scores.sort(descending=True)
@@ -102,7 +107,6 @@ def batched_nms(
             boxes_for_nms = boxes + offsets[:, None]
 
     nms_op = torchvision.ops.nms
-    del nms_cfg_["type"]
 
     split_threshold = nms_cfg_.pop("split_threshold", 10000)
     # Won't split to multiple nms nodes when exporting to onnx
@@ -153,8 +157,8 @@ def multiclass_nms(multi_bboxes, multi_scores, score_threshold, nms_cfg, max_num
             Shape (N, #class), where the last column contains scores of the background class, but this will be ignored.
         score_threshold (`float`):
             Bounding box threshold, boxes with scores lower than it will not be considered.
-        nms_thr (`float`):
-            NMS IoU threshold.
+        nms_cfg (`dict`):
+            NMS configuration.
         max_num (`int`, *optional*, defaults to -1):
             If there are more than `max_num` bounding boxes after NMS, only top `max_num` will be kept.
         score_factors (`torch.Tensor`, *optional*):
@@ -196,6 +200,7 @@ def multiclass_nms(multi_bboxes, multi_scores, score_threshold, nms_cfg, max_num
         detections = torch.cat([bboxes, scores[:, None]], -1)
         return detections, labels, indices
 
+    print("Nms cfg just before batched_nms:", nms_cfg)
     detections, keep = batched_nms(bboxes, scores, labels, nms_cfg)
 
     if max_num > 0:

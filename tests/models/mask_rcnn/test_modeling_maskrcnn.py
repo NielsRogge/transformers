@@ -311,7 +311,9 @@ class MaskRCNNModelIntegrationTest(unittest.TestCase):
     def test_inference_object_detection_head(self):
         # TODO update to appropriate organization + use from_pretrained for image processor
         processor = MaskRCNNImageProcessor()
-        model = MaskRCNNForObjectDetection.from_pretrained("nielsr/convnext-tiny-maskrcnn").to(torch_device)
+        model = MaskRCNNForObjectDetection.from_pretrained("nielsr/convnext-tiny-maskrcnn", force_download=True).to(
+            torch_device
+        )
 
         image = prepare_img()
         pixel_values = processor(image, return_tensors="pt").pixel_values.to(torch_device)

@@ -2354,6 +2354,7 @@ class MaskRCNNRPN(nn.Module):
                 top_left_y, bottom_right_x, bottom_right_y) and the 5-th column is a score between 0 and 1.
         """
         cfg = self.test_cfg if cfg is None else cfg
+        print("Test config:", cfg)
         cfg = copy.deepcopy(cfg)
         img_shape = img_meta["img_shape"]
 
@@ -2448,6 +2449,7 @@ class MaskRCNNRPN(nn.Module):
                 ids = ids[valid_mask]
 
         if proposals.numel() > 0:
+            print("NMS config:", cfg["nms"])
             dets, keep_indices = batched_nms(proposals, scores, ids, cfg["nms"])
         else:
             return proposals.new_zeros(0, 5)
