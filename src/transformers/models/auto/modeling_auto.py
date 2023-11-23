@@ -58,6 +58,7 @@ MODEL_MAPPING_NAMES = OrderedDict(
         ("clvp", "ClvpModelForConditionalGeneration"),
         ("code_llama", "LlamaModel"),
         ("codegen", "CodeGenModel"),
+        ("cogvlm", "CogVLMModel"),
         ("conditional_detr", "ConditionalDetrModel"),
         ("convbert", "ConvBertModel"),
         ("convnext", "ConvNextModel"),
@@ -575,6 +576,7 @@ MODEL_FOR_VISION_2_SEQ_MAPPING_NAMES = OrderedDict(
     [
         ("blip", "BlipForConditionalGeneration"),
         ("blip-2", "Blip2ForConditionalGeneration"),
+        ("cogvlm", "CogVLMForConditionalGeneration"),
         ("git", "GitForCausalLM"),
         ("instructblip", "InstructBlipForConditionalGeneration"),
         ("kosmos-2", "Kosmos2ForConditionalGeneration"),
@@ -863,6 +865,7 @@ MODEL_FOR_TABLE_QUESTION_ANSWERING_MAPPING_NAMES = OrderedDict(
 MODEL_FOR_VISUAL_QUESTION_ANSWERING_MAPPING_NAMES = OrderedDict(
     [
         ("blip-2", "Blip2ForConditionalGeneration"),
+        ("cogvlm", "CogVLMForConditionalGeneration"),
         ("vilt", "ViltForQuestionAnswering"),
     ]
 )
