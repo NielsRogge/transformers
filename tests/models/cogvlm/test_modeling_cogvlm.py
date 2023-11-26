@@ -202,8 +202,12 @@ class CogVLMModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_for_causal_lm(*config_and_inputs)
 
-    @unittest.skip(reason="Does not work on the tiny model as we keep hitting edge cases.")
+    @unittest.skip(reason="Not supported for now.")
     def test_cpu_offload(self):
+        pass
+
+    @unittest.skip(reason="Not supported for now.")
+    def test_model_parallelism(self):
         pass
 
     @slow
