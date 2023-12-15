@@ -694,7 +694,7 @@ MODEL_NAMES_MAPPING = OrderedDict(
         ("van", "VAN"),
         ("videomae", "VideoMAE"),
         ("vilt", "ViLT"),
-        ("vipllava", "VipLlava"),
+        ("vipllava", "Vip-LLaVa"),
         ("vision-encoder-decoder", "Vision Encoder decoder"),
         ("vision-text-dual-encoder", "VisionTextDualEncoder"),
         ("visual_bert", "VisualBERT"),
