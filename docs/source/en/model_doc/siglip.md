@@ -108,6 +108,10 @@ If you want to do the pre- and postprocessing yourself, here's how to do that:
     - create_token_type_ids_from_sequences
     - save_vocabulary
 
+## SiglipTokenizerFast
+
+[[autodoc]] SiglipTokenizerFast
+
 ## SiglipImageProcessor
 
 [[autodoc]] SiglipImageProcessor

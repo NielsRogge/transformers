@@ -954,6 +954,34 @@ class T5Converter(SpmConverter):
         )
 
 
+class SiglipConverter(SpmConverter):
+    def normalizer(self, proto):
+        precompiled_charsmap = proto.normalizer_spec.precompiled_charsmap
+
+        list_normalizers = []
+
+        if self.original_tokenizer.do_lower_case:
+            list_normalizers.append(normalizers.Lowercase())
+
+        if not precompiled_charsmap:
+            list_normalizers.append(normalizers.Replace(Regex(" {2,}"), " "))
+        else:
+            list_normalizers.extend(
+                [normalizers.Precompiled(precompiled_charsmap), normalizers.Replace(Regex(" {2,}"), " ")]
+            )
+
+        return normalizers.Sequence(list_normalizers)
+
+    def post_processor(self):
+        return processors.TemplateProcessing(
+            single=["$A", "</s>"],
+            pair=["$A", "</s>", "$B", "</s>"],
+            special_tokens=[
+                ("</s>", self.original_tokenizer.convert_tokens_to_ids("</s>")),
+            ],
+        )
+
+
 class WhisperConverter(Converter):
     def converted(self) -> Tokenizer:
         vocab = self.original_tokenizer.encoder
@@ -1296,6 +1324,7 @@ SLOW_TO_FAST_CONVERTERS = {
     "RobertaTokenizer": RobertaConverter,
     "RoFormerTokenizer": RoFormerConverter,
     "SeamlessM4TTokenizer": SeamlessM4TConverter,
+    "SiglipTokenizer": SiglipConverter,
     "SqueezeBertTokenizer": BertConverter,
     "T5Tokenizer": T5Converter,
     "WhisperTokenizer": WhisperConverter,
