@@ -246,14 +246,15 @@ class SiglipTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
                 special_token_id = tokenizer_r.encode("<special>", add_special_tokens=False)[0]
 
-                print(tokenizer_p.decode(p_output))
-                print(tokenizer_cr.decode(cr_output))
-
                 self.assertEqual(p_output, r_output)
                 self.assertEqual(cr_output, r_output)
                 self.assertTrue(special_token_id in p_output)
                 self.assertTrue(special_token_id in r_output)
                 self.assertTrue(special_token_id in cr_output)
+
+    @unittest.skip(reason="SigLIP always lower cases letters")
+    def test_added_tokens_do_lower_case(self):
+        pass
 
     # Copied from tests.models.t5.test_tokenization_t5.T5TokenizationTest.test_special_tokens_initialization_with_non_empty_additional_special_tokens with T5->Siglip
     def test_special_tokens_initialization_with_non_empty_additional_special_tokens(self):

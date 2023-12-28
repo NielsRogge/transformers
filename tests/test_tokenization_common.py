@@ -2892,12 +2892,17 @@ class TokenizerTesterMixin:
                 input_r = tokenizer_r.encode_plus(self._data)
 
                 for key in filter(lambda x: x in ["input_ids", "token_type_ids", "attention_mask"], input_p.keys()):
+                    for token, token_r in zip(input_p[key], input_r[key]):
+                        print(tokenizer_p.decode([token]))
+                        print(tokenizer_r.decode([token_r]))
+                        assert token == token_r
                     self.assertSequenceEqual(input_p[key], input_r[key])
 
                 input_pairs_p = tokenizer_p.encode_plus(self._data, self._data)
                 input_pairs_r = tokenizer_r.encode_plus(self._data, self._data)
 
                 for key in filter(lambda x: x in ["input_ids", "token_type_ids", "attention_mask"], input_p.keys()):
+                    print("Key:", key)
                     self.assertSequenceEqual(input_pairs_p[key], input_pairs_r[key])
 
                 # Ensure truncation match
