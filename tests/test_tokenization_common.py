@@ -2889,6 +2889,9 @@ class TokenizerTesterMixin:
                 input_p = tokenizer_p.encode_plus(self._data)
                 input_r = tokenizer_r.encode_plus(self._data)
 
+                print("input_p", input_p)
+                print("input_r", input_r)
+
                 for key in filter(lambda x: x in ["input_ids", "token_type_ids", "attention_mask"], input_p.keys()):
                     self.assertSequenceEqual(input_p[key], input_r[key])
 
