@@ -19,6 +19,7 @@ All the conversions are grouped here to gather SentencePiece dependencies outsid
 allow to make our dependency on SentencePiece optional.
 """
 
+import string
 import warnings
 from typing import Dict, List, Tuple
 
@@ -962,6 +963,13 @@ class SiglipConverter(SpmConverter):
 
         if self.original_tokenizer.do_lower_case:
             list_normalizers.append(normalizers.Lowercase())
+            list_normalizers.extend([normalizers.Replace(i, "") for i in string.punctuation])
+            list_normalizers.extend(
+                [
+                    normalizers.Replace(Regex(r"\s+"), " "),
+                    normalizers.Strip(),
+                ]
+            )
 
         if not precompiled_charsmap:
             list_normalizers.append(normalizers.Replace(Regex(" {2,}"), " "))
