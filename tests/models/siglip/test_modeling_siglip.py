@@ -20,7 +20,6 @@ import os
 import tempfile
 import unittest
 
-import numpy as np
 import requests
 
 from transformers import SiglipConfig, SiglipTextConfig, SiglipVisionConfig
@@ -38,7 +37,6 @@ from ...test_modeling_common import (
     _config_zero_init,
     floats_tensor,
     ids_tensor,
-    random_attention_mask,
 )
 from ...test_pipeline_mixin import PipelineTesterMixin
 
@@ -139,8 +137,7 @@ class SiglipVisionModelTester:
 @require_torch
 class SiglipVisionModelTest(ModelTesterMixin, unittest.TestCase):
     """
-    Here we also overwrite some of the tests of test_modeling_common.py, as SIGLIP does not use input_ids, inputs_embeds,
-    attention_mask and seq_length.
+    Here we also overwrite some of the tests of test_modeling_common.py.
     """
 
     all_model_classes = (SiglipVisionModel,) if is_torch_available() else ()
@@ -229,7 +226,6 @@ class SiglipTextModelTester:
         batch_size=12,
         seq_length=7,
         is_training=True,
-        use_input_mask=True,
         use_labels=True,
         vocab_size=99,
         hidden_size=32,
@@ -246,7 +242,6 @@ class SiglipTextModelTester:
         self.batch_size = batch_size
         self.seq_length = seq_length
         self.is_training = is_training
-        self.use_input_mask = use_input_mask
         self.use_labels = use_labels
         self.vocab_size = vocab_size
         self.hidden_size = hidden_size
@@ -259,24 +254,12 @@ class SiglipTextModelTester:
         self.initializer_range = initializer_range
         self.scope = scope
 
-    # Copied from tests.models.clip.test_modeling_clip.CLIPTextModelTester.prepare_config_and_inputs
     def prepare_config_and_inputs(self):
         input_ids = ids_tensor([self.batch_size, self.seq_length], self.vocab_size)
 
-        input_mask = None
-        if self.use_input_mask:
-            input_mask = random_attention_mask([self.batch_size, self.seq_length])
-
-        if input_mask is not None:
-            batch_size, seq_length = input_mask.shape
-            rnd_start_indices = np.random.randint(1, seq_length - 1, size=(batch_size,))
-            for batch_idx, start_index in enumerate(rnd_start_indices):
-                input_mask[batch_idx, :start_index] = 1
-                input_mask[batch_idx, start_index:] = 0
-
         config = self.get_config()
 
-        return config, input_ids, input_mask
+        return config, input_ids
 
     def get_config(self):
         return SiglipTextConfig(
@@ -291,21 +274,19 @@ class SiglipTextModelTester:
             initializer_range=self.initializer_range,
         )
 
-    def create_and_check_model(self, config, input_ids, input_mask):
+    def create_and_check_model(self, config, input_ids):
         model = SiglipTextModel(config=config)
         model.to(torch_device)
         model.eval()
         with torch.no_grad():
-            result = model(input_ids, attention_mask=input_mask)
             result = model(input_ids)
         self.parent.assertEqual(result.last_hidden_state.shape, (self.batch_size, self.seq_length, self.hidden_size))
         self.parent.assertEqual(result.pooler_output.shape, (self.batch_size, self.hidden_size))
 
-    # Copied from tests.models.clip.test_modeling_clip.CLIPTextModelTester.prepare_config_and_inputs_for_common
     def prepare_config_and_inputs_for_common(self):
         config_and_inputs = self.prepare_config_and_inputs()
-        config, input_ids, input_mask = config_and_inputs
-        inputs_dict = {"input_ids": input_ids, "attention_mask": input_mask}
+        config, input_ids = config_and_inputs
+        inputs_dict = {"input_ids": input_ids}
         return config, inputs_dict
 
 
@@ -391,14 +372,13 @@ class SiglipModelTester:
         self.vision_model_tester = SiglipVisionModelTester(parent, **vision_kwargs)
         self.is_training = is_training
 
-    # Copied from tests.models.clip.test_modeling_clip.CLIPModelTester.prepare_config_and_inputs
     def prepare_config_and_inputs(self):
-        text_config, input_ids, attention_mask = self.text_model_tester.prepare_config_and_inputs()
+        text_config, input_ids = self.text_model_tester.prepare_config_and_inputs()
         vision_config, pixel_values = self.vision_model_tester.prepare_config_and_inputs()
 
         config = self.get_config()
 
-        return config, input_ids, attention_mask, pixel_values
+        return config, input_ids, pixel_values
 
     def get_config(self):
         return SiglipConfig.from_text_vision_configs(
@@ -406,10 +386,10 @@ class SiglipModelTester:
             self.vision_model_tester.get_config(),
         )
 
-    def create_and_check_model(self, config, input_ids, attention_mask, pixel_values):
+    def create_and_check_model(self, config, input_ids, pixel_values):
         model = SiglipModel(config).to(torch_device).eval()
         with torch.no_grad():
-            result = model(input_ids, pixel_values, attention_mask)
+            result = model(input_ids, pixel_values)
         self.parent.assertEqual(
             result.logits_per_image.shape, (self.vision_model_tester.batch_size, self.text_model_tester.batch_size)
         )
@@ -419,10 +399,9 @@ class SiglipModelTester:
 
     def prepare_config_and_inputs_for_common(self):
         config_and_inputs = self.prepare_config_and_inputs()
-        config, input_ids, attention_mask, pixel_values = config_and_inputs
+        config, input_ids, pixel_values = config_and_inputs
         inputs_dict = {
             "input_ids": input_ids,
-            "attention_mask": attention_mask,
             "pixel_values": pixel_values,
             "return_loss": False,
         }

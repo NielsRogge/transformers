@@ -376,8 +376,9 @@ class TokenizerTesterMixin:
         for i_r, i_p in zip(input_r[model_main_input_name], input_p[model_main_input_name]):
             self.assert_padded_input_match(i_r, i_p, max_length, pad_token_id)
 
-        for i_r, i_p in zip(input_r["attention_mask"], input_p["attention_mask"]):
-            self.assertSequenceEqual(i_r, i_p)
+        if "attention_mask" in self.tokenizer_class.model_input_names:
+            for i_r, i_p in zip(input_r["attention_mask"], input_p["attention_mask"]):
+                self.assertSequenceEqual(i_r, i_p)
 
     @staticmethod
     def convert_batch_encode_plus_format_to_encode_plus(batch_encode_plus_sequences):
@@ -2624,7 +2625,8 @@ class TokenizerTesterMixin:
                     src_texts=src_text, max_length=3, max_target_length=10, return_tensors="pt"
                 )
                 self.assertEqual(batch_encoder_only.input_ids.shape[1], 3)
-                self.assertEqual(batch_encoder_only.attention_mask.shape[1], 3)
+                if "attention_mask" in tokenizer.model_input_names:
+                    self.assertEqual(batch_encoder_only.attention_mask.shape[1], 3)
                 self.assertNotIn("decoder_input_ids", batch_encoder_only)
 
     def test_is_fast(self):
@@ -2888,9 +2890,6 @@ class TokenizerTesterMixin:
                 # Ensure basic input match
                 input_p = tokenizer_p.encode_plus(self._data)
                 input_r = tokenizer_r.encode_plus(self._data)
-
-                print("input_p", input_p)
-                print("input_r", input_r)
 
                 for key in filter(lambda x: x in ["input_ids", "token_type_ids", "attention_mask"], input_p.keys()):
                     self.assertSequenceEqual(input_p[key], input_r[key])
@@ -3296,7 +3295,8 @@ class TokenizerTesterMixin:
                     "This is a simple input", max_length=max_length, pad_to_max_length=True
                 )
                 self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
-                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                if "attention_mask" in tokenizer_p.model_input_names:
+                    self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
                 input_r = tokenizer_r.encode_plus(
                     "This is a simple input", max_length=max_length, padding="max_length"
                 )
@@ -3304,7 +3304,8 @@ class TokenizerTesterMixin:
                     "This is a simple input", max_length=max_length, padding="max_length"
                 )
                 self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
-                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                if "attention_mask" in tokenizer_p.model_input_names:
+                    self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
 
                 input_r = tokenizer_r.encode_plus("This is a simple input", padding="longest")
                 input_p = tokenizer_p.encode_plus("This is a simple input", padding=True)
@@ -3312,7 +3313,8 @@ class TokenizerTesterMixin:
                     input_r["input_ids"], input_p["input_ids"], len(input_r["input_ids"]), pad_token_id
                 )
 
-                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                if "attention_mask" in tokenizer_p.model_input_names:
+                    self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
 
                 # Encode_plus - Pair input
                 input_r = tokenizer_r.encode_plus(
@@ -3322,7 +3324,8 @@ class TokenizerTesterMixin:
                     "This is a simple input", "This is a pair", max_length=max_length, pad_to_max_length=True
                 )
                 self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
-                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                if "attention_mask" in tokenizer_p.model_input_names:
+                    self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
                 input_r = tokenizer_r.encode_plus(
                     "This is a simple input", "This is a pair", max_length=max_length, padding="max_length"
                 )
@@ -3330,13 +3333,15 @@ class TokenizerTesterMixin:
                     "This is a simple input", "This is a pair", max_length=max_length, padding="max_length"
                 )
                 self.assert_padded_input_match(input_r["input_ids"], input_p["input_ids"], max_length, pad_token_id)
-                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                if "attention_mask" in tokenizer_p.model_input_names:
+                    self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
                 input_r = tokenizer_r.encode_plus("This is a simple input", "This is a pair", padding="longest")
                 input_p = tokenizer_p.encode_plus("This is a simple input", "This is a pair", padding=True)
                 self.assert_padded_input_match(
                     input_r["input_ids"], input_p["input_ids"], len(input_r["input_ids"]), pad_token_id
                 )
-                self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
+                if "attention_mask" in tokenizer_p.model_input_names:
+                    self.assertSequenceEqual(input_r["attention_mask"], input_p["attention_mask"])
 
                 # Batch_encode_plus - Simple input
                 input_r = tokenizer_r.batch_encode_plus(

@@ -246,6 +246,9 @@ class SiglipTokenizationTest(TokenizerTesterMixin, unittest.TestCase):
 
                 special_token_id = tokenizer_r.encode("<special>", add_special_tokens=False)[0]
 
+                print(tokenizer_p.decode(p_output))
+                print(tokenizer_cr.decode(cr_output))
+
                 self.assertEqual(p_output, r_output)
                 self.assertEqual(cr_output, r_output)
                 self.assertTrue(special_token_id in p_output)
