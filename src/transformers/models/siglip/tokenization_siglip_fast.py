@@ -16,8 +16,6 @@
 
 
 import os
-import re
-import string
 from shutil import copyfile
 from typing import List, Optional, Tuple
 
@@ -175,32 +173,5 @@ class SiglipTokenizerFast(PreTrainedTokenizerFast):
             return len(token_ids_0 + eos) * [0]
         return len(token_ids_0 + eos + token_ids_1 + eos) * [0]
 
-    # Copied from transformers.models.siglip.tokenization_siglip.SiglipTokenizer.remove_punctuation
-    def remove_punctuation(self, text: str) -> str:
-        return text.translate(str.maketrans("", "", string.punctuation))
-
-    # Copied from transformers.models.siglip.tokenization_siglip.SiglipTokenizer.canonicalize_text
-    def canonicalize_text(self, text, *, keep_punctuation_exact_string=None):
-        """Returns canonicalized `text` (puncuation removed).
-
-        Args:
-            text (`str`):
-                String to be canonicalized.
-            keep_punctuation_exact_string (`str`, *optional*):
-                If provided, then this exact string is kept. For example providing '{}' will keep any occurrences of '{}'
-                (but will still remove '{' and '}' that appear separately).
-        """
-        if keep_punctuation_exact_string:
-            text = keep_punctuation_exact_string.join(
-                self.remove_punctuation(part) for part in text.split(keep_punctuation_exact_string)
-            )
-        else:
-            text = self.remove_punctuation(text)
-        text = re.sub(r"\s+", " ", text)
-        text = text.strip()
-
-        return text
-
     def tokenize(self, text: str, pair: Optional[str] = None, add_special_tokens: bool = False, **kwargs) -> List[str]:
-        text = self.canonicalize_text(text, keep_punctuation_exact_string="{}")
         return self.encode_plus(text=text, text_pair=pair, add_special_tokens=add_special_tokens, **kwargs).tokens()
