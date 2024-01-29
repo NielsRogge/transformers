@@ -374,7 +374,9 @@ def convert_grounding_dino_checkpoint(args):
 
     # Running forward
     with torch.no_grad():
-        _ = model(**inputs)
+        outputs = model(**inputs)
+
+    print(outputs.logits[0, :3, :3])
 
     if pytorch_dump_folder_path is not None:
         model.save_pretrained(pytorch_dump_folder_path)
