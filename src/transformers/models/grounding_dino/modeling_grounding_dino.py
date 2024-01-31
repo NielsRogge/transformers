@@ -767,14 +767,12 @@ class GroundingDinoTextEnhancerLayer(nn.Module):
     def __init__(self, config):
         super().__init__()
 
-        config = copy.copy(config)
-        config.num_heads = config.encoder_attention_heads // 2
-        self.self_attn = GroundingDinoMultiheadAttention(config)
-        #     embed_dim=config.d_model,
-        #     num_heads=config.encoder_attention_heads // 2,
-        #     dropout=config.text_enhancer_dropout,
-        #     batch_first=True,
-        # )
+        self.self_attn = nn.MultiheadAttention(
+            embed_dim=config.d_model,
+            num_heads=config.encoder_attention_heads // 2,
+            dropout=config.text_enhancer_dropout,
+            batch_first=True,
+        )
         # Implementation of Feedforward model
         self.fc1 = nn.Linear(config.d_model, config.encoder_ffn_dim // 2)
         self.fc2 = nn.Linear(config.encoder_ffn_dim // 2, config.d_model)
@@ -816,18 +814,17 @@ class GroundingDinoTextEnhancerLayer(nn.Module):
         """
 
         # repeat attn mask
-        # if attention_masks.dim() == 3 and attention_masks.shape[0] == hidden_states.shape[0]:
-        #     # bs, num_q, num_k
-        #     attention_masks = attention_masks.repeat(self.num_heads, 1, 1)
+        if attention_masks.dim() == 3 and attention_masks.shape[0] == hidden_states.shape[0]:
+            # bs, num_q, num_k
+            attention_masks = attention_masks.repeat(self.num_heads, 1, 1)
 
-        # queries = keys = self.with_pos_embed(hidden_states, position_embeddings)
+        queries = keys = self.with_pos_embed(hidden_states, position_embeddings)
         attention_output, attention_weights = self.self_attn(
-            queries=hidden_states,
-            keys=hidden_states,
-            values=hidden_states,
-            attention_mask=attention_masks,
-            position_embeddings=position_embeddings,
-            output_attentions=True,
+            query=queries,
+            key=keys,
+            value=hidden_states,
+            attn_mask=attention_masks,
+            average_attn_weights=False,
         )
         attention_output = nn.functional.dropout(attention_output, p=self.dropout, training=self.training)
         hidden_states = hidden_states + attention_output

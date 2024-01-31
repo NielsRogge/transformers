@@ -378,6 +378,10 @@ def convert_grounding_dino_checkpoint(args):
 
     print(outputs.logits[0, :3, :3])
 
+    expected_slice = [[-4.8913, -0.1900, -0.2161], [-4.9653, -0.3719, -0.3950], [-5.9599, -3.3765, -3.3104]]
+
+    assert torch.allclose(outputs.logits[0, :3, :3], torch.tensor(expected_slice), atol=1e-4)
+
     if pytorch_dump_folder_path is not None:
         model.save_pretrained(pytorch_dump_folder_path)
         processor.save_pretrained(pytorch_dump_folder_path)
