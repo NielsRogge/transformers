@@ -1112,6 +1112,7 @@ class T5Stack(T5PreTrainedModel):
                     output_attentions,
                 )
             else:
+                print("First hidden states before layer {i}:", hidden_states[0,:3,:3])
                 layer_outputs = layer_module(
                     hidden_states,
                     attention_mask=extended_attention_mask,
