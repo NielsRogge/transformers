@@ -171,7 +171,7 @@ def convert_llava_to_hf(model_id, pytorch_dump_folder_path, push_to_hub=False):
         dim=0,
     )
 
-    device = "cuda:2"
+    device = "cuda:3"
     model.to(device)
 
     # prepare inputs
@@ -183,6 +183,12 @@ def convert_llava_to_hf(model_id, pytorch_dump_folder_path, push_to_hub=False):
     elif model_id == "liuhaotian/llava-v1.6-34b":
         prompt = "<|im_start|>system\nAnswer the questions.<|im_end|><|im_start|>user\n<image>\nWhat is shown in this image?<|im_end|><|im_start|>assistant\n"
     inputs = processor(images=image, text=prompt, return_tensors="pt")
+
+    # TODO instead we should join the dimensions inside the model
+    inputs["pixel_values"] = inputs.pixel_values.squeeze()
+
+    for k, v in inputs.items():
+        print(k, v.shape)
 
     # verify inputs
     filepath = hf_hub_download(repo_id="nielsr/test-image", filename="llava_1_6_pixel_values.pt", repo_type="dataset")
@@ -286,14 +292,14 @@ def convert_llava_to_hf(model_id, pytorch_dump_folder_path, push_to_hub=False):
         return_tensors="pt",
     ).to(device)
 
+    # pixel_values are of shape (batch_size, num_patches, 3, patch_size, patch_size)
+    # join the first 2 dimensions into one
+    inputs["pixel_values"] = inputs.pixel_values.view(-1, *inputs.pixel_values.shape[2:])
+
     for k, v in inputs.items():
         print(k, v.shape)
 
     print("Image sizes:", inputs.image_sizes)
-
-    # make sure image_sizes are the same
-    # as otherwise batched generation doesn't work
-    inputs.image_sizes[1] = inputs.image_sizes[0]
 
     print("Batched generation...")
     output_ids = model.generate(
