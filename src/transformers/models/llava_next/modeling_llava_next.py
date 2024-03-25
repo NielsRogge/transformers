@@ -313,7 +313,7 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         self.language_model = AutoModelForCausalLM.from_config(
             config.text_config, attn_implementation=config._attn_implementation
         )
-        self.pad_token_id = self.config.pad_token_id if self.config.pad_token_id is not None else -1
+        self.pad_token_id = 0
         self.post_init()
 
     # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration.get_input_embeddings
@@ -352,7 +352,6 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         self.vocab_size = model_embeds.num_embeddings
         return model_embeds
 
-    # Copied from transformers.models.llava.modeling_llava.LlavaForConditionalGeneration._merge_input_ids_with_image_features
     def _merge_input_ids_with_image_features(self, image_features, inputs_embeds, input_ids, attention_mask, labels):
         num_images, num_image_patches, embed_dim = image_features.shape
         batch_size, sequence_length = input_ids.shape
@@ -360,31 +359,31 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         # 1. Create a mask to know where special image tokens are
         special_image_token_mask = input_ids == self.config.image_token_index
         num_special_image_tokens = torch.sum(special_image_token_mask, dim=-1)
-        # Compute the maximum embed dimension
-        max_embed_dim = (num_special_image_tokens.max() * (num_image_patches - 1)) + sequence_length
+        # Compute the maximum sequence length
+        max_sequence_length = (num_special_image_tokens.max() * (num_image_patches - 1)) + sequence_length
         batch_indices, non_image_indices = torch.where(input_ids != self.config.image_token_index)
 
         # 2. Compute the positions where text should be written
         # Calculate new positions for text tokens in merged image-text sequence.
-        # `special_image_token_mask` identifies image tokens. Each image token will be replaced by `nb_text_tokens_per_images - 1` text tokens.
+        # `special_image_token_mask` identifies image tokens. Each image token will be replaced by `num_image_patches - 1` text tokens.
         # `torch.cumsum` computes how each image token shifts subsequent text token positions.
         # - 1 to adjust for zero-based indexing, as `cumsum` inherently increases indices by one.
         new_token_positions = torch.cumsum((special_image_token_mask * (num_image_patches - 1) + 1), -1) - 1
-        nb_image_pad = max_embed_dim - 1 - new_token_positions[:, -1]
+        nb_image_pad = max_sequence_length - 1 - new_token_positions[:, -1]
         if left_padding:
             new_token_positions += nb_image_pad[:, None]  # offset for left padding
         text_to_overwrite = new_token_positions[batch_indices, non_image_indices]
 
-        # 3. Create the full embedding, already padded to the maximum position
+        # 3. Create the full embedding, already padded to the maximum sequence length
         final_embedding = torch.zeros(
-            batch_size, max_embed_dim, embed_dim, dtype=inputs_embeds.dtype, device=inputs_embeds.device
+            batch_size, max_sequence_length, embed_dim, dtype=inputs_embeds.dtype, device=inputs_embeds.device
         )
         final_attention_mask = torch.zeros(
-            batch_size, max_embed_dim, dtype=attention_mask.dtype, device=inputs_embeds.device
+            batch_size, max_sequence_length, dtype=attention_mask.dtype, device=inputs_embeds.device
         )
         if labels is not None:
             final_labels = torch.full(
-                (batch_size, max_embed_dim), self.config.ignore_index, dtype=input_ids.dtype, device=input_ids.device
+                (batch_size, max_sequence_length), self.config.ignore_index, dtype=input_ids.dtype, device=input_ids.device
             )
         # In case the Vision model or the Language model has been offloaded to CPU, we need to manually
         # set the corresponding tensors into their correct target device.
@@ -398,6 +397,16 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
 
         # 4. Fill the embeddings based on the mask. If we have ["hey" "<image>", "how", "are"]
         # we need to index copy on [0, 577, 578, 579] for the text and [1:576] for the image features
+        image_to_overwrite = torch.all(final_embedding == 0, dim=-1)
+        print("Number of image tokens to overwrite:", image_to_overwrite.sum())
+
+        print("Text_to_overwrite:", text_to_overwrite)
+        print("Shape of text_to_overwrite:", text_to_overwrite.shape)
+
+        # it looks like 49 tokens are being overwritten, but we require 50
+        # this is because the last token is a padding token
+        # we need to add an additional token to the image features
+        # this is done by adding a newline token to the image features
         final_embedding[batch_indices, text_to_overwrite] = inputs_embeds[batch_indices, non_image_indices]
         final_attention_mask[batch_indices, text_to_overwrite] = attention_mask[batch_indices, non_image_indices]
         if labels is not None:
@@ -406,6 +415,9 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
         # 5. Fill the embeddings corresponding to the images. Anything that is still zeros needs filling
         image_to_overwrite = torch.all(final_embedding == 0, dim=-1)
         image_to_overwrite &= image_to_overwrite.cumsum(-1) - 1 >= nb_image_pad[:, None].to(target_device)
+
+        print("Number of image tokens to overwrite:", image_to_overwrite.sum())
+        print("Number of image features:", image_features.shape[:-1].numel())
 
         if image_to_overwrite.sum() != image_features.shape[:-1].numel():
             raise ValueError(
@@ -549,9 +561,23 @@ class LlavaNextForConditionalGeneration(LlavaNextPreTrainedModel):
                     else:
                         image_feature = image_feature[0]
                         image_feature = torch.cat((image_feature, self.image_newline[None]), dim=0)
-                    new_image_features.append(image_feature)
-                image_features = torch.stack(new_image_features, dim=0)
 
+                    new_image_features.append(image_feature)
+
+                # before stacking, we pad with zeros to make sure we have the same number of patches for each image
+                max_num_patches = max([image_feature.shape[0] for image_feature in new_image_features])
+                # this can be done by
+                # 1. creating a tensor of shape (num_images, max_num_patches, hidden_size)
+                image_features = torch.zeros(batch_size, max_num_patches, self.config.text_config.hidden_size, device=image_features[0].device)
+                # 2. iterating over the new_image_features and filling the tensor
+                for idx, image_feature in enumerate(new_image_features):
+                    # image_feature has shape (num_patches, hidden_size)
+                    padding = (max_num_patches) - image_feature.shape[0]
+                    image_features[idx] = torch.cat(
+                        (image_feature, torch.zeros(padding, image_feature.shape[1], device=image_feature.device)),
+                        dim=0,
+                    )
+                
                 inputs_embeds, attention_mask, labels, position_ids = self._merge_input_ids_with_image_features(
                     image_features, inputs_embeds, input_ids, attention_mask, labels
                 )

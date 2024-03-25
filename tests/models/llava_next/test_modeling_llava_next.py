@@ -438,6 +438,8 @@ class LlavaNextForConditionalGenerationIntegrationTest(unittest.TestCase):
             EXPECTED_DECODED_TEXT,
         )
 
+        assert False
+
     @slow
     @require_bitsandbytes
     def test_small_model_integration_test_batch(self):
