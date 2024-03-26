@@ -1,10 +1,13 @@
 import torch
 from huggingface_hub import hf_hub_download
 
-from transformers import LlavaNextForConditionalGeneration, LlavaNextProcessor
+from transformers import AutoTokenizer, LlavaNextForConditionalGeneration, LlavaNextProcessor
 
 
 processor = LlavaNextProcessor.from_pretrained("llava-hf/llava-v1.6-mistral-7b-hf")
+
+# TODO: processor's tokenizer has the wrong padding token.
+tokenizer = AutoTokenizer.from_pretrained("liuhaotian/llava-v1.6-mistral-7b")
 
 device = "cuda:0"
 
@@ -38,7 +41,7 @@ print("Shape of image_sizes:", image_sizes.shape)
 input_ids[input_ids == -200] = 32000
 
 for i in input_ids:
-    print(repr(processor.decode(i)))
+    print(repr(tokenizer.decode(i)))
 
 # pixel_values are of shape (batch_size, num_patches, 3, patch_size, patch_size)
 # join the first 2 dimensions into one
@@ -51,8 +54,9 @@ generated_ids = model.generate(
     pixel_values=pixel_values,
     image_sizes=image_sizes,
     max_new_tokens=100,
+    pad_token_id=tokenizer.pad_token_id,
 )
 
-outputs = processor.batch_decode(generated_ids, skip_special_tokens=True)
+outputs = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)
 outputs = [output.strip() for output in outputs]
 print(outputs)

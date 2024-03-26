@@ -603,8 +603,7 @@ class LlavaNextImageProcessor(BaseImageProcessor):
             pixel_values = np.array(pixel_values)
             new_images.append(pixel_values)
 
-        pixel_values = np.concatenate(new_images, axis=0)
-        print("Shape of numpy pixel values:", pixel_values.shape)
+        new_images = np.concatenate(new_images, axis=0)
         data = {"pixel_values": new_images, "image_sizes": image_sizes}
 
         return BatchFeature(data=data, tensor_type=return_tensors)
