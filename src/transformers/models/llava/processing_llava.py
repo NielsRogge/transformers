@@ -27,7 +27,7 @@ from ...utils import TensorType
 
 class LlavaProcessor(ProcessorMixin):
     r"""
-    Constructs a Llava processor which wraps a CLIP image processor and a LLaMa tokenizer into a single processor.
+    Constructs a LLaVa processor which wraps a CLIP image processor and a LLaMa tokenizer into a single processor.
 
     [`LlavaProcessor`] offers all the functionalities of [`CLIPImageProcessor`] and [`LlamaTokenizerFast`]. See the
     [`~LlavaProcessor.__call__`] and [`~LlavaProcessor.decode`] for more information.
@@ -49,7 +49,7 @@ class LlavaProcessor(ProcessorMixin):
         return_tensors: Optional[Union[str, TensorType]] = TensorType.PYTORCH,
     ) -> BatchFeature:
         """
-        Main method to prepare for the model multimodal inputs involving text and images.
+        Main method to prepare multimodal inputs involving text and images for the model.
 
         Args:
             inputs (`List[List[dict]]`):
@@ -98,23 +98,30 @@ class LlavaProcessor(ProcessorMixin):
         text_inputs = []
         image_inputs = []
         for example in inputs:
-            # here we have a single training example with interleaved modalities
-            for item in example:
-                if item["input"] == "text":
-                    text = item["content"]
-                    text_inputs.append(text)
-                elif item["input"] == "image":
+            text_example = ""
+            # here we have a single training example containing possibly interleaved modalities
+            # we should create this:
+            "USER: <image>\nThis is a cat\n<image>\nThis is a dog\n<image>\nWhat is this?\nASSISTANT:"
+            for idx, item in enumerate(example):
+                if item["input"] == "image":
                     image = item["content"]
                     image_inputs.append(image)
-                    # add <image> to the previous text prompt
-                    if text_inputs:
-                        text_inputs[-1] = " USER: <image>\n" + text_inputs[-1]
+                elif item["input"] == "text":
+                    text = item["content"]
+                    # if the previous item was an image,
+                    # we should append the special image token to the text_example
+                    # TODO not sure this should be done by the processor
+                    text_example += "<image>\n" + text + "\n" if example[idx - 1]["input"] == "image" else text + "\n"
                 else:
                     raise ValueError(f"Unknown input type: {item['input']}")
 
-        if text_inputs is not None:
-            # each text input should end with "ASSISTANT:"
-            text_inputs = [text + " ASSISTANT:" for text in text_inputs]
+            text_inputs.append(text_example)
+
+        if len(text_inputs) > 0:
+            # each text input should start with "USER:" and end with "ASSISTANT:"
+            # TODO not sure this should be done by the processor
+            # this should be part of the chat template, I assume
+            text_inputs = ["USER: " + text + "ASSISTANT:" for text in text_inputs]
 
             text_inputs = self.tokenizer(
                 text_inputs,
@@ -126,7 +133,7 @@ class LlavaProcessor(ProcessorMixin):
         else:
             text_inputs = {}
 
-        if image_inputs is not None:
+        if len(image_inputs) > 0:
             image_inputs = self.image_processor(image_inputs, return_tensors=return_tensors)
         else:
             image_inputs = {}
