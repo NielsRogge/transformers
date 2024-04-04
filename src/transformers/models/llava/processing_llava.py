@@ -13,65 +13,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Processor class for Llava.
+Processor class for LLaVa.
 """
 
 
 from typing import List, Optional, Union
 
 from ...feature_extraction_utils import BatchFeature
-from ...image_utils import ImageInput
 from ...processing_utils import ProcessorMixin
-from ...tokenization_utils_base import PaddingStrategy, PreTokenizedInput, TextInput, TruncationStrategy
+from ...tokenization_utils_base import PaddingStrategy, TruncationStrategy
 from ...utils import TensorType
 
 
 class LlavaProcessor(ProcessorMixin):
     r"""
-    Constructs a Llava processor which wraps a Llava image processor and a Llava tokenizer into a single processor.
+    Constructs a Llava processor which wraps a CLIP image processor and a LLaMa tokenizer into a single processor.
 
     [`LlavaProcessor`] offers all the functionalities of [`CLIPImageProcessor`] and [`LlamaTokenizerFast`]. See the
     [`~LlavaProcessor.__call__`] and [`~LlavaProcessor.decode`] for more information.
 
     Args:
-        image_processor ([`CLIPImageProcessor`], *optional*):
-            The image processor is a required input.
-        tokenizer ([`LlamaTokenizerFast`], *optional*):
-            The tokenizer is a required input.
+
     """
 
     attributes = ["image_processor", "tokenizer"]
     image_processor_class = "CLIPImageProcessor"
     tokenizer_class = ("LlamaTokenizer", "LlamaTokenizerFast")
 
-    def __init__(self, image_processor=None, tokenizer=None):
-        super().__init__(image_processor, tokenizer)
-
     def __call__(
         self,
-        text: Union[TextInput, PreTokenizedInput, List[TextInput], List[PreTokenizedInput]] = None,
-        images: ImageInput = None,
+        inputs: List[List[dict]],
         padding: Union[bool, str, PaddingStrategy] = False,
         truncation: Union[bool, str, TruncationStrategy] = None,
         max_length=None,
         return_tensors: Optional[Union[str, TensorType]] = TensorType.PYTORCH,
     ) -> BatchFeature:
         """
-        Main method to prepare for the model one or several sequences(s) and image(s). This method forwards the `text`
-        and `kwargs` arguments to LlamaTokenizerFast's [`~LlamaTokenizerFast.__call__`] if `text` is not `None` to encode
-        the text. To prepare the image(s), this method forwards the `images` and `kwrags` arguments to
-        CLIPImageProcessor's [`~CLIPImageProcessor.__call__`] if `images` is not `None`. Please refer to the doctsring
-        of the above two methods for more information.
+        Main method to prepare for the model multimodal inputs involving text and images.
 
         Args:
-            text (`str`, `List[str]`, `List[List[str]]`):
-                The sequence or batch of sequences to be encoded. Each sequence can be a string or a list of strings
-                (pretokenized string). If the sequences are provided as list of strings (pretokenized), you must set
-                `is_split_into_words=True` (to lift the ambiguity with a batch of sequences).
-            images (`PIL.Image.Image`, `np.ndarray`, `torch.Tensor`, `List[PIL.Image.Image]`, `List[np.ndarray]`, `List[torch.Tensor]`):
-                The image or batch of images to be prepared. Each image can be a PIL image, NumPy array or PyTorch
-                tensor. In case of a NumPy array/PyTorch tensor, each image should be of shape (C, H, W), where C is a
-                number of channels, H and W are image height and width.
+            inputs (`List[List[dict]]`):
+                Multimodal inputs of the following format:
+
+                [
+                    [
+                        {"input": "image", "content": Image.open(..)},
+                        {"input": "text", "content" : "Tell me a story"},
+                    ],
+                    [
+                        {"input": "image", "content": Image.open(..)},
+                        {"input": "text", "content" : "What can you do in Paris?"},
+                ]
+
             padding (`bool`, `str` or [`~utils.PaddingStrategy`], *optional*, defaults to `False`):
                 Select a strategy to pad the returned sequences (according to the model's padding side and padding
                 index) among:
@@ -102,15 +95,43 @@ class LlavaProcessor(ProcessorMixin):
               `None`).
             - **pixel_values** -- Pixel values to be fed to a model. Returned when `images` is not `None`.
         """
-        if images is not None:
-            pixel_values = self.image_processor(images, return_tensors=return_tensors)["pixel_values"]
-        else:
-            pixel_values = None
-        text_inputs = self.tokenizer(
-            text, return_tensors=return_tensors, padding=padding, truncation=truncation, max_length=max_length
-        )
+        text_inputs = []
+        image_inputs = []
+        for example in inputs:
+            # here we have a single training example with interleaved modalities
+            for item in example:
+                if item["input"] == "text":
+                    text = item["content"]
+                    text_inputs.append(text)
+                elif item["input"] == "image":
+                    image = item["content"]
+                    image_inputs.append(image)
+                    # add <image> to the previous text prompt
+                    if text_inputs:
+                        text_inputs[-1] = " USER: <image>\n" + text_inputs[-1]
+                else:
+                    raise ValueError(f"Unknown input type: {item['input']}")
 
-        return BatchFeature(data={**text_inputs, "pixel_values": pixel_values})
+        if text_inputs is not None:
+            # each text input should end with "ASSISTANT:"
+            text_inputs = [text + " ASSISTANT:" for text in text_inputs]
+
+            text_inputs = self.tokenizer(
+                text_inputs,
+                padding=padding,
+                truncation=truncation,
+                max_length=max_length,
+                return_tensors=return_tensors,
+            )
+        else:
+            text_inputs = {}
+
+        if image_inputs is not None:
+            image_inputs = self.image_processor(image_inputs, return_tensors=return_tensors)
+        else:
+            image_inputs = {}
+
+        return BatchFeature(data={**text_inputs, **image_inputs})
 
     # Copied from transformers.models.clip.processing_clip.CLIPProcessor.batch_decode with CLIP->Llama
     def batch_decode(self, *args, **kwargs):
