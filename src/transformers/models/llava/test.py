@@ -13,15 +13,15 @@ image2 = Image.open(requests.get("http://images.cocodataset.org/val2017/00000003
 
 inputs = [
     [
+        {"input": "image", "content": image1},
         {
             "input": "text",
             "content": "What are the things I should be cautious about when I visit this place? What should I bring with me?",
         },
-        {"input": "image", "content": image1},
     ],
     [
-        {"input": "text", "content": "What is this?"},
         {"input": "image", "content": image2},
+        {"input": "text", "content": "What is this?"},
     ],
 ]
 
