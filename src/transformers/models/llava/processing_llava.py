@@ -119,16 +119,22 @@ class LlavaProcessor(ProcessorMixin):
 
         Args:
             messages (`List[List[dict]]`):
-                Multimodal inputs of the following format:
+                Multimodal messages of the following format:
 
-                [
-                    [
-                        {"input": "image", "content": Image.open(..)},
-                        {"input": "text", "content" : "Tell me a story"},
-                    ],
-                    [
-                        {"input": "image", "content": Image.open(..)},
-                        {"input": "text", "content" : "What can you do in Paris?"},
+                messages = [
+                    {
+                        "role": "user",
+                        "content":
+                        [
+                            {
+                            "type": "image",
+                            "content": image1},
+                            {
+                            "type": "text",
+                            "content": "What are the things I should be cautious about when I visit this place? What should I bring with me?",
+                            },
+                        ],
+                    },
                 ]
 
             padding (`bool`, `str` or [`~utils.PaddingStrategy`], *optional*, defaults to `False`):
@@ -163,31 +169,35 @@ class LlavaProcessor(ProcessorMixin):
         """
         text_inputs = []
         image_inputs = []
-        for example in messages:
+        for message in messages:
+            role = message["role"]
+            content = message["content"]
+
             text_example = ""
             # here we have a single training example containing possibly interleaved modalities
             # we should create this:
             "USER: <image>\nThis is a cat\n<image>\nThis is a dog\n<image>\nWhat is this?\nASSISTANT:"
-            for idx, item in enumerate(example):
-                if item["input"] == "image":
+            for idx, item in enumerate(content):
+                if item["type"] == "image":
                     image = item["content"]
                     image_inputs.append(image)
-                elif item["input"] == "text":
+                elif item["type"] == "text":
                     text = item["content"]
                     # if the previous item was an image,
                     # we should append the special image token to the text_example
                     # TODO not sure this should be done by the processor
-                    text_example += "<image>\n" + text + "\n" if example[idx - 1]["input"] == "image" else text + "\n"
+                    text_example += "<image>\n" + text + "\n" if content[idx - 1]["type"] == "image" else text + "\n"
                 else:
                     raise ValueError(f"Unknown input type: {item['input']}")
 
+            # each "user" message should start with "USER:"
+            text_example = "USER: " + text_example
             text_inputs.append(text_example)
 
         if len(text_inputs) > 0:
-            # each text input should start with "USER:" and end with "ASSISTANT:"
+            # each text input should end with "ASSISTANT:"
             # TODO not sure this should be done by the processor
-            # this should be part of the chat template, I assume
-            text_inputs = ["USER: " + text + "ASSISTANT:" for text in text_inputs]
+            text_inputs = [text + "ASSISTANT:" for text in text_inputs]
 
             text_inputs = self.tokenizer(
                 text_inputs,
