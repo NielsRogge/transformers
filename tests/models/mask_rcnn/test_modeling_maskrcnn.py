@@ -99,7 +99,9 @@ class MaskRCNNModelTester:
     def prepare_config_and_inputs(self):
         # we set a seed as the model internally uses NMS operations
         torch.manual_seed(0)
-        pixel_values = torch.randn([self.batch_size, self.num_channels, self.image_size, self.image_size])
+        pixel_values = torch.randn(
+            [self.batch_size, self.num_channels, self.image_size, self.image_size], device=torch_device
+        )
 
         img_metas = [
             {"img_shape": pixel_values.shape[2:], "pad_shape": pixel_values.shape[2:]}

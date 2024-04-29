@@ -20,7 +20,7 @@ import copy
 import functools
 import warnings
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -82,7 +82,7 @@ class MaskRCNNRPNOutput(ModelOutput):
             4.
     """
 
-    losses: dict[str, torch.FloatTensor] = None
+    losses: Dict[str, torch.FloatTensor] = None
     proposals: Tuple[torch.FloatTensor] = None
     logits: Optional[Tuple[torch.FloatTensor]] = None
     pred_boxes: Optional[torch.FloatTensor] = None
