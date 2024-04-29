@@ -29,6 +29,7 @@ logger = logging.get_logger(__name__)
 
 from ..deprecated._archive_maps import BEIT_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
+
 class BeitConfig(BackboneConfigMixin, PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`BeitModel`]. It is used to instantiate an BEiT
@@ -203,7 +204,7 @@ class BeitConfig(BackboneConfigMixin, PretrainedConfig):
                 FutureWarning,
             )
             out_indices = kwargs.pop("segmentation_indices")
-            
+
         # backbone attributes
         self.stage_names = ["stem"] + [f"stage{idx}" for idx in range(1, self.num_hidden_layers + 1)]
         self._out_features, self._out_indices = get_aligned_output_features_output_indices(

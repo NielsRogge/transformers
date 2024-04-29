@@ -1328,7 +1328,7 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
             hidden_size = config.hidden_size
             self.fpn1 = nn.Sequential(
                 nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
-                nn.BatchNorm2d(hidden_size, eps=config.batch_norm_eps),
+                nn.BatchNorm2d(hidden_size),
                 nn.GELU(),
                 nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
             )

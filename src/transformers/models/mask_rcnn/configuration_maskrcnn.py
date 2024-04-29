@@ -176,6 +176,7 @@ class MaskRCNNConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "maskrcnn"
 
     def __init__(

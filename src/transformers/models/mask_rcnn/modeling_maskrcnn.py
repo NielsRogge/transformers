@@ -2097,7 +2097,7 @@ class MaskRCNNRPN(nn.Module):
             sampling_results_list.append(sampling_result)
 
         # no valid anchors
-        if any([labels is None for labels in all_labels]):
+        if any(labels is None for labels in all_labels):
             return None
         # sampled anchors of all images
         num_total_pos = sum([max(indices.numel(), 1) for indices in pos_indices_list])
