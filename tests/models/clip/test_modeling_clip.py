@@ -51,13 +51,13 @@ if is_torch_available():
     from torch import nn
 
     from transformers import (
+        CLIPForImageClassification,
         CLIPModel,
         CLIPTextModel,
         CLIPTextModelWithProjection,
         CLIPVisionModel,
         CLIPVisionModelWithProjection,
     )
-    from transformers.models.clip.modeling_clip import CLIP_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 if is_vision_available():
@@ -227,6 +227,18 @@ class CLIPVisionModelTest(ModelTesterMixin, unittest.TestCase):
     def test_training_gradient_checkpointing(self):
         pass
 
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
     @unittest.skip(reason="CLIPVisionModel has no base class and is not available in MODEL_MAPPING")
     def test_save_load_fast_init_from_base(self):
         pass
@@ -237,16 +249,16 @@ class CLIPVisionModelTest(ModelTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = CLIPVisionModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "openai/clip-vit-base-patch32"
+        model = CLIPVisionModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     @slow
     def test_model_with_projection_from_pretrained(self):
-        for model_name in CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = CLIPVisionModelWithProjection.from_pretrained(model_name)
-            self.assertIsNotNone(model)
-            self.assertTrue(hasattr(model, "visual_projection"))
+        model_name = "openai/clip-vit-base-patch32"
+        model = CLIPVisionModelWithProjection.from_pretrained(model_name)
+        self.assertIsNotNone(model)
+        self.assertTrue(hasattr(model, "visual_projection"))
 
 
 class CLIPTextModelTester:
@@ -376,6 +388,18 @@ class CLIPTextModelTest(ModelTesterMixin, unittest.TestCase):
     def test_training_gradient_checkpointing(self):
         pass
 
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
     @unittest.skip(reason="CLIP does not use inputs_embeds")
     def test_inputs_embeds(self):
         pass
@@ -390,16 +414,16 @@ class CLIPTextModelTest(ModelTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = CLIPTextModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "openai/clip-vit-base-patch32"
+        model = CLIPTextModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     @slow
     def test_model_with_projection_from_pretrained(self):
-        for model_name in CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = CLIPTextModelWithProjection.from_pretrained(model_name)
-            self.assertIsNotNone(model)
-            self.assertTrue(hasattr(model, "text_projection"))
+        model_name = "openai/clip-vit-base-patch32"
+        model = CLIPTextModelWithProjection.from_pretrained(model_name)
+        self.assertIsNotNone(model)
+        self.assertTrue(hasattr(model, "text_projection"))
 
 
 class CLIPModelTester:
@@ -412,6 +436,7 @@ class CLIPModelTester:
         self.parent = parent
         self.text_model_tester = CLIPTextModelTester(parent, **text_kwargs)
         self.vision_model_tester = CLIPVisionModelTester(parent, **vision_kwargs)
+        self.batch_size = self.text_model_tester.batch_size  # need bs for batching_equivalence test
         self.is_training = is_training
 
     def prepare_config_and_inputs(self):
@@ -453,7 +478,9 @@ class CLIPModelTester:
 @require_torch
 class CLIPModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     all_model_classes = (CLIPModel,) if is_torch_available() else ()
-    pipeline_model_mapping = {"feature-extraction": CLIPModel} if is_torch_available() else {}
+    pipeline_model_mapping = (
+        {"feature-extraction": CLIPModel, "image-feature-extraction": CLIPVisionModel} if is_torch_available() else {}
+    )
     fx_compatible = True
     test_head_masking = False
     test_pruning = False
@@ -713,9 +740,68 @@ class CLIPModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = CLIPModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "openai/clip-vit-base-patch32"
+        model = CLIPModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
+
+
+class CLIPForImageClassificationModelTester(CLIPModelTester):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.batch_size = self.vision_model_tester.batch_size
+        self.num_hidden_layers = self.vision_model_tester.num_hidden_layers
+        self.hidden_size = self.vision_model_tester.hidden_size
+        self.seq_length = self.vision_model_tester.seq_length
+
+    def prepare_config_and_inputs(self):
+        _, pixel_values = self.vision_model_tester.prepare_config_and_inputs()
+        config = self.get_config()
+
+        return config, pixel_values
+
+    def prepare_config_and_inputs_for_common(self):
+        config_and_inputs = self.prepare_config_and_inputs()
+        config, pixel_values = config_and_inputs
+        inputs_dict = {"pixel_values": pixel_values}
+        return config, inputs_dict
+
+
+@require_torch
+class CLIPForImageClassificationModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
+    all_model_classes = (CLIPForImageClassification,) if is_torch_available() else ()
+    pipeline_model_mapping = {"image-classification": CLIPForImageClassification} if is_torch_available() else {}
+    fx_compatible = False
+    test_head_masking = False
+    test_pruning = False
+    test_resize_embeddings = False
+    test_attention_outputs = False
+
+    def setUp(self):
+        self.model_tester = CLIPForImageClassificationModelTester(self)
+
+    @unittest.skip(reason="CLIPForImageClassification does not support inputs_embeds")
+    def test_inputs_embeds(self):
+        pass
+
+    @unittest.skip(reason="CLIPForImageClassification does not support inputs_embeds")
+    def test_model_common_attributes(self):
+        pass
+
+    @unittest.skip(reason="CLIPForImageClassification does not support gradient checkpointing yet")
+    def test_training_gradient_checkpointing(self):
+        pass
+
+    @unittest.skip(reason="CLIPForImageClassification does not support gradient checkpointing yet")
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(reason="CLIPForImageClassification does not support gradient checkpointing yet")
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
+    @unittest.skip(reason="CLIP uses the same initialization scheme as the Flax original implementation")
+    def test_initialization(self):
+        pass
 
 
 # We will verify our results on an image of cute cats

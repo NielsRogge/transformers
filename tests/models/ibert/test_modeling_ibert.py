@@ -30,7 +30,6 @@ if is_torch_available():
     from torch import nn
 
     from transformers import (
-        IBERT_PRETRAINED_MODEL_ARCHIVE_LIST,
         IBertForMaskedLM,
         IBertForMultipleChoice,
         IBertForQuestionAnswering,
@@ -292,9 +291,9 @@ class IBertModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in IBERT_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = IBertModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "kssteven/ibert-roberta-base"
+        model = IBertModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     def test_create_position_ids_respects_padding_index(self):
         """Ensure that the default position ids only assign a sequential . This is a regression
@@ -519,7 +518,7 @@ class IBertModelIntegrationTest(unittest.TestCase):
         gelu_q = IntGELU(quant_mode=True)
         gelu_dq = nn.GELU()
 
-        x_int = torch.range(-10000, 10000, 1)
+        x_int = torch.arange(-10000, 10001, 1)
         x_scaling_factor = torch.tensor(0.001)
         x = x_int * x_scaling_factor
 
@@ -534,7 +533,7 @@ class IBertModelIntegrationTest(unittest.TestCase):
         self.assertTrue(torch.allclose(q_int, q_int.round(), atol=1e-4))
 
     def test_force_dequant_gelu(self):
-        x_int = torch.range(-10000, 10000, 1)
+        x_int = torch.arange(-10000, 10001, 1)
         x_scaling_factor = torch.tensor(0.001)
         x = x_int * x_scaling_factor
 
@@ -565,7 +564,6 @@ class IBertModelIntegrationTest(unittest.TestCase):
         softmax_q = IntSoftmax(output_bit, quant_mode=True)
         softmax_dq = nn.Softmax()
 
-        # x_int = torch.range(-10000, 10000, 1)
         def _test(array):
             x_int = torch.tensor(array)
             x_scaling_factor = torch.tensor(0.1)

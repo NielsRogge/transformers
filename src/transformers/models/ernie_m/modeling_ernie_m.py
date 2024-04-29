@@ -44,11 +44,8 @@ _CHECKPOINT_FOR_DOC = "susnato/ernie-m-base_pytorch"
 _CONFIG_FOR_DOC = "ErnieMConfig"
 _TOKENIZER_FOR_DOC = "ErnieMTokenizer"
 
-ERNIE_M_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "susnato/ernie-m-base_pytorch",
-    "susnato/ernie-m-large_pytorch",
-    # See all ErnieM models at https://huggingface.co/models?filter=ernie_m
-]
+
+from ..deprecated._archive_maps import ERNIE_M_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Adapted from paddlenlp.transformers.ernie_m.modeling.ErnieEmbeddings
@@ -411,7 +408,6 @@ class ErnieMPreTrainedModel(PreTrainedModel):
 
     config_class = ErnieMConfig
     base_model_prefix = "ernie_m"
-    supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -428,10 +424,6 @@ class ErnieMPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, ErnieMEncoder):
-            module.gradient_checkpointing = value
 
 
 ERNIE_M_START_DOCSTRING = r"""

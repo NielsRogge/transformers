@@ -23,11 +23,9 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-SPEECHT5_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "microsoft/speecht5_asr": "https://huggingface.co/microsoft/speecht5_asr/resolve/main/config.json",
-    "microsoft/speecht5_tts": "https://huggingface.co/microsoft/speecht5_tts/resolve/main/config.json",
-    "microsoft/speecht5_vc": "https://huggingface.co/microsoft/speecht5_vc/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import SPEECHT5_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
+
 
 SPEECHT5_PRETRAINED_HIFIGAN_CONFIG_ARCHIVE_MAP = {
     "microsoft/speecht5_hifigan": "https://huggingface.co/microsoft/speecht5_hifigan/resolve/main/config.json",
@@ -194,6 +192,7 @@ class SpeechT5Config(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "speecht5"
     attribute_map = {"num_attention_heads": "encoder_attention_heads", "num_hidden_layers": "encoder_layers"}
 
@@ -398,6 +397,7 @@ class SpeechT5HifiGanConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "hifigan"
 
     def __init__(

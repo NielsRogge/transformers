@@ -21,12 +21,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-REFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "google/reformer-crime-and-punishment": (
-        "https://huggingface.co/google/reformer-crime-and-punishment/resolve/main/config.json"
-    ),
-    "google/reformer-enwik8": "https://huggingface.co/google/reformer-enwik8/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import REFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class ReformerConfig(PretrainedConfig):
@@ -158,6 +154,7 @@ class ReformerConfig(PretrainedConfig):
     >>> configuration = model.config
     ```
 """
+
     model_type = "reformer"
     keys_to_ignore_at_inference = ["past_buckets_states"]
     attribute_map = {}

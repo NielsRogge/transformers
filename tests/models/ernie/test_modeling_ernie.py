@@ -18,7 +18,7 @@ import unittest
 
 from transformers import ErnieConfig, is_torch_available
 from transformers.models.auto import get_values
-from transformers.testing_utils import require_torch, require_torch_gpu, slow, torch_device
+from transformers.testing_utils import require_torch, require_torch_accelerator, slow, torch_device
 
 from ...generation.test_utils import GenerationTesterMixin
 from ...test_configuration_common import ConfigTester
@@ -41,7 +41,6 @@ if is_torch_available():
         ErnieForTokenClassification,
         ErnieModel,
     )
-    from transformers.models.ernie.modeling_ernie import ERNIE_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 class ErnieModelTester:
@@ -569,12 +568,12 @@ class ErnieModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTesterMixi
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in ERNIE_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ErnieModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "nghuyong/ernie-1.0-base-zh"
+        model = ErnieModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     @slow
-    @require_torch_gpu
+    @require_torch_accelerator
     def test_torchscript_device_change(self):
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
         for model_class in self.all_model_classes:

@@ -55,10 +55,7 @@ _CHECKPOINT_FOR_DOC = "facebook/data2vec-text-base"
 _CONFIG_FOR_DOC = "Data2VecTextConfig"
 
 
-DATA2VEC_TEXT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "facebook/data2vec-text-base",
-    # See all data2vec models at https://huggingface.co/models?filter=data2vec-text
-]
+from ..deprecated._archive_maps import DATA2VEC_TEXT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Copied from transformers.models.roberta.modeling_roberta.RobertaEmbeddings with Roberta->Data2VecText
@@ -301,11 +298,18 @@ class Data2VecTextSelfOutput(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->Data2VecText
+DATA2VEC_TEXT_SELF_ATTENTION_CLASSES = {
+    "eager": Data2VecTextSelfAttention,
+}
+
+
+# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->Data2VecText,BERT->DATA2VEC_TEXT
 class Data2VecTextAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
-        self.self = Data2VecTextSelfAttention(config, position_embedding_type=position_embedding_type)
+        self.self = DATA2VEC_TEXT_SELF_ATTENTION_CLASSES[config._attn_implementation](
+            config, position_embedding_type=position_embedding_type
+        )
         self.output = Data2VecTextSelfOutput(config)
         self.pruned_heads = set()
 
@@ -510,20 +514,15 @@ class Data2VecTextEncoder(nn.Module):
             past_key_value = past_key_values[i] if past_key_values is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
+                    past_key_value,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(
@@ -612,10 +611,6 @@ class Data2VecTextPreTrainedModel(PreTrainedModel):
                 module.bias.data.zero_()
             if hasattr(module, "weight") and module.weight is not None:
                 module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, Data2VecTextEncoder):
-            module.gradient_checkpointing = value
 
 
 DATA2VECTEXT_START_DOCSTRING = r"""
@@ -739,7 +734,7 @@ class Data2VecTextModel(Data2VecTextPreTrainedModel):
         output_type=BaseModelOutputWithPoolingAndCrossAttentions,
         config_class=_CONFIG_FOR_DOC,
     )
-    # Copied from transformers.models.bert.modeling_bert.BertModel.forward
+    # Copied from transformers.models.clap.modeling_clap.ClapTextModel.forward
     def forward(
         self,
         input_ids: Optional[torch.Tensor] = None,

@@ -22,9 +22,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-AUTOFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "huggingface/autoformer-tourism-monthly": "https://huggingface.co/huggingface/autoformer-tourism-monthly/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import AUTOFORMER_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class AutoformerConfig(PretrainedConfig):
@@ -131,6 +130,7 @@ class AutoformerConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "autoformer"
     attribute_map = {
         "hidden_size": "d_model",

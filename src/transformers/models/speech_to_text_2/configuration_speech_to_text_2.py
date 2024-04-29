@@ -20,12 +20,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-SPEECH_TO_TEXT_2_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/s2t-wav2vec2-large-en-de": (
-        "https://huggingface.co/facebook/s2t-wav2vec2-large-en-de/resolve/main/config.json"
-    ),
-    # See all Speech2Text models at https://huggingface.co/models?filter=speech2text2
-}
+
+from ..deprecated._archive_maps import SPEECH_TO_TEXT_2_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class Speech2Text2Config(PretrainedConfig):
@@ -86,6 +82,7 @@ class Speech2Text2Config(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "speech_to_text_2"
     keys_to_ignore_at_inference = ["past_key_values"]
     attribute_map = {"num_attention_heads": "decoder_attention_heads", "hidden_size": "d_model"}

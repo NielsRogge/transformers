@@ -16,7 +16,6 @@
 
 import json
 import os
-import sys
 import warnings
 from dataclasses import dataclass
 from itertools import groupby
@@ -56,19 +55,8 @@ VOCAB_FILES_NAMES = {
     "tokenizer_config_file": "tokenizer_config.json",
 }
 
-PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {
-        "facebook/wav2vec2-base-960h": "https://huggingface.co/facebook/wav2vec2-base-960h/resolve/main/vocab.json",
-    },
-    "tokenizer_config_file": {
-        "facebook/wav2vec2-base-960h": (
-            "https://huggingface.co/facebook/wav2vec2-base-960h/resolve/main/tokenizer_config.json"
-        ),
-    },
-}
 
 # Wav2Vec2 has no max input length
-PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {"facebook/wav2vec2-base-960h": sys.maxsize}
 
 WAV2VEC2_KWARGS_DOCSTRING = r"""
             padding (`bool`, `str` or [`~utils.PaddingStrategy`], *optional*, defaults to `False`):
@@ -125,7 +113,6 @@ class Wav2Vec2CTCTokenizerOutput(ModelOutput):
 
 
 class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
-
     """
     Constructs a Wav2Vec2CTC tokenizer.
 
@@ -157,8 +144,6 @@ class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
-    pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
-    max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
     model_input_names = ["input_ids", "attention_mask"]
 
     def __init__(
@@ -273,7 +258,7 @@ class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
         to_add = []
         for token in new_tokens:
             if isinstance(token, str):
-                to_add.append(AddedToken(token, rstrip=False, lstrip=False, normalize=False))
+                to_add.append(AddedToken(token, rstrip=False, lstrip=False, normalized=False))
             else:
                 to_add.append(token)
 
@@ -281,7 +266,7 @@ class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
 
     def _tokenize(self, text, **kwargs):
         """
-        Converts a string in a sequence of tokens (string), using the tokenizer.
+        Converts a string into a sequence of tokens (string), using the tokenizer.
         """
         if self.do_lower_case:
             text = text.upper()
@@ -434,7 +419,9 @@ class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
 
         result = []
         for token in filtered_tokens:
-            if skip_special_tokens and token in self.all_special_ids:
+            if skip_special_tokens and (
+                token in self.all_special_ids or (token != self.pad_token and token in self.all_special_tokens)
+            ):
                 continue
             result.append(token)
 
@@ -603,7 +590,7 @@ class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
         >>> feature_extractor = AutoFeatureExtractor.from_pretrained("facebook/wav2vec2-base-960h")
 
         >>> # load first sample of English common_voice
-        >>> dataset = load_dataset("common_voice", "en", split="train", streaming=True)
+        >>> dataset = load_dataset("mozilla-foundation/common_voice_11_0", "en", split="train", streaming=True)
         >>> dataset = dataset.cast_column("audio", datasets.Audio(sampling_rate=16_000))
         >>> dataset_iter = iter(dataset)
         >>> sample = next(dataset_iter)
@@ -626,10 +613,10 @@ class Wav2Vec2CTCTokenizer(PreTrainedTokenizer):
         ...     }
         ...     for d in outputs.word_offsets
         ... ]
-        >>> # compare word offsets with audio `common_voice_en_100038.mp3` online on the dataset viewer:
-        >>> # https://huggingface.co/datasets/common_voice/viewer/en/train
+        >>> # compare word offsets with audio `en_train_0/common_voice_en_19121553.mp3` online on the dataset viewer:
+        >>> # https://huggingface.co/datasets/mozilla-foundation/common_voice_11_0/viewer/en
         >>> word_offsets[:3]
-        [{'word': 'WHY', 'start_time': 1.42, 'end_time': 1.54}, {'word': 'DOES', 'start_time': 1.64, 'end_time': 1.9}, {'word': 'MILISANDRA', 'start_time': 2.26, 'end_time': 2.9}]
+        [{'word': 'THE', 'start_time': 0.7, 'end_time': 0.78}, {'word': 'TRICK', 'start_time': 0.88, 'end_time': 1.08}, {'word': 'APPEARS', 'start_time': 1.2, 'end_time': 1.64}]
         ```"""
         # Convert inputs to python lists
         token_ids = to_py_obj(token_ids)
@@ -895,7 +882,9 @@ class Wav2Vec2Tokenizer(PreTrainedTokenizer):
 
         result = []
         for token in filtered_tokens:
-            if skip_special_tokens and token in self.all_special_ids:
+            if skip_special_tokens and (
+                token in self.all_special_ids or (token != self.pad_token and token in self.all_special_tokens)
+            ):
                 continue
             result.append(token)
 

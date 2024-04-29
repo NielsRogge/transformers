@@ -30,11 +30,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-OWLVIT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "google/owlvit-base-patch32": "https://huggingface.co/google/owlvit-base-patch32/resolve/main/config.json",
-    "google/owlvit-base-patch16": "https://huggingface.co/google/owlvit-base-patch16/resolve/main/config.json",
-    "google/owlvit-large-patch14": "https://huggingface.co/google/owlvit-large-patch14/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import OWLVIT_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class OwlViTTextConfig(PretrainedConfig):
@@ -96,6 +93,7 @@ class OwlViTTextConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "owlvit_text_model"
 
     def __init__(
@@ -183,7 +181,7 @@ class OwlViTVisionConfig(PretrainedConfig):
             The dropout ratio for the attention probabilities.
         initializer_range (`float`, *optional*, defaults to 0.02):
             The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
-        initializer_factor (`float``, *optional*, defaults to 1.0):
+        initializer_factor (`float`, *optional*, defaults to 1.0):
             A factor for initializing all weight matrices (should be kept to 1, used internally for initialization
             testing).
 

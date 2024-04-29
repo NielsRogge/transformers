@@ -24,17 +24,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-XMOD_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/xmod-base": "https://huggingface.co/facebook/xmod-base/resolve/main/config.json",
-    "facebook/xmod-large-prenorm": "https://huggingface.co/facebook/xmod-large-prenorm/resolve/main/config.json",
-    "facebook/xmod-base-13-125k": "https://huggingface.co/facebook/xmod-base-13-125k/resolve/main/config.json",
-    "facebook/xmod-base-30-125k": "https://huggingface.co/facebook/xmod-base-30-125k/resolve/main/config.json",
-    "facebook/xmod-base-30-195k": "https://huggingface.co/facebook/xmod-base-30-195k/resolve/main/config.json",
-    "facebook/xmod-base-60-125k": "https://huggingface.co/facebook/xmod-base-60-125k/resolve/main/config.json",
-    "facebook/xmod-base-60-265k": "https://huggingface.co/facebook/xmod-base-60-265k/resolve/main/config.json",
-    "facebook/xmod-base-75-125k": "https://huggingface.co/facebook/xmod-base-75-125k/resolve/main/config.json",
-    "facebook/xmod-base-75-269k": "https://huggingface.co/facebook/xmod-base-75-269k/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import XMOD_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class XmodConfig(PretrainedConfig):
@@ -119,6 +110,7 @@ class XmodConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "xmod"
 
     def __init__(

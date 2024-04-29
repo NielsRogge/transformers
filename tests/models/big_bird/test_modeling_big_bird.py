@@ -41,7 +41,6 @@ if is_torch_available():
         BigBirdForTokenClassification,
         BigBirdModel,
     )
-    from transformers.models.big_bird.modeling_big_bird import BIG_BIRD_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 class BigBirdModelTester:
@@ -561,9 +560,9 @@ class BigBirdModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase)
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in BIG_BIRD_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = BigBirdForPreTraining.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "google/bigbird-roberta-base"
+        model = BigBirdForPreTraining.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     def test_model_various_attn_type(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
@@ -608,6 +607,24 @@ class BigBirdModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase)
         self.model_tester.seq_length = 9
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_for_change_to_full_attn(*config_and_inputs)
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
 
     # overwrite from common in order to skip the check on `attentions`
     def check_pt_flax_outputs(self, fx_outputs, pt_outputs, model_class, tol=1e-5, name="outputs", attributes=None):

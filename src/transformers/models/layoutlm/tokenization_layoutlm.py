@@ -27,27 +27,6 @@ logger = logging.get_logger(__name__)
 
 VOCAB_FILES_NAMES = {"vocab_file": "vocab.txt"}
 
-PRETRAINED_VOCAB_FILES_MAP = {
-    "vocab_file": {
-        "microsoft/layoutlm-base-uncased": (
-            "https://huggingface.co/microsoft/layoutlm-base-uncased/resolve/main/vocab.txt"
-        ),
-        "microsoft/layoutlm-large-uncased": (
-            "https://huggingface.co/microsoft/layoutlm-large-uncased/resolve/main/vocab.txt"
-        ),
-    }
-}
-
-PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES = {
-    "microsoft/layoutlm-base-uncased": 512,
-    "microsoft/layoutlm-large-uncased": 512,
-}
-
-PRETRAINED_INIT_CONFIGURATION = {
-    "microsoft/layoutlm-base-uncased": {"do_lower_case": True},
-    "microsoft/layoutlm-large-uncased": {"do_lower_case": True},
-}
-
 
 # Copied from transformers.models.bert.tokenization_bert.load_vocab
 def load_vocab(vocab_file):
@@ -115,9 +94,6 @@ class LayoutLMTokenizer(PreTrainedTokenizer):
     """
 
     vocab_files_names = VOCAB_FILES_NAMES
-    pretrained_vocab_files_map = PRETRAINED_VOCAB_FILES_MAP
-    pretrained_init_configuration = PRETRAINED_INIT_CONFIGURATION
-    max_model_input_sizes = PRETRAINED_POSITIONAL_EMBEDDINGS_SIZES
 
     def __init__(
         self,
@@ -262,8 +238,8 @@ class LayoutLMTokenizer(PreTrainedTokenizer):
         self, token_ids_0: List[int], token_ids_1: Optional[List[int]] = None
     ) -> List[int]:
         """
-        Create a mask from the two sequences passed to be used in a sequence-pair classification task. A LayoutLM
-        sequence pair mask has the following format:
+        Create a mask from the two sequences passed to be used in a sequence-pair classification task. A LayoutLM sequence
+        pair mask has the following format:
 
         ```
         0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1

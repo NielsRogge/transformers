@@ -34,27 +34,13 @@ _CHECKPOINT_FOR_DOC = "Salesforce/codegen-2B-mono"
 _CONFIG_FOR_DOC = "CodeGenConfig"
 
 
-CODEGEN_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "Salesforce/codegen-350M-nl",
-    "Salesforce/codegen-350M-multi",
-    "Salesforce/codegen-350M-mono",
-    "Salesforce/codegen-2B-nl",
-    "Salesforce/codegen-2B-multi",
-    "Salesforce/codegen-2B-mono",
-    "Salesforce/codegen-6B-nl",
-    "Salesforce/codegen-6B-multi",
-    "Salesforce/codegen-6B-mono",
-    "Salesforce/codegen-16B-nl",
-    "Salesforce/codegen-16B-multi",
-    "Salesforce/codegen-16B-mono",
-    # See all CodeGen models at https://huggingface.co/models?filter=codegen
-]
+from ..deprecated._archive_maps import CODEGEN_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Copied from transformers.models.gptj.modeling_gptj.create_sinusoidal_positions
 def create_sinusoidal_positions(num_pos: int, dim: int) -> torch.Tensor:
-    inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2) / dim))
-    sinusoid_inp = torch.einsum("i , j -> i j", torch.arange(num_pos, dtype=torch.float), inv_freq).float()
+    inv_freq = 1.0 / (10000 ** (torch.arange(0, dim, 2, dtype=torch.int64) / dim))
+    sinusoid_inp = torch.einsum("i , j -> i j", torch.arange(num_pos, dtype=torch.int64).float(), inv_freq).float()
     return torch.cat((torch.sin(sinusoid_inp), torch.cos(sinusoid_inp)), dim=1)
 
 
@@ -224,7 +210,9 @@ class CodeGenAttention(nn.Module):
             value = torch.cat((past_value, value), dim=-2)
 
         if use_cache is True:
-            present = (key, value)
+            # Note that this cast is quite ugly, but is not implemented before ROPE as k_rot in the original codebase is always in fp32.
+            # Reference: https://github.com/salesforce/CodeGen/blob/f210c3bb1216c975ad858cd4132c0fdeabf4bfc2/codegen1/jaxformer/hf/codegen/modeling_codegen.py#L38
+            present = (key.to(hidden_states.dtype), value)
         else:
             present = None
 
@@ -264,6 +252,7 @@ class CodeGenMLP(nn.Module):
 
 # Copied from transformers.models.gptj.modeling_gptj.GPTJBlock with GPTJ->CodeGen
 class CodeGenBlock(nn.Module):
+    # Ignore copy
     def __init__(self, config):
         super().__init__()
         inner_dim = config.n_inner if config.n_inner is not None else 4 * config.n_embd
@@ -336,10 +325,6 @@ class CodeGenPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, CodeGenModel):
-            module.gradient_checkpointing = value
 
 
 CODEGEN_START_DOCSTRING = r"""
@@ -540,21 +525,15 @@ class CodeGenModel(CodeGenPreTrainedModel):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        # None for past_key_value
-                        return module(*inputs, use_cache, output_attentions)
-
-                    return custom_forward
-
-                outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
+                outputs = self._gradient_checkpointing_func(
+                    block.__call__,
                     hidden_states,
                     None,
                     attention_mask,
                     position_ids,
                     head_mask[i],
+                    use_cache,
+                    output_attentions,
                 )
             else:
                 outputs = block(
@@ -615,7 +594,7 @@ class CodeGenForCausalLM(CodeGenPreTrainedModel):
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
 
-    def prepare_inputs_for_generation(self, input_ids, past_key_values=None, **kwargs):
+    def prepare_inputs_for_generation(self, input_ids, inputs_embeds=None, past_key_values=None, **kwargs):
         token_type_ids = kwargs.get("token_type_ids", None)
         # Omit tokens covered by past_key_values
         if past_key_values:
@@ -642,14 +621,22 @@ class CodeGenForCausalLM(CodeGenPreTrainedModel):
             if past_key_values:
                 position_ids = position_ids[:, -input_ids.shape[1] :]
 
-        return {
-            "input_ids": input_ids,
-            "past_key_values": past_key_values,
-            "use_cache": kwargs.get("use_cache"),
-            "position_ids": position_ids,
-            "attention_mask": attention_mask,
-            "token_type_ids": token_type_ids,
-        }
+        # if `inputs_embeds` are passed, we only want to use them in the 1st generation step
+        if inputs_embeds is not None and past_key_values is None:
+            model_inputs = {"inputs_embeds": inputs_embeds}
+        else:
+            model_inputs = {"input_ids": input_ids.contiguous()}
+
+        model_inputs.update(
+            {
+                "past_key_values": past_key_values,
+                "use_cache": kwargs.get("use_cache"),
+                "position_ids": position_ids,
+                "attention_mask": attention_mask,
+                "token_type_ids": token_type_ids,
+            }
+        )
+        return model_inputs
 
     @add_start_docstrings_to_model_forward(CODEGEN_INPUTS_DOCSTRING.format("batch_size, sequence_length"))
     @add_code_sample_docstrings(

@@ -26,10 +26,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-VIT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "google/vit-base-patch16-224": "https://huggingface.co/vit-base-patch16-224/resolve/main/config.json",
-    # See all ViT models at https://huggingface.co/models?filter=vit
-}
+
+from ..deprecated._archive_maps import VIT_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class ViTConfig(PretrainedConfig):
@@ -88,6 +86,7 @@ class ViTConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "vit"
 
     def __init__(

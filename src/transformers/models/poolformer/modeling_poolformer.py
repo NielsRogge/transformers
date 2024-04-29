@@ -43,10 +43,8 @@ _EXPECTED_OUTPUT_SHAPE = [1, 512, 7, 7]
 _IMAGE_CLASS_CHECKPOINT = "sail/poolformer_s12"
 _IMAGE_CLASS_EXPECTED_OUTPUT = "tabby, tabby cat"
 
-POOLFORMER_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "sail/poolformer_s12",
-    # See all PoolFormer models at https://huggingface.co/models?filter=poolformer
-]
+
+from ..deprecated._archive_maps import POOLFORMER_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Copied from transformers.models.beit.modeling_beit.drop_path
@@ -270,7 +268,7 @@ class PoolFormerPreTrainedModel(PreTrainedModel):
     config_class = PoolFormerConfig
     base_model_prefix = "poolformer"
     main_input_name = "pixel_values"
-    supports_gradient_checkpointing = True
+    _no_split_modules = ["PoolFormerLayer"]
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -281,10 +279,6 @@ class PoolFormerPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, PoolFormerEncoder):
-            module.gradient_checkpointing = value
 
 
 POOLFORMER_START_DOCSTRING = r"""

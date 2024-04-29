@@ -36,7 +36,6 @@ if is_torch_available():
         CanineForTokenClassification,
         CanineModel,
     )
-    from transformers.models.canine.modeling_canine import CANINE_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 class CanineModelTester:
@@ -507,11 +506,29 @@ class CanineModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     def test_model_common_attributes(self):
         pass
 
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CANINE_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = CanineModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "google/canine-s"
+        model = CanineModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 @require_torch

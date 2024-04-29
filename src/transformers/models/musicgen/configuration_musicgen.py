@@ -21,10 +21,8 @@ from ..auto.configuration_auto import AutoConfig
 
 logger = logging.get_logger(__name__)
 
-MUSICGEN_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/musicgen-small": "https://huggingface.co/facebook/musicgen-small/resolve/main/config.json",
-    # See all Musicgen models at https://huggingface.co/models?filter=musicgen
-}
+
+from ..deprecated._archive_maps import MUSICGEN_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class MusicgenDecoderConfig(PretrainedConfig):
@@ -75,7 +73,11 @@ class MusicgenDecoderConfig(PretrainedConfig):
             The number of parallel codebooks forwarded to the model.
         tie_word_embeddings(`bool`, *optional*, defaults to `False`):
             Whether input and output word embeddings should be tied.
+        audio_channels (`int`, *optional*, defaults to 1
+            Number of channels in the audio data. Either 1 for mono or 2 for stereo. Stereo models generate a separate
+            audio stream for the left/right output channels. Mono models generate a single audio stream output.
     """
+
     model_type = "musicgen_decoder"
     keys_to_ignore_at_inference = ["past_key_values"]
 
@@ -96,6 +98,7 @@ class MusicgenDecoderConfig(PretrainedConfig):
         initializer_factor=0.02,
         scale_embedding=False,
         num_codebooks=4,
+        audio_channels=1,
         pad_token_id=2048,
         bos_token_id=2048,
         eos_token_id=None,
@@ -117,6 +120,11 @@ class MusicgenDecoderConfig(PretrainedConfig):
         self.use_cache = use_cache
         self.scale_embedding = scale_embedding  # scale factor will be sqrt(d_model) if True
         self.num_codebooks = num_codebooks
+
+        if audio_channels not in [1, 2]:
+            raise ValueError(f"Expected 1 (mono) or 2 (stereo) audio channels, got {audio_channels} channels.")
+        self.audio_channels = audio_channels
+
         super().__init__(
             pad_token_id=pad_token_id,
             bos_token_id=bos_token_id,
@@ -231,3 +239,20 @@ class MusicgenConfig(PretrainedConfig):
     # This is a property because you might want to change the codec model on the fly
     def sampling_rate(self):
         return self.audio_encoder.sampling_rate
+
+    @property
+    def _attn_implementation(self):
+        # This property is made private for now (as it cannot be changed and a PreTrainedModel.use_attn_implementation method needs to be implemented.)
+        if hasattr(self, "_attn_implementation_internal"):
+            if self._attn_implementation_internal is None:
+                # `config.attn_implementation` should never be None, for backward compatibility.
+                return "eager"
+            else:
+                return self._attn_implementation_internal
+        else:
+            return "eager"
+
+    @_attn_implementation.setter
+    def _attn_implementation(self, value):
+        self._attn_implementation_internal = value
+        self.decoder._attn_implementation = value

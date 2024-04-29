@@ -60,10 +60,8 @@ _EXPECTED_OUTPUT_SHAPE = [1, 197, 768]
 _IMAGE_CLASS_CHECKPOINT = "microsoft/beit-base-patch16-224"
 _IMAGE_CLASS_EXPECTED_OUTPUT = "tabby, tabby cat"
 
-BEIT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "microsoft/beit-base-patch16-224",
-    # See all BEiT models at https://huggingface.co/models?filter=beit
-]
+
+from ..deprecated._archive_maps import BEIT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 @dataclass
@@ -526,17 +524,11 @@ class BeitEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 relative_position_bias = (
@@ -571,6 +563,7 @@ class BeitPreTrainedModel(PreTrainedModel):
     base_model_prefix = "beit"
     main_input_name = "pixel_values"
     supports_gradient_checkpointing = True
+    _no_split_modules = ["BeitLayer"]
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -587,10 +580,6 @@ class BeitPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, BeitEncoder):
-            module.gradient_checkpointing = value
 
 
 BEIT_START_DOCSTRING = r"""
@@ -1177,6 +1166,12 @@ class BeitForSemanticSegmentation(BeitPreTrainedModel):
         self.beit = BeitModel(config, add_pooling_layer=False)
 
         # FPNs
+        if len(self.config.out_indices) != 4:
+            raise ValueError(
+                "BeitForSemanticSegmentation requires config.out_indices to be a list of 4 integers, "
+                "specifying which features to use from the backbone. One can use [3, 5, 7, 11] in case of "
+                "a base-sized architecture."
+            )
         self.fpn1 = nn.Sequential(
             nn.ConvTranspose2d(config.hidden_size, config.hidden_size, kernel_size=2, stride=2),
             nn.BatchNorm2d(config.hidden_size),
@@ -1324,10 +1319,16 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
         self.encoder = BeitEncoder(config, window_size=self.embeddings.patch_embeddings.patch_shape)
 
         if config.add_fpn:
+            if len(self.config.out_indices) != 4:
+                raise ValueError(
+                    "BeitBackbone requires config.out_indices to be a list of 4 integers, "
+                    "specifying which features to use from the backbone. One can use [3, 5, 7, 11] in case of "
+                    "a base-sized architecture."
+                )
             hidden_size = config.hidden_size
             self.fpn1 = nn.Sequential(
                 nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
-                nn.BatchNorm2d(hidden_size),
+                nn.BatchNorm2d(hidden_size, eps=config.batch_norm_eps),
                 nn.GELU(),
                 nn.ConvTranspose2d(hidden_size, hidden_size, kernel_size=2, stride=2),
             )
@@ -1347,8 +1348,8 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
     def forward(
         self,
         pixel_values: Tensor,
-        output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> BackboneOutput:
         """
@@ -1367,7 +1368,7 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
 
         >>> processor = AutoImageProcessor.from_pretrained("microsoft/beit-base-patch16-224")
         >>> model = AutoBackbone.from_pretrained(
-        ...     "microsoft/resnet-50", out_features=["stage1", "stage2", "stage3", "stage4"]
+        ...     "microsoft/beit-base-patch16-224", out_features=["stage1", "stage2", "stage3", "stage4"]
         ... )
 
         >>> inputs = processor(image, return_tensors="pt")
@@ -1375,7 +1376,7 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
         >>> outputs = model(**inputs)
         >>> feature_maps = outputs.feature_maps
         >>> list(feature_maps[-1].shape)
-        [1, 2048, 7, 7]
+        [1, 768, 14, 14]
         ```"""
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
         output_hidden_states = (
@@ -1387,22 +1388,20 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
         embedding_output, (patch_height, patch_width) = self.embeddings(pixel_values)
 
         outputs = self.encoder(
-            embedding_output, output_hidden_states=True, output_attentions=output_attentions, return_dict=True
+            embedding_output, output_hidden_states=True, output_attentions=output_attentions, return_dict=return_dict
         )
 
-        hidden_states = outputs.hidden_states
+        hidden_states = outputs.hidden_states if return_dict else outputs[1]
 
-        print("Out features:", self.out_features)
-
-        feature_maps = []
+        feature_maps = ()
         for stage, hidden_state in zip(self.stage_names, hidden_states):
             if stage in self.out_features:
                 if self.config.reshape_hidden_states:
-                    hidden_state = (
-                        hidden_state[:, 1:, :].permute(0, 2, 1).reshape(batch_size, -1, patch_height, patch_width)
-                    )
+                    hidden_state = hidden_state[:, 1:, :]
+                    hidden_state = hidden_state.permute(0, 2, 1)
+                    hidden_state = hidden_state.reshape(batch_size, -1, patch_height, patch_width)
 
-                feature_maps.append(hidden_state)
+                feature_maps += (hidden_state,)
 
         if self.config.add_fpn:
             feature_maps = [
@@ -1414,9 +1413,10 @@ class BeitBackbone(BeitPreTrainedModel, BackboneMixin):
             feature_maps = tuple(feature_maps)
 
         if not return_dict:
-            output = (feature_maps,)
             if output_hidden_states:
-                output += (outputs.hidden_states,)
+                output = (feature_maps,) + outputs[1:]
+            else:
+                output = (feature_maps,) + outputs[2:]
             return output
 
         return BackboneOutput(

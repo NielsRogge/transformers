@@ -43,7 +43,6 @@ if is_torch_available():
     import torch.nn as nn
 
     from transformers import AltCLIPModel, AltCLIPTextModel, AltCLIPVisionModel
-    from transformers.models.altclip.modeling_altclip import ALTCLIP_PRETRAINED_MODEL_ARCHIVE_LIST
 
 if is_vision_available():
     from PIL import Image
@@ -186,6 +185,18 @@ class AltCLIPVisionModelTest(ModelTesterMixin, unittest.TestCase):
     def test_training_gradient_checkpointing(self):
         pass
 
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
     @unittest.skip(reason="AltCLIPVisionModel has no base class and is not available in MODEL_MAPPING")
     def test_save_load_fast_init_from_base(self):
         pass
@@ -320,6 +331,18 @@ class AltCLIPTextModelTest(ModelTesterMixin, unittest.TestCase):
     def test_training_gradient_checkpointing(self):
         pass
 
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
     def test_model_outputs_equivalence(self):
         pass
 
@@ -341,9 +364,9 @@ class AltCLIPTextModelTest(ModelTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in ALTCLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = AltCLIPTextModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "BAAI/AltCLIP"
+        model = AltCLIPTextModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 class AltCLIPModelTester:
@@ -356,6 +379,7 @@ class AltCLIPModelTester:
         self.parent = parent
         self.text_model_tester = AltCLIPTextModelTester(parent, **text_kwargs)
         self.vision_model_tester = AltCLIPVisionModelTester(parent, **vision_kwargs)
+        self.batch_size = self.text_model_tester.batch_size  # need bs for batching_equivalence test
         self.is_training = is_training
 
     def prepare_config_and_inputs(self):
@@ -535,9 +559,9 @@ class AltCLIPModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase)
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in ALTCLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = AltCLIPModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "BAAI/AltCLIP"
+        model = AltCLIPModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 @require_vision
@@ -550,7 +574,7 @@ class AltCLIPModelIntegrationTest(unittest.TestCase):
         processor = AltCLIPProcessor.from_pretrained(model_name)
 
         image = prepare_img()
-        inputs = processor(text=["一张猫的照片", "一张狗的照片"], images=image, padding=True, return_tensors="pt").to(torch_device)
+        inputs = processor(text=["一张猫的照片", "一张狗的照片"], images=image, padding=True, return_tensors="pt").to(torch_device)  # fmt: skip
 
         # forward pass
         with torch.no_grad():

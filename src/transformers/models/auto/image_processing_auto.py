@@ -54,6 +54,7 @@ IMAGE_PROCESSOR_MAPPING_NAMES = OrderedDict(
         ("data2vec-vision", "BeitImageProcessor"),
         ("deformable_detr", "DeformableDetrImageProcessor"),
         ("deit", "DeiTImageProcessor"),
+        ("depth_anything", "DPTImageProcessor"),
         ("deta", "DetaImageProcessor"),
         ("detr", "DetrImageProcessor"),
         ("dinat", "ViTImageProcessor"),
@@ -67,13 +68,18 @@ IMAGE_PROCESSOR_MAPPING_NAMES = OrderedDict(
         ("fuyu", "FuyuImageProcessor"),
         ("git", "CLIPImageProcessor"),
         ("glpn", "GLPNImageProcessor"),
+        ("grounding-dino", "GroundingDinoImageProcessor"),
         ("groupvit", "CLIPImageProcessor"),
         ("idefics", "IdeficsImageProcessor"),
+        ("idefics2", "Idefics2ImageProcessor"),
         ("imagegpt", "ImageGPTImageProcessor"),
         ("instructblip", "BlipImageProcessor"),
+        ("kosmos-2", "CLIPImageProcessor"),
         ("layoutlmv2", "LayoutLMv2ImageProcessor"),
         ("layoutlmv3", "LayoutLMv3ImageProcessor"),
         ("levit", "LevitImageProcessor"),
+        ("llava", "CLIPImageProcessor"),
+        ("llava_next", "LlavaNextImageProcessor"),
         ("mask2former", "Mask2FormerImageProcessor"),
         ("maskformer", "MaskFormerImageProcessor"),
         ("maskrcnn", "MaskRCNNImageProcessor"),
@@ -92,10 +98,13 @@ IMAGE_PROCESSOR_MAPPING_NAMES = OrderedDict(
         ("pix2struct", "Pix2StructImageProcessor"),
         ("poolformer", "PoolFormerImageProcessor"),
         ("pvt", "PvtImageProcessor"),
+        ("pvt_v2", "PvtImageProcessor"),
         ("regnet", "ConvNextImageProcessor"),
         ("resnet", "ConvNextImageProcessor"),
         ("sam", "SamImageProcessor"),
         ("segformer", "SegformerImageProcessor"),
+        ("seggpt", "SegGptImageProcessor"),
+        ("siglip", "SiglipImageProcessor"),
         ("swiftformer", "ViTImageProcessor"),
         ("swin", "ViTImageProcessor"),
         ("swin2sr", "Swin2SRImageProcessor"),
@@ -103,10 +112,13 @@ IMAGE_PROCESSOR_MAPPING_NAMES = OrderedDict(
         ("table-transformer", "DetrImageProcessor"),
         ("timesformer", "VideoMAEImageProcessor"),
         ("tvlt", "TvltImageProcessor"),
+        ("tvp", "TvpImageProcessor"),
+        ("udop", "LayoutLMv3ImageProcessor"),
         ("upernet", "SegformerImageProcessor"),
         ("van", "ConvNextImageProcessor"),
         ("videomae", "VideoMAEImageProcessor"),
         ("vilt", "ViltImageProcessor"),
+        ("vipllava", "CLIPImageProcessor"),
         ("vit", "ViTImageProcessor"),
         ("vit_hybrid", "ViTHybridImageProcessor"),
         ("vit_mae", "ViTImageProcessor"),
@@ -163,8 +175,7 @@ def get_image_processor_config(
             This can be either:
 
             - a string, the *model id* of a pretrained model configuration hosted inside a model repo on
-              huggingface.co. Valid model ids can be located at the root-level, like `bert-base-uncased`, or namespaced
-              under a user or organization name, like `dbmdz/bert-base-german-cased`.
+              huggingface.co.
             - a path to a *directory* containing a configuration file saved using the
               [`~PreTrainedTokenizer.save_pretrained`] method, e.g., `./my_model_directory/`.
 
@@ -202,9 +213,9 @@ def get_image_processor_config(
 
     ```python
     # Download configuration from huggingface.co and cache.
-    image_processor_config = get_image_processor_config("bert-base-uncased")
+    image_processor_config = get_image_processor_config("google-bert/bert-base-uncased")
     # This model does not have a image processor config so the result will be an empty dict.
-    image_processor_config = get_image_processor_config("xlm-roberta-base")
+    image_processor_config = get_image_processor_config("FacebookAI/xlm-roberta-base")
 
     # Save a pretrained image processor locally and you can reload its config
     from transformers import AutoTokenizer
@@ -216,7 +227,8 @@ def get_image_processor_config(
     use_auth_token = kwargs.pop("use_auth_token", None)
     if use_auth_token is not None:
         warnings.warn(
-            "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers.", FutureWarning
+            "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.",
+            FutureWarning,
         )
         if token is not None:
             raise ValueError("`token` and `use_auth_token` are both specified. Please set only the argument `token`.")
@@ -274,8 +286,7 @@ class AutoImageProcessor:
                 This can be either:
 
                 - a string, the *model id* of a pretrained image_processor hosted inside a model repo on
-                  huggingface.co. Valid model ids can be located at the root-level, like `bert-base-uncased`, or
-                  namespaced under a user or organization name, like `dbmdz/bert-base-german-cased`.
+                  huggingface.co.
                 - a path to a *directory* containing a image processor file saved using the
                   [`~image_processing_utils.ImageProcessingMixin.save_pretrained`] method, e.g.,
                   `./my_model_directory/`.
@@ -334,7 +345,8 @@ class AutoImageProcessor:
         use_auth_token = kwargs.pop("use_auth_token", None)
         if use_auth_token is not None:
             warnings.warn(
-                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers.", FutureWarning
+                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.",
+                FutureWarning,
             )
             if kwargs.get("token", None) is not None:
                 raise ValueError(
@@ -358,16 +370,20 @@ class AutoImageProcessor:
             feature_extractor_class = config_dict.pop("feature_extractor_type", None)
             if feature_extractor_class is not None:
                 logger.warning(
-                    "Could not find image processor class in the image processor config or the model config. Loading"
-                    " based on pattern matching with the model's feature extractor configuration."
+                    "Could not find image processor class in the image processor config or the model config. Loading "
+                    "based on pattern matching with the model's feature extractor configuration. Please open a "
+                    "PR/issue to update `preprocessor_config.json` to use `image_processor_type` instead of "
+                    "`feature_extractor_type`. This warning will be removed in v4.40."
                 )
                 image_processor_class = feature_extractor_class.replace("FeatureExtractor", "ImageProcessor")
             if "AutoFeatureExtractor" in config_dict.get("auto_map", {}):
                 feature_extractor_auto_map = config_dict["auto_map"]["AutoFeatureExtractor"]
                 image_processor_auto_map = feature_extractor_auto_map.replace("FeatureExtractor", "ImageProcessor")
                 logger.warning(
-                    "Could not find image processor auto map in the image processor config or the model config."
-                    " Loading based on pattern matching with the model's feature extractor configuration."
+                    "Could not find image processor auto map in the image processor config or the model config. "
+                    "Loading based on pattern matching with the model's feature extractor configuration. Please open a "
+                    "PR/issue to update `preprocessor_config.json` to use `AutoImageProcessor` instead of "
+                    "`AutoFeatureExtractor`. This warning will be removed in v4.40."
                 )
 
         # If we don't find the image processor class in the image processor config, let's try the model config.

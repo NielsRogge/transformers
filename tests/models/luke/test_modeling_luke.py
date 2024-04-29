@@ -38,7 +38,6 @@ if is_torch_available():
         LukeModel,
         LukeTokenizer,
     )
-    from transformers.models.luke.modeling_luke import LUKE_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 class LukeModelTester:
@@ -699,9 +698,9 @@ class LukeModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in LUKE_PRETRAINED_MODEL_ARCHIVE_LIST:
-            model = LukeModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "studio-ousia/luke-base"
+        model = LukeModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     def test_for_masked_lm(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
@@ -854,6 +853,24 @@ class LukeModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         output.flatten()[0].backward(retain_graph=True)
 
         self.assertIsNotNone(entity_hidden_states.grad)
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
 
 
 @require_torch

@@ -37,11 +37,7 @@ _CHECKPOINT_FOR_DOC = "graphormer-base-pcqm4mv1"
 _CONFIG_FOR_DOC = "GraphormerConfig"
 
 
-GRAPHORMER_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "clefourrier/graphormer-base-pcqm4mv1",
-    "clefourrier/graphormer-base-pcqm4mv2",
-    # See all Graphormer models at https://huggingface.co/models?filter=graphormer
-]
+from ..deprecated._archive_maps import GRAPHORMER_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 def quant_noise(module: nn.Module, p: float, block_size: int):
@@ -712,7 +708,6 @@ class GraphormerPreTrainedModel(PreTrainedModel):
 
     config_class = GraphormerConfig
     base_model_prefix = "graphormer"
-    supports_gradient_checkpointing = True
     main_input_name_nodes = "input_nodes"
     main_input_name_edges = "input_edges"
 
@@ -771,10 +766,6 @@ class GraphormerPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, GraphormerModel):
-            module.gradient_checkpointing = value
 
 
 class GraphormerModel(GraphormerPreTrainedModel):

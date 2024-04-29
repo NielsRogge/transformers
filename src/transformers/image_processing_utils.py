@@ -75,6 +75,9 @@ class ImageProcessingMixin(PushToHubMixin):
 
     def __init__(self, **kwargs):
         """Set elements of `kwargs` as attributes."""
+        # This key was saved while we still used `XXXFeatureExtractor` for image processing. Now we use
+        # `XXXImageProcessor`, this attribute and its value are misleading.
+        kwargs.pop("feature_extractor_type", None)
         # Pop "processor_class" as it should be saved as private attribute
         self._processor_class = kwargs.pop("processor_class", None)
         # Additional attributes without default values
@@ -108,8 +111,7 @@ class ImageProcessingMixin(PushToHubMixin):
                 This can be either:
 
                 - a string, the *model id* of a pretrained image_processor hosted inside a model repo on
-                  huggingface.co. Valid model ids can be located at the root-level, like `bert-base-uncased`, or
-                  namespaced under a user or organization name, like `dbmdz/bert-base-german-cased`.
+                  huggingface.co.
                 - a path to a *directory* containing a image processor file saved using the
                   [`~image_processing_utils.ImageProcessingMixin.save_pretrained`] method, e.g.,
                   `./my_model_directory/`.
@@ -188,7 +190,8 @@ class ImageProcessingMixin(PushToHubMixin):
         use_auth_token = kwargs.pop("use_auth_token", None)
         if use_auth_token is not None:
             warnings.warn(
-                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers.", FutureWarning
+                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.",
+                FutureWarning,
             )
             if token is not None:
                 raise ValueError(
@@ -222,7 +225,8 @@ class ImageProcessingMixin(PushToHubMixin):
 
         if use_auth_token is not None:
             warnings.warn(
-                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers.", FutureWarning
+                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.",
+                FutureWarning,
             )
             if kwargs.get("token", None) is not None:
                 raise ValueError(
@@ -296,7 +300,8 @@ class ImageProcessingMixin(PushToHubMixin):
 
         if use_auth_token is not None:
             warnings.warn(
-                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers.", FutureWarning
+                "The `use_auth_token` argument is deprecated and will be removed in v5 of Transformers. Please use `token` instead.",
+                FutureWarning,
             )
             if token is not None:
                 raise ValueError(
@@ -741,6 +746,44 @@ def get_size_dict(
             f"{param_name} must have one of the following set of keys: {VALID_SIZE_DICT_KEYS}, got {size_dict.keys()}"
         )
     return size_dict
+
+
+def select_best_resolution(original_size: tuple, possible_resolutions: list) -> tuple:
+    """
+    Selects the best resolution from a list of possible resolutions based on the original size.
+
+    This is done by calculating the effective and wasted resolution for each possible resolution.
+
+    The best fit resolution is the one that maximizes the effective resolution and minimizes the wasted resolution.
+
+    Args:
+        original_size (tuple):
+            The original size of the image in the format (height, width).
+        possible_resolutions (list):
+            A list of possible resolutions in the format [(height1, width1), (height2, width2), ...].
+
+    Returns:
+        tuple: The best fit resolution in the format (height, width).
+    """
+    original_height, original_width = original_size
+    best_fit = None
+    max_effective_resolution = 0
+    min_wasted_resolution = float("inf")
+
+    for height, width in possible_resolutions:
+        scale = min(width / original_width, height / original_height)
+        downscaled_width, downscaled_height = int(original_width * scale), int(original_height * scale)
+        effective_resolution = min(downscaled_width * downscaled_height, original_width * original_height)
+        wasted_resolution = (width * height) - effective_resolution
+
+        if effective_resolution > max_effective_resolution or (
+            effective_resolution == max_effective_resolution and wasted_resolution < min_wasted_resolution
+        ):
+            max_effective_resolution = effective_resolution
+            min_wasted_resolution = wasted_resolution
+            best_fit = (height, width)
+
+    return best_fit
 
 
 ImageProcessingMixin.push_to_hub = copy_func(ImageProcessingMixin.push_to_hub)

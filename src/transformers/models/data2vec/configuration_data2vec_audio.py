@@ -22,11 +22,6 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-DATA2VEC_AUDIO_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/data2vec-base-960h": "https://huggingface.co/facebook/data2vec-audio-base-960h/resolve/main/config.json",
-    # See all Data2VecAudio models at https://huggingface.co/models?filter=data2vec-audio
-}
-
 
 class Data2VecAudioConfig(PretrainedConfig):
     r"""
@@ -168,6 +163,7 @@ class Data2VecAudioConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "data2vec-audio"
 
     def __init__(

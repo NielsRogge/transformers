@@ -20,26 +20,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-DPR_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/dpr-ctx_encoder-single-nq-base": (
-        "https://huggingface.co/facebook/dpr-ctx_encoder-single-nq-base/resolve/main/config.json"
-    ),
-    "facebook/dpr-question_encoder-single-nq-base": (
-        "https://huggingface.co/facebook/dpr-question_encoder-single-nq-base/resolve/main/config.json"
-    ),
-    "facebook/dpr-reader-single-nq-base": (
-        "https://huggingface.co/facebook/dpr-reader-single-nq-base/resolve/main/config.json"
-    ),
-    "facebook/dpr-ctx_encoder-multiset-base": (
-        "https://huggingface.co/facebook/dpr-ctx_encoder-multiset-base/resolve/main/config.json"
-    ),
-    "facebook/dpr-question_encoder-multiset-base": (
-        "https://huggingface.co/facebook/dpr-question_encoder-multiset-base/resolve/main/config.json"
-    ),
-    "facebook/dpr-reader-multiset-base": (
-        "https://huggingface.co/facebook/dpr-reader-multiset-base/resolve/main/config.json"
-    ),
-}
+
+from ..deprecated._archive_maps import DPR_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class DPRConfig(PretrainedConfig):
@@ -109,6 +91,7 @@ class DPRConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "dpr"
 
     def __init__(

@@ -22,9 +22,8 @@ from ...utils.backbone_utils import BackboneConfigMixin, get_aligned_output_feat
 
 logger = logging.get_logger(__name__)
 
-VITDET_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/vit-det-base": "https://huggingface.co/facebook/vit-det-base/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import VITDET_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class VitDetConfig(BackboneConfigMixin, PretrainedConfig):
@@ -80,11 +79,13 @@ class VitDetConfig(BackboneConfigMixin, PretrainedConfig):
         out_features (`List[str]`, *optional*):
             If used as backbone, list of features to output. Can be any of `"stem"`, `"stage1"`, `"stage2"`, etc.
             (depending on how many stages the model has). If unset and `out_indices` is set, will default to the
-            corresponding stages. If unset and `out_indices` is unset, will default to the last stage.
+            corresponding stages. If unset and `out_indices` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
         out_indices (`List[int]`, *optional*):
             If used as backbone, list of indices of features to output. Can be any of 0, 1, 2, etc. (depending on how
             many stages the model has). If unset and `out_features` is set, will default to the corresponding stages.
-            If unset and `out_features` is unset, will default to the last stage.
+            If unset and `out_features` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
 
     Example:
 
@@ -100,6 +101,7 @@ class VitDetConfig(BackboneConfigMixin, PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "vitdet"
 
     def __init__(

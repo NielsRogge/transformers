@@ -26,9 +26,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-MOBILEVITV2_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "apple/mobilevitv2-1.0": "https://huggingface.co/apple/mobilevitv2-1.0/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import MOBILEVITV2_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class MobileViTV2Config(PretrainedConfig):
@@ -97,6 +96,7 @@ class MobileViTV2Config(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "mobilevitv2"
 
     def __init__(

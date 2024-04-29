@@ -19,11 +19,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-GPTSAN_JAPANESE_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "tanreinama/GPTSAN-2.8B-spout_is_uniform": (
-        "https://huggingface.co/tanreinama/GPTSAN-2.8B-spout_is_uniform/resolve/main/config.json"
-    ),
-}
+
+from ..deprecated._archive_maps import GPTSAN_JAPANESE_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class GPTSanJapaneseConfig(PretrainedConfig):
@@ -87,6 +84,7 @@ class GPTSanJapaneseConfig(PretrainedConfig):
         use_cache (`bool`, *optional*, defaults to `True`):
             Whether or not the model should return the last key/values attentions (not used by all models)
     """
+
     model_type = "gptsan-japanese"
     keys_to_ignore_at_inference = [
         "past_key_values",

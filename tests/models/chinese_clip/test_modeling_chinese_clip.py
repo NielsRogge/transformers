@@ -48,7 +48,6 @@ if is_torch_available():
         ChineseCLIPTextModel,
         ChineseCLIPVisionModel,
     )
-    from transformers.models.chinese_clip.modeling_chinese_clip import CHINESE_CLIP_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
 if is_vision_available():
@@ -385,14 +384,26 @@ class ChineseCLIPTextModelTest(ModelTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CHINESE_CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ChineseCLIPTextModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "OFA-Sys/chinese-clip-vit-base-patch16"
+        model = ChineseCLIPTextModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     def test_training(self):
         pass
 
     def test_training_gradient_checkpointing(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
         pass
 
     @unittest.skip(reason="ChineseCLIPTextModel has no base class and is not available in MODEL_MAPPING")
@@ -461,6 +472,18 @@ class ChineseCLIPVisionModelTest(ModelTesterMixin, unittest.TestCase):
     def test_training_gradient_checkpointing(self):
         pass
 
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
+
     @unittest.skip(reason="ChineseCLIPVisionModel has no base class and is not available in MODEL_MAPPING")
     def test_save_load_fast_init_from_base(self):
         pass
@@ -471,9 +494,9 @@ class ChineseCLIPVisionModelTest(ModelTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CHINESE_CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ChineseCLIPVisionModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "OFA-Sys/chinese-clip-vit-base-patch16"
+        model = ChineseCLIPVisionModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 class ChineseCLIPModelTester:
@@ -486,6 +509,7 @@ class ChineseCLIPModelTester:
         self.parent = parent
         self.text_model_tester = ChineseCLIPTextModelTester(parent, **text_kwargs)
         self.vision_model_tester = ChineseCLIPVisionModelTester(parent, **vision_kwargs)
+        self.batch_size = self.text_model_tester.batch_size  # need bs for batching_equivalence test
         self.is_training = is_training
 
     def prepare_config_and_inputs(self):
@@ -668,9 +692,9 @@ class ChineseCLIPModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestC
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in CHINESE_CLIP_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = ChineseCLIPModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "OFA-Sys/chinese-clip-vit-base-patch16"
+        model = ChineseCLIPModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 # We will verify our results on an image of Pikachu
@@ -690,9 +714,9 @@ class ChineseCLIPModelIntegrationTest(unittest.TestCase):
         processor = ChineseCLIPProcessor.from_pretrained(model_name)
 
         image = prepare_img()
-        inputs = processor(text=["杰尼龟", "妙蛙种子", "小火龙", "皮卡丘"], images=image, padding=True, return_tensors="pt").to(
-            torch_device
-        )
+        inputs = processor(
+            text=["杰尼龟", "妙蛙种子", "小火龙", "皮卡丘"], images=image, padding=True, return_tensors="pt"
+        ).to(torch_device)
 
         # forward pass
         with torch.no_grad():

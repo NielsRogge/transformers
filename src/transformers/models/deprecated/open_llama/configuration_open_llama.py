@@ -25,9 +25,8 @@ from ....utils import logging
 
 logger = logging.get_logger(__name__)
 
-OPEN_LLAMA_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "s-JoL/Open-Llama-V1": "https://huggingface.co/s-JoL/Open-Llama-V1/blob/main/config.json",
-}
+
+from .._archive_maps import OPEN_LLAMA_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class OpenLlamaConfig(PretrainedConfig):
@@ -67,10 +66,12 @@ class OpenLlamaConfig(PretrainedConfig):
             relevant if `config.is_decoder=True`.
         tie_word_embeddings(`bool`, *optional*, defaults to `False`):
             Whether to tie weight embeddings
+        rope_theta (`float`, *optional*, defaults to 10000.0):
+            The base period of the RoPE embeddings.
         rope_scaling (`Dict`, *optional*):
             Dictionary containing the scaling configuration for the RoPE embeddings. Currently supports two scaling
-            strategies: linear and dynamic. Their scaling factor must be an float greater than 1. The expected format
-            is `{"type": strategy name, "factor": scaling factor}`. When using this flag, don't update
+            strategies: linear and dynamic. Their scaling factor must be a float greater than 1. The expected format is
+            `{"type": strategy name, "factor": scaling factor}`. When using this flag, don't update
             `max_position_embeddings` to the expected new maximum. See the following thread for more information on how
             these scaling strategies behave:
             https://www.reddit.com/r/LocalLLaMA/comments/14mrgpr/dynamically_scaled_rope_further_increases/. This is an
@@ -90,6 +91,7 @@ class OpenLlamaConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "open-llama"
 
     def __init__(
@@ -113,6 +115,7 @@ class OpenLlamaConfig(PretrainedConfig):
         attention_dropout_prob=0.1,
         use_stable_embedding=True,
         shared_input_output_embedding=True,
+        rope_theta=10000.0,
         rope_scaling=None,
         **kwargs,
     ):
@@ -133,6 +136,7 @@ class OpenLlamaConfig(PretrainedConfig):
         self.attention_dropout_prob = attention_dropout_prob
         self.use_stable_embedding = use_stable_embedding
         self.shared_input_output_embedding = shared_input_output_embedding
+        self.rope_theta = rope_theta
         self.rope_scaling = rope_scaling
         self._rope_scaling_validation()
 
@@ -154,8 +158,7 @@ class OpenLlamaConfig(PretrainedConfig):
 
         if not isinstance(self.rope_scaling, dict) or len(self.rope_scaling) != 2:
             raise ValueError(
-                "`rope_scaling` must be a dictionary with with two fields, `type` and `factor`, "
-                f"got {self.rope_scaling}"
+                "`rope_scaling` must be a dictionary with two fields, `type` and `factor`, " f"got {self.rope_scaling}"
             )
         rope_scaling_type = self.rope_scaling.get("type", None)
         rope_scaling_factor = self.rope_scaling.get("factor", None)
@@ -164,4 +167,4 @@ class OpenLlamaConfig(PretrainedConfig):
                 f"`rope_scaling`'s type field must be one of ['linear', 'dynamic'], got {rope_scaling_type}"
             )
         if rope_scaling_factor is None or not isinstance(rope_scaling_factor, float) or rope_scaling_factor <= 1.0:
-            raise ValueError(f"`rope_scaling`'s factor field must be an float > 1, got {rope_scaling_factor}")
+            raise ValueError(f"`rope_scaling`'s factor field must be a float > 1, got {rope_scaling_factor}")

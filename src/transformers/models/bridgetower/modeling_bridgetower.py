@@ -44,11 +44,8 @@ _CONFIG_FOR_DOC = "BridgeTowerConfig"
 _CHECKPOINT_FOR_DOC = "BridgeTower/bridgetower-base"
 _TOKENIZER_FOR_DOC = "RobertaTokenizer"
 
-BRIDGETOWER_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "BridgeTower/bridgetower-base",
-    "BridgeTower/bridgetower-base-itm-mlm"
-    # See all bridgetower models at https://huggingface.co/BridgeTower
-]
+
+from ..deprecated._archive_maps import BRIDGETOWER_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 BRIDGETOWER_START_DOCSTRING = r"""
@@ -565,11 +562,18 @@ class BridgeTowerSelfAttention(nn.Module):
         return outputs
 
 
-# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->BridgeTower
+BRIDGE_TOWER_SELF_ATTENTION_CLASSES = {
+    "eager": BridgeTowerSelfAttention,
+}
+
+
+# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->BridgeTower,BERT->BRIDGE_TOWER
 class BridgeTowerAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
-        self.self = BridgeTowerSelfAttention(config, position_embedding_type=position_embedding_type)
+        self.self = BRIDGE_TOWER_SELF_ATTENTION_CLASSES[config._attn_implementation](
+            config, position_embedding_type=position_embedding_type
+        )
         self.output = BridgeTowerSelfOutput(config)
         self.pruned_heads = set()
 
@@ -804,20 +808,15 @@ class BridgeTowerTextEncoder(nn.Module):
             past_key_value = past_key_values[i] if past_key_values is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
+                    past_key_value,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(

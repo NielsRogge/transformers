@@ -15,14 +15,12 @@
 """ Testing suite for the PyTorch BEiT model. """
 
 
-import inspect
 import unittest
 
 from datasets import load_dataset
 from packaging import version
 
 from transformers import BeitConfig
-from transformers.models.auto import get_values
 from transformers.testing_utils import require_torch, require_torch_multi_gpu, require_vision, slow, torch_device
 from transformers.utils import cached_property, is_torch_available, is_vision_available
 
@@ -37,15 +35,13 @@ if is_torch_available():
     from torch import nn
 
     from transformers import (
-        MODEL_FOR_BACKBONE_MAPPING,
-        MODEL_MAPPING,
         BeitBackbone,
         BeitForImageClassification,
         BeitForMaskedImageModeling,
         BeitForSemanticSegmentation,
         BeitModel,
     )
-    from transformers.models.beit.modeling_beit import BEIT_PRETRAINED_MODEL_ARCHIVE_LIST
+    from transformers.models.auto.modeling_auto import MODEL_FOR_BACKBONE_MAPPING_NAMES, MODEL_MAPPING_NAMES
 
 
 if is_vision_available():
@@ -153,8 +149,9 @@ class BeitModelTester:
 
         # verify hidden states
         self.parent.assertEqual(len(result.feature_maps), len(config.out_features))
+        expected_height = expected_width = self.image_size // config.patch_size
         self.parent.assertListEqual(
-            list(result.feature_maps[0].shape), [self.batch_size, self.seq_length, self.hidden_size]
+            list(result.feature_maps[0].shape), [self.batch_size, self.hidden_size, expected_height, expected_width]
         )
 
         # verify channels
@@ -170,7 +167,7 @@ class BeitModelTester:
         # verify feature maps
         self.parent.assertEqual(len(result.feature_maps), 1)
         self.parent.assertListEqual(
-            list(result.feature_maps[0].shape), [self.batch_size, self.seq_length, self.hidden_size]
+            list(result.feature_maps[0].shape), [self.batch_size, self.hidden_size, expected_height, expected_width]
         )
 
         # verify channels
@@ -242,7 +239,7 @@ class BeitModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     )
     pipeline_model_mapping = (
         {
-            "feature-extraction": BeitModel,
+            "image-feature-extraction": BeitModel,
             "image-classification": BeitForImageClassification,
             "image-segmentation": BeitForSemanticSegmentation,
         }
@@ -283,18 +280,6 @@ class BeitModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
             x = model.get_output_embeddings()
             self.assertTrue(x is None or isinstance(x, nn.Linear))
 
-    def test_forward_signature(self):
-        config, _ = self.model_tester.prepare_config_and_inputs_for_common()
-
-        for model_class in self.all_model_classes:
-            model = model_class(config)
-            signature = inspect.signature(model.forward)
-            # signature.parameters is an OrderedDict => so arg_names order is deterministic
-            arg_names = [*signature.parameters.keys()]
-
-            expected_arg_names = ["pixel_values"]
-            self.assertListEqual(arg_names[:1], expected_arg_names)
-
     def test_model(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_model(*config_and_inputs)
@@ -324,10 +309,10 @@ class BeitModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
         for model_class in self.all_model_classes:
             # we don't test BeitForMaskedImageModeling
-            if model_class in [
-                *get_values(MODEL_MAPPING),
-                *get_values(MODEL_FOR_BACKBONE_MAPPING),
-                BeitForMaskedImageModeling,
+            if model_class.__name__ in [
+                *MODEL_MAPPING_NAMES.values(),
+                *MODEL_FOR_BACKBONE_MAPPING_NAMES.values(),
+                "BeitForMaskedImageModeling",
             ]:
                 continue
 
@@ -349,8 +334,12 @@ class BeitModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         for model_class in self.all_model_classes:
             # we don't test BeitForMaskedImageModeling
             if (
-                model_class
-                in [*get_values(MODEL_MAPPING), *get_values(MODEL_FOR_BACKBONE_MAPPING), BeitForMaskedImageModeling]
+                model_class.__name__
+                in [
+                    *MODEL_MAPPING_NAMES.values(),
+                    *MODEL_FOR_BACKBONE_MAPPING_NAMES.values(),
+                    "BeitForMaskedImageModeling",
+                ]
                 or not model_class.supports_gradient_checkpointing
             ):
                 continue
@@ -362,6 +351,18 @@ class BeitModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
             inputs = self._prepare_for_class(inputs_dict, model_class, return_labels=True)
             loss = model(**inputs).loss
             loss.backward()
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant(self):
+        pass
+
+    @unittest.skip(
+        reason="This architecure seem to not compute gradients properly when using GC, check: https://github.com/huggingface/transformers/pull/27124"
+    )
+    def test_training_gradient_checkpointing_use_reentrant_false(self):
+        pass
 
     def test_initialization(self):
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
@@ -383,9 +384,9 @@ class BeitModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in BEIT_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = BeitModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "microsoft/beit-base-patch16-224"
+        model = BeitModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
 
 # We will verify our results on an image of cute cats

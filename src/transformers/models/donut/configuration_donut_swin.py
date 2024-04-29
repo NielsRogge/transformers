@@ -20,10 +20,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-DONUT_SWIN_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "naver-clova-ix/donut-base": "https://huggingface.co/naver-clova-ix/donut-base/resolve/main/config.json",
-    # See all Donut models at https://huggingface.co/models?filter=donut-swin
-}
+
+from ..deprecated._archive_maps import DONUT_SWIN_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class DonutSwinConfig(PretrainedConfig):
@@ -85,6 +83,7 @@ class DonutSwinConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "donut-swin"
 
     attribute_map = {

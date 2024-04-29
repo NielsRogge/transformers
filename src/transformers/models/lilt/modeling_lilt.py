@@ -40,10 +40,8 @@ logger = logging.get_logger(__name__)
 
 _CONFIG_FOR_DOC = "LiltConfig"
 
-LILT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "SCUT-DLVCLab/lilt-roberta-en-base",
-    # See all LiLT models at https://huggingface.co/models?filter=lilt
-]
+
+from ..deprecated._archive_maps import LILT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 class LiltTextEmbeddings(nn.Module):
@@ -514,19 +512,13 @@ class LiltEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     layout_inputs,
                     attention_mask,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(
@@ -606,10 +598,6 @@ class LiltPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, LiltEncoder):
-            module.gradient_checkpointing = value
 
 
 LILT_START_DOCSTRING = r"""

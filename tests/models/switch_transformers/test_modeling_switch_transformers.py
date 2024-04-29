@@ -19,7 +19,14 @@ import tempfile
 import unittest
 
 from transformers import SwitchTransformersConfig, is_torch_available
-from transformers.testing_utils import require_tokenizers, require_torch, require_torch_gpu, slow, torch_device
+from transformers.testing_utils import (
+    require_tokenizers,
+    require_torch,
+    require_torch_accelerator,
+    require_torch_bf16,
+    slow,
+    torch_device,
+)
 
 from ...generation.test_utils import GenerationTesterMixin
 from ...test_configuration_common import ConfigTester
@@ -38,7 +45,6 @@ if is_torch_available():
         SwitchTransformersTop1Router,
     )
     from transformers.models.switch_transformers.modeling_switch_transformers import (
-        SWITCH_TRANSFORMERS_PRETRAINED_MODEL_ARCHIVE_LIST,
         load_balancing_loss_func,
         router_z_loss_func,
     )
@@ -663,9 +669,9 @@ class SwitchTransformersModelTest(ModelTesterMixin, GenerationTesterMixin, Pipel
 
     @slow
     def test_model_from_pretrained(self):
-        for model_name in SWITCH_TRANSFORMERS_PRETRAINED_MODEL_ARCHIVE_LIST[:1]:
-            model = SwitchTransformersModel.from_pretrained(model_name)
-            self.assertIsNotNone(model)
+        model_name = "google/switch-base-8"
+        model = SwitchTransformersModel.from_pretrained(model_name)
+        self.assertIsNotNone(model)
 
     @unittest.skip("Test has a segmentation fault on torch 1.8.0")
     def test_export_to_onnx(self):
@@ -894,6 +900,7 @@ class SwitchTransformerRouterTest(unittest.TestCase):
     Original implementation of the routers here:
 
     """
+
     config = SwitchTransformersConfig(
         num_experts=2,
         hidden_size=8,
@@ -1017,7 +1024,8 @@ class SwitchTransformerRouterTest(unittest.TestCase):
 @require_torch
 @require_tokenizers
 class SwitchTransformerModelIntegrationTests(unittest.TestCase):
-    @require_torch_gpu
+    @require_torch_accelerator
+    @require_torch_bf16
     def test_small_logits(self):
         r"""
         Logits testing to check implementation consistency between `t5x` implementation
@@ -1045,7 +1053,7 @@ class SwitchTransformerModelIntegrationTests(unittest.TestCase):
         hf_logits = model(input_ids, decoder_input_ids=decoder_input_ids).last_hidden_state.cpu()
         hf_logits = hf_logits[0, 0, :30]
 
-        torch.testing.assert_allclose(hf_logits, EXPECTED_MEAN_LOGITS, rtol=6e-3, atol=9e-3)
+        torch.testing.assert_close(hf_logits, EXPECTED_MEAN_LOGITS, rtol=6e-3, atol=9e-3)
 
     @unittest.skip(
         "Unless we stop stripping left and right by default for all special tokens, the expected ids obtained here will not match the original ones. Wait for https://github.com/huggingface/transformers/pull/23909 to be merged"
@@ -1056,7 +1064,7 @@ class SwitchTransformerModelIntegrationTests(unittest.TestCase):
         model = SwitchTransformersForConditionalGeneration.from_pretrained(
             "google/switch-base-8", torch_dtype=torch.bfloat16
         ).eval()
-        tokenizer = AutoTokenizer.from_pretrained("t5-small", use_fast=False, legacy=False)
+        tokenizer = AutoTokenizer.from_pretrained("google-t5/t5-small", use_fast=False, legacy=False)
         model = model.to(torch_device)
 
         input_ids = tokenizer(
@@ -1084,7 +1092,7 @@ class SwitchTransformerModelIntegrationTests(unittest.TestCase):
         model = SwitchTransformersForConditionalGeneration.from_pretrained(
             "google/switch-base-8", torch_dtype=torch.bfloat16
         ).eval()
-        tokenizer = AutoTokenizer.from_pretrained("t5-small", use_fast=False, legacy=False)
+        tokenizer = AutoTokenizer.from_pretrained("google-t5/t5-small", use_fast=False, legacy=False)
 
         inputs = [
             "A <extra_id_0> walks into a bar and orders a <extra_id_1> with <extra_id_2> pinch of <extra_id_3>."

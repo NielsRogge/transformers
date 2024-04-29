@@ -59,10 +59,7 @@ _IMAGE_CLASS_CHECKPOINT = "facebook/deit-base-distilled-patch16-224"
 _IMAGE_CLASS_EXPECTED_OUTPUT = "tabby, tabby cat"
 
 
-DEIT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "facebook/deit-base-distilled-patch16-224",
-    # See all DeiT models at https://huggingface.co/models?filter=deit
-]
+from ..deprecated._archive_maps import DEIT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 class DeiTEmbeddings(nn.Module):
@@ -357,17 +354,11 @@ class DeiTEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(hidden_states, layer_head_mask, output_attentions)
@@ -414,10 +405,6 @@ class DeiTPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module: DeiTEncoder, value: bool = False) -> None:
-        if isinstance(module, DeiTEncoder):
-            module.gradient_checkpointing = value
 
 
 DEIT_START_DOCSTRING = r"""
@@ -745,7 +732,7 @@ class DeiTForImageClassification(DeiTPreTrainedModel):
         >>> # model predicts one of the 1000 ImageNet classes
         >>> predicted_class_idx = logits.argmax(-1).item()
         >>> print("Predicted class:", model.config.id2label[predicted_class_idx])
-        Predicted class: magpie
+        Predicted class: Polaroid camera, Polaroid Land camera
         ```"""
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 

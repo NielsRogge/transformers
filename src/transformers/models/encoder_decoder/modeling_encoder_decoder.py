@@ -174,6 +174,7 @@ class EncoderDecoderModel(PreTrainedModel):
     :meth*~transformers.AutoModel.from_pretrained* class method for the encoder and
     :meth*~transformers.AutoModelForCausalLM.from_pretrained* class method for the decoder.
     """
+
     config_class = EncoderDecoderConfig
     base_model_prefix = "encoder_decoder"
     main_input_name = "input_ids"
@@ -208,12 +209,12 @@ class EncoderDecoderModel(PreTrainedModel):
         if encoder is None:
             from ..auto.modeling_auto import AutoModel
 
-            encoder = AutoModel.from_config(config.encoder)
+            encoder = AutoModel.from_config(config.encoder, attn_implementation=config._attn_implementation)
 
         if decoder is None:
             from ..auto.modeling_auto import AutoModelForCausalLM
 
-            decoder = AutoModelForCausalLM.from_config(config.decoder)
+            decoder = AutoModelForCausalLM.from_config(config.decoder, attn_implementation=config._attn_implementation)
 
         self.encoder = encoder
         self.decoder = decoder
@@ -261,14 +262,16 @@ class EncoderDecoderModel(PreTrainedModel):
         if self.config.tie_encoder_decoder:
             # tie encoder and decoder base model
             decoder_base_model_prefix = self.decoder.base_model_prefix
-            self._tie_encoder_decoder_weights(
-                self.encoder, self.decoder._modules[decoder_base_model_prefix], self.decoder.base_model_prefix
+            tied_weights = self._tie_encoder_decoder_weights(
+                self.encoder,
+                self.decoder._modules[decoder_base_model_prefix],
+                self.decoder.base_model_prefix,
+                "encoder",
             )
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        # call both encoder and decoder function on gradient checkpointing
-        self.encoder._set_gradient_checkpointing(module, value=value)
-        self.decoder._set_gradient_checkpointing(module, value=value)
+            # Setting a dynamic variable instead of `_tied_weights_keys` because it's a class
+            # attributed not an instance member, therefore modifying it will modify the entire class
+            # Leading to issues on subsequent calls by different tests or subsequent calls.
+            self._dynamic_tied_weights_keys = tied_weights
 
     def get_encoder(self):
         return self.encoder
@@ -371,8 +374,8 @@ class EncoderDecoderModel(PreTrainedModel):
                 model.config = config
 
                 if hasattr(model, "enc_to_dec_proj"):
-                    model.enc_to_dec_proj.weight.data = enc_to_dec_proj_weight
-                    model.enc_to_dec_proj.bias.data = enc_to_dec_proj_bias
+                    model.enc_to_dec_proj.weight.data = enc_to_dec_proj_weight.contiguous()
+                    model.enc_to_dec_proj.bias.data = enc_to_dec_proj_bias.contiguous()
 
                 return model
 
@@ -407,8 +410,6 @@ class EncoderDecoderModel(PreTrainedModel):
                 Information necessary to initiate the encoder. Can be either:
 
                     - A string, the *model id* of a pretrained model hosted inside a model repo on huggingface.co.
-                      Valid model ids can be located at the root-level, like `bert-base-uncased`, or namespaced under a
-                      user or organization name, like `dbmdz/bert-base-german-cased`.
                     - A path to a *directory* containing model weights saved using
                       [`~PreTrainedModel.save_pretrained`], e.g., `./my_model_directory/`.
                     - A path or url to a *tensorflow index checkpoint file* (e.g, `./tf_model/model.ckpt.index`). In
@@ -420,8 +421,6 @@ class EncoderDecoderModel(PreTrainedModel):
                 Information necessary to initiate the decoder. Can be either:
 
                     - A string, the *model id* of a pretrained model hosted inside a model repo on huggingface.co.
-                      Valid model ids can be located at the root-level, like `bert-base-uncased`, or namespaced under a
-                      user or organization name, like `dbmdz/bert-base-german-cased`.
                     - A path to a *directory* containing model weights saved using
                       [`~PreTrainedModel.save_pretrained`], e.g., `./my_model_directory/`.
                     - A path or url to a *tensorflow index checkpoint file* (e.g, `./tf_model/model.ckpt.index`). In
@@ -448,7 +447,7 @@ class EncoderDecoderModel(PreTrainedModel):
         >>> from transformers import EncoderDecoderModel
 
         >>> # initialize a bert2bert from two pretrained BERT models. Note that the cross-attention layers will be randomly initialized
-        >>> model = EncoderDecoderModel.from_encoder_decoder_pretrained("bert-base-uncased", "bert-base-uncased")
+        >>> model = EncoderDecoderModel.from_encoder_decoder_pretrained("google-bert/bert-base-uncased", "google-bert/bert-base-uncased")
         >>> # saving model after fine-tuning
         >>> model.save_pretrained("./bert2bert")
         >>> # load fine-tuned model
@@ -564,9 +563,9 @@ class EncoderDecoderModel(PreTrainedModel):
         >>> from transformers import EncoderDecoderModel, BertTokenizer
         >>> import torch
 
-        >>> tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        >>> tokenizer = BertTokenizer.from_pretrained("google-bert/bert-base-uncased")
         >>> model = EncoderDecoderModel.from_encoder_decoder_pretrained(
-        ...     "bert-base-uncased", "bert-base-uncased"
+        ...     "google-bert/bert-base-uncased", "google-bert/bert-base-uncased"
         ... )  # initialize Bert2Bert from pre-trained checkpoints
 
         >>> # training
@@ -620,6 +619,8 @@ class EncoderDecoderModel(PreTrainedModel):
             decoder_input_ids = shift_tokens_right(
                 labels, self.config.pad_token_id, self.config.decoder_start_token_id
             )
+            if decoder_attention_mask is None:
+                decoder_attention_mask = decoder_input_ids.new_tensor(decoder_input_ids != self.config.pad_token_id)
 
         # Decode
         decoder_outputs = self.decoder(

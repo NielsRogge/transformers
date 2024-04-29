@@ -45,10 +45,8 @@ logger = logging.get_logger(__name__)
 _CONFIG_FOR_DOC = "TvltConfig"
 _CHECKPOINT_FOR_DOC = "ZinengTang/tvlt-base"
 
-TVLT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "ZinengTang/tvlt-base",
-    # See all TVLT models at https://huggingface.co/ZinengTang/tvlt-base
-]
+
+from ..deprecated._archive_maps import TVLT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 @dataclass
@@ -88,8 +86,8 @@ class TvltModelOutput(ModelOutput):
     audio_label_masks: torch.LongTensor = None
     pixel_ids_restore: torch.LongTensor = None
     audio_ids_restore: torch.LongTensor = None
-    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
-    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
+    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
 
 
 @dataclass
@@ -111,8 +109,8 @@ class TvltDecoderOutput(ModelOutput):
     """
 
     logits: torch.FloatTensor = None
-    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
-    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
+    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
 
 
 @dataclass
@@ -145,8 +143,8 @@ class TvltForPreTrainingOutput(ModelOutput):
     matching_logits: torch.FloatTensor = None
     pixel_logits: torch.FloatTensor = None
     audio_logits: torch.FloatTensor = None
-    hidden_states: Optional[Tuple[torch.FloatTensor]] = None
-    attentions: Optional[Tuple[torch.FloatTensor]] = None
+    hidden_states: Optional[Tuple[torch.FloatTensor, ...]] = None
+    attentions: Optional[Tuple[torch.FloatTensor, ...]] = None
 
 
 def generate_pixel_mask_noise(pixel_values, pixel_mask=None, mask_ratio=0.75):
@@ -560,18 +558,12 @@ class TvltEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(hidden_states, attention_mask, layer_head_mask, output_attentions)
@@ -615,10 +607,6 @@ class TvltPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, TvltEncoder):
-            module.gradient_checkpointing = value
 
 
 TVLT_START_DOCSTRING = r"""
@@ -877,17 +865,11 @@ class TvltDecoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     None,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(hidden_states, output_attentions=output_attentions)

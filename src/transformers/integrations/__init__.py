@@ -17,6 +17,12 @@ from ..utils import _LazyModule
 
 
 _import_structure = {
+    "aqlm": ["replace_with_aqlm_linear"],
+    "awq": [
+        "fuse_awq_modules",
+        "post_init_awq_exllama_modules",
+        "replace_with_awq_linear",
+    ],
     "bitsandbytes": [
         "get_keys_to_not_convert",
         "replace_8bit_linear",
@@ -36,6 +42,7 @@ _import_structure = {
         "set_hf_deepspeed_config",
         "unset_hf_deepspeed_config",
     ],
+    "eetq": ["replace_with_eetq_linear"],
     "integration_utils": [
         "INTEGRATION_TO_CALLBACK",
         "AzureMLCallback",
@@ -43,6 +50,7 @@ _import_structure = {
         "CodeCarbonCallback",
         "CometCallback",
         "DagsHubCallback",
+        "DVCLiveCallback",
         "FlyteCallback",
         "MLflowCallback",
         "NeptuneCallback",
@@ -57,6 +65,7 @@ _import_structure = {
         "is_codecarbon_available",
         "is_comet_available",
         "is_dagshub_available",
+        "is_dvclive_available",
         "is_flyte_deck_standard_available",
         "is_flytekit_available",
         "is_mlflow_available",
@@ -74,9 +83,16 @@ _import_structure = {
         "run_hp_search_wandb",
     ],
     "peft": ["PeftAdapterMixin"],
+    "quanto": ["replace_with_quanto_layers"],
 }
 
 if TYPE_CHECKING:
+    from .aqlm import replace_with_aqlm_linear
+    from .awq import (
+        fuse_awq_modules,
+        post_init_awq_exllama_modules,
+        replace_with_awq_linear,
+    )
     from .bitsandbytes import (
         get_keys_to_not_convert,
         replace_8bit_linear,
@@ -96,6 +112,7 @@ if TYPE_CHECKING:
         set_hf_deepspeed_config,
         unset_hf_deepspeed_config,
     )
+    from .eetq import replace_with_eetq_linear
     from .integration_utils import (
         INTEGRATION_TO_CALLBACK,
         AzureMLCallback,
@@ -103,6 +120,7 @@ if TYPE_CHECKING:
         CodeCarbonCallback,
         CometCallback,
         DagsHubCallback,
+        DVCLiveCallback,
         FlyteCallback,
         MLflowCallback,
         NeptuneCallback,
@@ -117,6 +135,7 @@ if TYPE_CHECKING:
         is_codecarbon_available,
         is_comet_available,
         is_dagshub_available,
+        is_dvclive_available,
         is_flyte_deck_standard_available,
         is_flytekit_available,
         is_mlflow_available,
@@ -134,6 +153,7 @@ if TYPE_CHECKING:
         run_hp_search_wandb,
     )
     from .peft import PeftAdapterMixin
+    from .quanto import replace_with_quanto_layers
 else:
     import sys
 

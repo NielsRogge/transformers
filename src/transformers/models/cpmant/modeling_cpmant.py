@@ -36,10 +36,8 @@ logger = logging.get_logger(__name__)
 _CHECKPOINT_FOR_DOC = "openbmb/cpm-ant-10b"
 _CONFIG_FOR_DOC = "CpmAntConfig"
 
-CPMANT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "openbmb/cpm-ant-10b",
-    # See all CPMAnt models at https://huggingface.co/models?filter=cpmant
-]
+
+from ..deprecated._archive_maps import CPMANT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 class CpmAntLayerNorm(nn.Module):
@@ -536,7 +534,6 @@ class CpmAntPreTrainedModel(PreTrainedModel):
 
     config_class = CpmAntConfig
     base_model_prefix = "cpmant"
-    supports_gradient_checkpointing = True
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -555,10 +552,6 @@ class CpmAntPreTrainedModel(PreTrainedModel):
             module.weight.data.fill_(1.0)
         elif isinstance(module, CpmAntSegmentPositionEmbedding):
             module.relative_attention_bias.data.normal_(mean=0.0, std=self.config.init_std)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, CpmAntEncoder):
-            module.gradient_checkpointing = value
 
 
 CPMANT_START_DOCSTRING = r"""

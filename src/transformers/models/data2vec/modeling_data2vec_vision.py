@@ -57,10 +57,8 @@ _EXPECTED_OUTPUT_SHAPE = [1, 197, 768]
 _IMAGE_CLASS_CHECKPOINT = "facebook/data2vec-vision-base-ft1k"
 _IMAGE_CLASS_EXPECTED_OUTPUT = "remote control, remote"
 
-DATA2VEC_VISION_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "facebook/data2vec-vision-base-ft1k",
-    # See all Data2VecVision models at https://huggingface.co/models?filter=data2vec-vision
-]
+
+from ..deprecated._archive_maps import DATA2VEC_VISION_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 @dataclass
@@ -303,8 +301,8 @@ class Data2VecVisionSelfAttention(nn.Module):
 # Copied from transformers.models.beit.modeling_beit.BeitSelfOutput with Beit->Data2VecVision
 class Data2VecVisionSelfOutput(nn.Module):
     """
-    The residual connection is defined in Data2VecVisionLayer instead of here (as is the case with other models), due
-    to the layernorm applied before each block.
+    The residual connection is defined in Data2VecVisionLayer instead of here (as is the case with other models), due to the
+    layernorm applied before each block.
     """
 
     def __init__(self, config: Data2VecVisionConfig) -> None:
@@ -536,17 +534,11 @@ class Data2VecVisionEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 relative_position_bias = (
@@ -582,6 +574,7 @@ class Data2VecVisionPreTrainedModel(PreTrainedModel):
     base_model_prefix = "data2vec_vision"
     main_input_name = "pixel_values"
     supports_gradient_checkpointing = True
+    _no_split_modules = ["Data2VecVisionLayer"]
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -598,10 +591,6 @@ class Data2VecVisionPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, Data2VecVisionEncoder):
-            module.gradient_checkpointing = value
 
 
 DATA2VEC_VISION_START_DOCSTRING = r"""
@@ -1103,6 +1092,12 @@ class Data2VecVisionForSemanticSegmentation(Data2VecVisionPreTrainedModel):
         self.data2vec_vision = Data2VecVisionModel(config, add_pooling_layer=False)
 
         # FPNs
+        if len(self.config.out_indices) != 4:
+            raise ValueError(
+                "Data2VecVisionForSemanticSegmentation requires config.out_indices to be a list of 4 integers, "
+                "specifying which features to use from the backbone. One can use [3, 5, 7, 11] in case of "
+                "a base-sized architecture."
+            )
         self.fpn1 = nn.Sequential(
             nn.ConvTranspose2d(config.hidden_size, config.hidden_size, kernel_size=2, stride=2),
             nn.BatchNorm2d(config.hidden_size),

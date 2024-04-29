@@ -20,7 +20,6 @@ from typing import Dict, List, Optional, Tuple, Union
 import torch
 import torch.utils.checkpoint
 from torch import nn
-from torch.utils.checkpoint import checkpoint
 
 from ...activations import ACT2FN
 from ...modeling_outputs import (
@@ -50,26 +49,7 @@ logger = logging.get_logger(__name__)
 _CONFIG_FOR_DOC = "Pix2StructConfig"
 
 
-PIX2STRUCT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "google/pix2struct-textcaps-base",
-    "google/pix2struct-textcaps-large",
-    "google/pix2struct-base",
-    "google/pix2struct-large",
-    "google/pix2struct-ai2d-base",
-    "google/pix2struct-ai2d-large",
-    "google/pix2struct-widget-captioning-base",
-    "google/pix2struct-widget-captioning-large",
-    "google/pix2struct-screen2words-base",
-    "google/pix2struct-screen2words-large",
-    "google/pix2struct-docvqa-base",
-    "google/pix2struct-docvqa-large",
-    "google/pix2struct-ocrvqa-base",
-    "google/pix2struct-ocrvqa-large",
-    "google/pix2struct-chartqa-base",
-    "google/pix2struct-inforgraphics-vqa-base",
-    "google/pix2struct-inforgraphics-vqa-large",
-    # See all Pix2StructVision models at https://huggingface.co/models?filter=pix2struct
-]
+from ..deprecated._archive_maps import PIX2STRUCT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Adapted from transformers.models.t5.modeling_t5.T5LayerNorm with T5->Pix2Struct
@@ -343,18 +323,12 @@ class Pix2StructVisionEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(hidden_states, attention_mask, layer_head_mask, output_attentions)
@@ -562,10 +536,6 @@ class Pix2StructVisionModel(Pix2StructPreTrainedModel):
 
         # Initialize weights and apply final processing
         self.post_init()
-
-    def _set_gradient_checkpointing(self, module: Pix2StructVisionEncoder, value: bool = False) -> None:
-        if isinstance(module, Pix2StructVisionEncoder):
-            module.gradient_checkpointing = value
 
     def get_input_embeddings(self):
         return self.embeddings.patch_projection
@@ -1320,10 +1290,6 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
     supports_gradient_checkpointing = True
 
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, (Pix2StructTextAttention, Pix2StructTextModel)):
-            module.gradient_checkpointing = value
-
     def __init__(self, config):
         super().__init__(config)
         self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
@@ -1495,15 +1461,8 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
                         "`use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`..."
                     )
                     use_cache = False
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return tuple(module(*inputs, use_cache, output_attentions))
-
-                    return custom_forward
-
-                layer_outputs = checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.forward,
                     hidden_states,
                     extended_attention_mask,
                     position_bias,
@@ -1513,6 +1472,8 @@ class Pix2StructTextModel(Pix2StructPreTrainedModel):
                     layer_head_mask,
                     cross_attn_layer_head_mask,
                     None,  # past_key_value is always None with gradient checkpointing
+                    use_cache,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(

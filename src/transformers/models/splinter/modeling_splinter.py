@@ -37,13 +37,8 @@ logger = logging.get_logger(__name__)
 _CHECKPOINT_FOR_DOC = "tau/splinter-base"
 _CONFIG_FOR_DOC = "SplinterConfig"
 
-SPLINTER_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "tau/splinter-base",
-    "tau/splinter-base-qass",
-    "tau/splinter-large",
-    "tau/splinter-large-qass",
-    # See all Splinter models at https://huggingface.co/models?filter=splinter
-]
+
+from ..deprecated._archive_maps import SPLINTER_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 class SplinterEmbeddings(nn.Module):
@@ -250,11 +245,18 @@ class SplinterSelfOutput(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->Splinter
+SPLINTER_SELF_ATTENTION_CLASSES = {
+    "eager": SplinterSelfAttention,
+}
+
+
+# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->Splinter,BERT->SPLINTER
 class SplinterAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
-        self.self = SplinterSelfAttention(config, position_embedding_type=position_embedding_type)
+        self.self = SPLINTER_SELF_ATTENTION_CLASSES[config._attn_implementation](
+            config, position_embedding_type=position_embedding_type
+        )
         self.output = SplinterSelfOutput(config)
         self.pruned_heads = set()
 
@@ -459,20 +461,15 @@ class SplinterEncoder(nn.Module):
             past_key_value = past_key_values[i] if past_key_values is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
+                    past_key_value,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(
@@ -543,10 +540,6 @@ class SplinterPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, SplinterEncoder):
-            module.gradient_checkpointing = value
 
 
 SPLINTER_START_DOCSTRING = r"""

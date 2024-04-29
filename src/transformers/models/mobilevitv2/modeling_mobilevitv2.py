@@ -57,10 +57,7 @@ _IMAGE_CLASS_CHECKPOINT = "apple/mobilevitv2-1.0-imagenet1k-256"
 _IMAGE_CLASS_EXPECTED_OUTPUT = "tabby, tabby cat"
 
 
-MOBILEVITV2_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "apple/mobilevitv2-1.0-imagenet1k-256"
-    # See all MobileViTV2 models at https://huggingface.co/models?filter=mobilevitv2
-]
+from ..deprecated._archive_maps import MOBILEVITV2_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Copied from transformers.models.mobilevit.modeling_mobilevit.make_divisible
@@ -582,15 +579,8 @@ class MobileViTV2Encoder(nn.Module):
 
         for i, layer_module in enumerate(self.layer):
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs)
-
-                    return custom_forward
-
-                hidden_states = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                hidden_states = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                 )
             else:
@@ -616,6 +606,7 @@ class MobileViTV2PreTrainedModel(PreTrainedModel):
     base_model_prefix = "mobilevitv2"
     main_input_name = "pixel_values"
     supports_gradient_checkpointing = True
+    _no_split_modules = ["MobileViTV2Layer"]
 
     def _init_weights(self, module: Union[nn.Linear, nn.Conv2d, nn.LayerNorm]) -> None:
         """Initialize the weights"""
@@ -628,10 +619,6 @@ class MobileViTV2PreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, MobileViTV2Encoder):
-            module.gradient_checkpointing = value
 
 
 MOBILEVITV2_START_DOCSTRING = r"""

@@ -59,11 +59,8 @@ logger = logging.get_logger(__name__)
 _CHECKPOINT_FOR_DOC = "google/fnet-base"
 _CONFIG_FOR_DOC = "FNetConfig"
 
-FNET_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "google/fnet-base",
-    "google/fnet-large"
-    # See all FNet models at https://huggingface.co/models?filter=fnet
-]
+
+from ..deprecated._archive_maps import FNET_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Adapted from https://github.com/google-research/google-research/blob/master/f_net/fourier.py
@@ -292,14 +289,7 @@ class FNetEncoder(nn.Module):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(create_custom_forward(layer_module), hidden_states)
+                layer_outputs = self._gradient_checkpointing_func(layer_module.__call__, hidden_states)
             else:
                 layer_outputs = layer_module(hidden_states)
 
@@ -430,10 +420,6 @@ class FNetPreTrainedModel(PreTrainedModel):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, FNetEncoder):
-            module.gradient_checkpointing = value
 
 
 @dataclass

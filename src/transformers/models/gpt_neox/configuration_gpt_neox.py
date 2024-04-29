@@ -20,10 +20,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-GPT_NEOX_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "EleutherAI/gpt-neox-20b": "https://huggingface.co/EleutherAI/gpt-neox-20b/resolve/main/config.json",
-    # See all GPTNeoX models at https://huggingface.co/models?filter=gpt_neox
-}
+
+from ..deprecated._archive_maps import GPT_NEOX_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class GPTNeoXConfig(PretrainedConfig):
@@ -80,12 +78,14 @@ class GPTNeoXConfig(PretrainedConfig):
             speedup at large scales (e.g. 20B).
         rope_scaling (`Dict`, *optional*):
             Dictionary containing the scaling configuration for the RoPE embeddings. Currently supports two scaling
-            strategies: linear and dynamic. Their scaling factor must be an float greater than 1. The expected format
-            is `{"type": strategy name, "factor": scaling factor}`. When using this flag, don't update
+            strategies: linear and dynamic. Their scaling factor must be a float greater than 1. The expected format is
+            `{"type": strategy name, "factor": scaling factor}`. When using this flag, don't update
             `max_position_embeddings` to the expected new maximum. See the following thread for more information on how
             these scaling strategies behave:
             https://www.reddit.com/r/LocalLLaMA/comments/14mrgpr/dynamically_scaled_rope_further_increases/. This is an
             experimental feature, subject to breaking API changes in future versions.
+        attention_bias (`bool`, *optional*, defaults to `True`):
+            Whether to use a bias in the query, key, value and output projection layers during self-attention.
 
         Example:
 
@@ -101,7 +101,9 @@ class GPTNeoXConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config  # doctest: +SKIP
     ```"""
+
     model_type = "gpt_neox"
+    keys_to_ignore_at_inference = ["past_key_values"]
 
     def __init__(
         self,
@@ -125,6 +127,7 @@ class GPTNeoXConfig(PretrainedConfig):
         tie_word_embeddings=False,
         use_parallel_residual=True,
         rope_scaling=None,
+        attention_bias=True,
         **kwargs,
     ):
         super().__init__(bos_token_id=bos_token_id, eos_token_id=eos_token_id, **kwargs)
@@ -146,6 +149,7 @@ class GPTNeoXConfig(PretrainedConfig):
         self.tie_word_embeddings = tie_word_embeddings
         self.use_parallel_residual = use_parallel_residual
         self.rope_scaling = rope_scaling
+        self.attention_bias = attention_bias
         self._rope_scaling_validation()
 
         if self.hidden_size % self.num_attention_heads != 0:
@@ -163,8 +167,7 @@ class GPTNeoXConfig(PretrainedConfig):
 
         if not isinstance(self.rope_scaling, dict) or len(self.rope_scaling) != 2:
             raise ValueError(
-                "`rope_scaling` must be a dictionary with with two fields, `type` and `factor`, "
-                f"got {self.rope_scaling}"
+                "`rope_scaling` must be a dictionary with two fields, `type` and `factor`, " f"got {self.rope_scaling}"
             )
         rope_scaling_type = self.rope_scaling.get("type", None)
         rope_scaling_factor = self.rope_scaling.get("factor", None)
@@ -173,4 +176,4 @@ class GPTNeoXConfig(PretrainedConfig):
                 f"`rope_scaling`'s type field must be one of ['linear', 'dynamic'], got {rope_scaling_type}"
             )
         if rope_scaling_factor is None or not isinstance(rope_scaling_factor, float) or rope_scaling_factor <= 1.0:
-            raise ValueError(f"`rope_scaling`'s factor field must be an float > 1, got {rope_scaling_factor}")
+            raise ValueError(f"`rope_scaling`'s factor field must be a float > 1, got {rope_scaling_factor}")

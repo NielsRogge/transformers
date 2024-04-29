@@ -26,13 +26,8 @@ from ...utils.backbone_utils import BackboneConfigMixin, get_aligned_output_feat
 
 logger = logging.get_logger(__name__)
 
-BEIT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "microsoft/beit-base-patch16-224-pt22k": (
-        "https://huggingface.co/microsoft/beit-base-patch16-224-pt22k/resolve/main/config.json"
-    ),
-    # See all BEiT models at https://huggingface.co/models?filter=beit
-}
 
+from ..deprecated._archive_maps import BEIT_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 class BeitConfig(BackboneConfigMixin, PretrainedConfig):
     r"""
@@ -102,16 +97,19 @@ class BeitConfig(BackboneConfigMixin, PretrainedConfig):
         out_features (`List[str]`, *optional*):
             If used as backbone, list of features to output. Can be any of `"stem"`, `"stage1"`, `"stage2"`, etc.
             (depending on how many stages the model has). If unset and `out_indices` is set, will default to the
-            corresponding stages. If unset and `out_indices` is unset, will default to the last stage.
+            corresponding stages. If unset and `out_indices` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
         out_indices (`List[int]`, *optional*):
             If used as backbone, list of indices of features to output. Can be any of 0, 1, 2, etc. (depending on how
             many stages the model has). If unset and `out_features` is set, will default to the corresponding stages.
-            If unset and `out_features` is unset, will default to the last stage.
-
-            Can also indicate the indices of the feature maps to use for semantic segmentation.
+            If unset and `out_features` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
         add_fpn (`bool`, *optional*, defaults to `False`):
-            Whether to add a FPN as part of the backbone.
-        reshape_hidden_states (`<fill_type>`, *optional*, defaults to `True`): <fill_docstring>
+            Whether to add a FPN as part of the backbone. Only relevant for [`BeitBackbone`].
+        reshape_hidden_states (`bool`, *optional*, defaults to `True`):
+            Whether to reshape the feature maps to 4D tensors of shape `(batch_size, hidden_size, height, width)` in
+            case the model is used as backbone. If `False`, the feature maps will be 3D tensors of shape `(batch_size,
+            seq_len, hidden_size)`. Only relevant for [`BeitBackbone`].
 
     Example:
 
@@ -127,6 +125,7 @@ class BeitConfig(BackboneConfigMixin, PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "beit"
 
     def __init__(
@@ -204,11 +203,7 @@ class BeitConfig(BackboneConfigMixin, PretrainedConfig):
                 FutureWarning,
             )
             out_indices = kwargs.pop("segmentation_indices")
-        elif out_indices == [3, 5, 7, 11]:
-            out_features = ["stage4", "stage6", "stage8", "stage12"]
-        elif out_indices == [7, 11, 15, 23]:
-            out_features = ["stage8", "stage12", "stage16", "stage24"]
-
+            
         # backbone attributes
         self.stage_names = ["stem"] + [f"stage{idx}" for idx in range(1, self.num_hidden_layers + 1)]
         self._out_features, self._out_indices = get_aligned_output_features_output_indices(

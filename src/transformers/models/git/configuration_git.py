@@ -22,9 +22,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-GIT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "microsoft/git-base": "https://huggingface.co/microsoft/git-base/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import GIT_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class GitVisionConfig(PretrainedConfig):
@@ -188,6 +187,7 @@ class GitConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "git"
 
     def __init__(

@@ -47,10 +47,7 @@ _CHECKPOINT_FOR_DOC = "kakaobrain/align-base"
 _CONFIG_FOR_DOC = "AlignConfig"
 
 
-ALIGN_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "kakaobrain/align-base",
-    # See all ALIGN models at https://huggingface.co/models?filter=align
-]
+from ..deprecated._archive_maps import ALIGN_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 ALIGN_START_DOCSTRING = r"""
@@ -403,7 +400,7 @@ class AlignVisionExpansionLayer(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.efficientnet.modeling_efficientnet.EfficientNetDepthwiseLayer with with EfficientNet->AlignVision
+# Copied from transformers.models.efficientnet.modeling_efficientnet.EfficientNetDepthwiseLayer with EfficientNet->AlignVision
 class AlignVisionDepthwiseLayer(nn.Module):
     r"""
     This corresponds to the depthwise convolution phase of each block in the original implementation.
@@ -443,7 +440,7 @@ class AlignVisionDepthwiseLayer(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.efficientnet.modeling_efficientnet.EfficientNetSqueezeExciteLayer with with EfficientNet->AlignVision
+# Copied from transformers.models.efficientnet.modeling_efficientnet.EfficientNetSqueezeExciteLayer with EfficientNet->AlignVision
 class AlignVisionSqueezeExciteLayer(nn.Module):
     r"""
     This corresponds to the Squeeze and Excitement phase of each block in the original implementation.
@@ -886,11 +883,18 @@ class AlignTextSelfOutput(nn.Module):
         return hidden_states
 
 
-# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->AlignText
+ALIGN_TEXT_SELF_ATTENTION_CLASSES = {
+    "eager": AlignTextSelfAttention,
+}
+
+
+# Copied from transformers.models.bert.modeling_bert.BertAttention with Bert->AlignText,BERT->ALIGN_TEXT
 class AlignTextAttention(nn.Module):
     def __init__(self, config, position_embedding_type=None):
         super().__init__()
-        self.self = AlignTextSelfAttention(config, position_embedding_type=position_embedding_type)
+        self.self = ALIGN_TEXT_SELF_ATTENTION_CLASSES[config._attn_implementation](
+            config, position_embedding_type=position_embedding_type
+        )
         self.output = AlignTextSelfOutput(config)
         self.pruned_heads = set()
 
@@ -1095,20 +1099,15 @@ class AlignTextEncoder(nn.Module):
             past_key_value = past_key_values[i] if past_key_values is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     attention_mask,
                     layer_head_mask,
                     encoder_hidden_states,
                     encoder_attention_mask,
+                    past_key_value,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(
@@ -1196,10 +1195,6 @@ class AlignPreTrainedModel(PreTrainedModel):
         if isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, (AlignTextModel, AlignVisionModel)):
-            module.gradient_checkpointing = value
 
 
 @add_start_docstrings(
@@ -1335,6 +1330,7 @@ class AlignTextModel(AlignPreTrainedModel):
 class AlignVisionModel(AlignPreTrainedModel):
     config_class = AlignVisionConfig
     main_input_name = "pixel_values"
+    supports_gradient_checkpointing = False
 
     def __init__(self, config: AlignVisionConfig):
         super().__init__(config)

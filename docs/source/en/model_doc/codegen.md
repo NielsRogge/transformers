@@ -40,7 +40,7 @@ The original code can be found [here](https://github.com/salesforce/codegen).
     * `mono`: Initialized with `multi`, then further pre-trained on Python data
 * For example, `Salesforce/codegen-350M-mono` offers a 350 million-parameter checkpoint pre-trained sequentially on the Pile, multiple programming languages, and Python.
 
-## How to use
+## Usage example
 
 ```python
 >>> from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -60,7 +60,7 @@ def hello_world():
 hello_world()
 ```
 
-## Documentation resources
+## Resources
 
 - [Causal language modeling task guide](../tasks/language_modeling)
 
@@ -72,6 +72,7 @@ hello_world()
 ## CodeGenTokenizer
 
 [[autodoc]] CodeGenTokenizer
+    - create_token_type_ids_from_sequences
     - save_vocabulary
 
 ## CodeGenTokenizerFast

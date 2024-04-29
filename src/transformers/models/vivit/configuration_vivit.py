@@ -20,12 +20,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-VIVIT_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "google/vivit-b-16x2-kinetics400": (
-        "https://huggingface.co/google/vivit-b-16x2-kinetics400/resolve/main/config.json"
-    ),
-    # See all Vivit models at https://huggingface.co/models?filter=vivit
-}
+
+from ..deprecated._archive_maps import VIVIT_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class VivitConfig(PretrainedConfig):
@@ -83,6 +79,7 @@ class VivitConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "vivit"
 
     def __init__(

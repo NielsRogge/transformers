@@ -36,10 +36,8 @@ logger = logging.get_logger(__name__)
 _CHECKPOINT_FOR_DOC = "google/vivit-b-16x2-kinetics400"
 _CONFIG_FOR_DOC = "VivitConfig"
 
-VIVIT_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "google/vivit-b-16x2-kinetics400",
-    # See all Vivit models at https://huggingface.co/models?filter=vivit
-]
+
+from ..deprecated._archive_maps import VIVIT_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 class VivitTubeletEmbeddings(nn.Module):
@@ -338,17 +336,11 @@ class VivitEncoder(nn.Module):
             layer_head_mask = head_mask[i] if head_mask is not None else None
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        return module(*inputs, output_attentions)
-
-                    return custom_forward
-
-                layer_outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(layer_module),
+                layer_outputs = self._gradient_checkpointing_func(
+                    layer_module.__call__,
                     hidden_states,
                     layer_head_mask,
+                    output_attentions,
                 )
             else:
                 layer_outputs = layer_module(hidden_states, layer_head_mask, output_attentions)
@@ -395,6 +387,7 @@ class VivitPreTrainedModel(PreTrainedModel):
     base_model_prefix = "vivit"
     main_input_name = "pixel_values"
     supports_gradient_checkpointing = True
+    _no_split_modules = []
 
     def _init_weights(self, module):
         """Initialize the weights"""
@@ -413,10 +406,6 @@ class VivitPreTrainedModel(PreTrainedModel):
             module.weight.data.fill_(1.0)
         elif isinstance(module, nn.Parameter):
             module.data.normal_(mean=0.0, std=self.config.initializer_range)
-
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, VivitEncoder):
-            module.gradient_checkpointing = value
 
 
 VIVIT_START_DOCSTRING = r"""

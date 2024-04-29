@@ -21,9 +21,8 @@ from ...utils import logging
 
 logger = logging.get_logger(__name__)
 
-VITS_PRETRAINED_CONFIG_ARCHIVE_MAP = {
-    "facebook/mms-tts-eng": "https://huggingface.co/facebook/mms-tts-eng/resolve/main/config.json",
-}
+
+from ..deprecated._archive_maps import VITS_PRETRAINED_CONFIG_ARCHIVE_MAP  # noqa: F401, E402
 
 
 class VitsConfig(PretrainedConfig):
@@ -150,6 +149,7 @@ class VitsConfig(PretrainedConfig):
     >>> # Accessing the model configuration
     >>> configuration = model.config
     ```"""
+
     model_type = "vits"
 
     def __init__(

@@ -43,10 +43,8 @@ logger = logging.get_logger(__name__)
 _CHECKPOINT_FOR_DOC = "edbeeching/decision-transformer-gym-hopper-medium"
 _CONFIG_FOR_DOC = "DecisionTransformerConfig"
 
-DECISION_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST = [
-    "edbeeching/decision-transformer-gym-hopper-medium",
-    # See all DecisionTransformer models at https://huggingface.co/models?filter=decision_transformer
-]
+
+from ..deprecated._archive_maps import DECISION_TRANSFORMER_PRETRAINED_MODEL_ARCHIVE_LIST  # noqa: F401, E402
 
 
 # Copied from transformers.models.gpt2.modeling_gpt2.load_tf_weights_in_gpt2
@@ -110,7 +108,7 @@ def load_tf_weights_in_gpt2(model, config, gpt2_checkpoint_path):
 class DecisionTransformerGPT2Attention(nn.Module):
     def __init__(self, config, is_cross_attention=False, layer_idx=None):
         super().__init__()
-
+        self.config = config
         max_positions = config.max_position_embeddings
         self.register_buffer(
             "bias",
@@ -148,6 +146,7 @@ class DecisionTransformerGPT2Attention(nn.Module):
 
         self.attn_dropout = nn.Dropout(config.attn_pdrop)
         self.resid_dropout = nn.Dropout(config.resid_pdrop)
+        self.is_causal = True
 
         self.pruned_heads = set()
 
@@ -185,7 +184,7 @@ class DecisionTransformerGPT2Attention(nn.Module):
             mask_value = torch.finfo(attn_weights.dtype).min
             # Need to be a tensor, otherwise we get error: `RuntimeError: expected scalar type float but found double`.
             # Need to be on the same device, otherwise `RuntimeError: ..., x and y to be on the same device`
-            mask_value = torch.full([], mask_value, dtype=attn_weights.dtype).to(attn_weights.device)
+            mask_value = torch.full([], mask_value, dtype=attn_weights.dtype, device=attn_weights.device)
             attn_weights = torch.where(causal_mask, attn_weights.to(attn_weights.dtype), mask_value)
 
         if attention_mask is not None:
@@ -348,6 +347,7 @@ class DecisionTransformerGPT2MLP(nn.Module):
 
 # Copied from transformers.models.gpt2.modeling_gpt2.GPT2Block with GPT2->DecisionTransformerGPT2
 class DecisionTransformerGPT2Block(nn.Module):
+    # Ignore copy
     def __init__(self, config, layer_idx=None):
         super().__init__()
         hidden_size = config.hidden_size
@@ -469,10 +469,6 @@ class DecisionTransformerGPT2PreTrainedModel(PreTrainedModel):
                 # Special Scaled Initialization --> There are 2 Layer Norms per Transformer Block
                 p.data.normal_(mean=0.0, std=(self.config.initializer_range / math.sqrt(2 * self.config.n_layer)))
 
-    def _set_gradient_checkpointing(self, module, value=False):
-        if isinstance(module, DecisionTransformerGPT2Model):
-            module.gradient_checkpointing = value
-
 
 class DecisionTransformerGPT2Model(DecisionTransformerGPT2PreTrainedModel):
     def __init__(self, config):
@@ -503,7 +499,6 @@ class DecisionTransformerGPT2Model(DecisionTransformerGPT2PreTrainedModel):
     def set_input_embeddings(self, new_embeddings):
         self.wte = new_embeddings
 
-    # Copied from transformers.models.gpt2.modeling_gpt2.GPT2Model.forward
     def forward(
         self,
         input_ids: Optional[torch.LongTensor] = None,
@@ -554,7 +549,7 @@ class DecisionTransformerGPT2Model(DecisionTransformerGPT2PreTrainedModel):
             position_ids = torch.arange(past_length, input_shape[-1] + past_length, dtype=torch.long, device=device)
             position_ids = position_ids.unsqueeze(0)
 
-        # GPT2Attention mask.
+        # Attention mask.
         if attention_mask is not None:
             if batch_size <= 0:
                 raise ValueError("batch_size has to be defined and > 0")
@@ -631,22 +626,16 @@ class DecisionTransformerGPT2Model(DecisionTransformerGPT2PreTrainedModel):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
             if self.gradient_checkpointing and self.training:
-
-                def create_custom_forward(module):
-                    def custom_forward(*inputs):
-                        # None for past_key_value
-                        return module(*inputs, use_cache, output_attentions)
-
-                    return custom_forward
-
-                outputs = torch.utils.checkpoint.checkpoint(
-                    create_custom_forward(block),
+                outputs = self._gradient_checkpointing_func(
+                    block.__call__,
                     hidden_states,
                     None,
                     attention_mask,
                     head_mask[i],
                     encoder_hidden_states,
                     encoder_attention_mask,
+                    use_cache,
+                    output_attentions,
                 )
             else:
                 outputs = block(

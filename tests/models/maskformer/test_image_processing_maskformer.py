@@ -297,8 +297,8 @@ class MaskFormerImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase)
         self.assertEqual(len(inputs["mask_labels"]), 2)
         self.assertEqual(inputs["mask_labels"][0].shape, (2, 512, 512))
         self.assertEqual(inputs["mask_labels"][1].shape, (4, 512, 512))
-        self.assertEquals(inputs["mask_labels"][0].sum().item(), 41527.0)
-        self.assertEquals(inputs["mask_labels"][1].sum().item(), 26259.0)
+        self.assertEqual(inputs["mask_labels"][0].sum().item(), 41527.0)
+        self.assertEqual(inputs["mask_labels"][1].sum().item(), 26259.0)
 
     def test_integration_semantic_segmentation(self):
         # load 2 images and corresponding semantic annotations from the hub
@@ -339,8 +339,8 @@ class MaskFormerImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase)
         self.assertEqual(len(inputs["mask_labels"]), 2)
         self.assertEqual(inputs["mask_labels"][0].shape, (3, 512, 512))
         self.assertEqual(inputs["mask_labels"][1].shape, (8, 512, 512))
-        self.assertEquals(inputs["mask_labels"][0].sum().item(), 170200.0)
-        self.assertEquals(inputs["mask_labels"][1].sum().item(), 257036.0)
+        self.assertEqual(inputs["mask_labels"][0].sum().item(), 170200.0)
+        self.assertEqual(inputs["mask_labels"][1].sum().item(), 257036.0)
 
     def test_integration_panoptic_segmentation(self):
         # load 2 images and corresponding panoptic annotations from the hub
@@ -391,21 +391,17 @@ class MaskFormerImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase)
 
         # verify the class labels
         self.assertEqual(len(inputs["class_labels"]), 2)
-        # fmt: off
-        expected_class_labels = torch.tensor([4, 17, 32, 42, 42, 42, 42, 42, 42, 42, 32, 12, 12, 12, 12, 12, 42, 42, 12, 12, 12, 42, 12, 12, 12, 12, 12, 3, 12, 12, 12, 12, 42, 42, 42, 12, 42, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 5, 12, 12, 12, 12, 12, 12, 12, 0, 43, 43, 43, 96, 43, 104, 43, 31, 125, 31, 125, 138, 87, 125, 149, 138, 125, 87, 87])  # noqa: E231
-        # fmt: on
+        expected_class_labels = torch.tensor([4, 17, 32, 42, 42, 42, 42, 42, 42, 42, 32, 12, 12, 12, 12, 12, 42, 42, 12, 12, 12, 42, 12, 12, 12, 12, 12, 3, 12, 12, 12, 12, 42, 42, 42, 12, 42, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 5, 12, 12, 12, 12, 12, 12, 12, 0, 43, 43, 43, 96, 43, 104, 43, 31, 125, 31, 125, 138, 87, 125, 149, 138, 125, 87, 87])  # fmt: skip
         self.assertTrue(torch.allclose(inputs["class_labels"][0], torch.tensor(expected_class_labels)))
-        # fmt: off
-        expected_class_labels = torch.tensor([19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 67, 82, 19, 19, 17, 19, 19, 19, 19, 19, 19, 19, 19, 19, 12, 12, 42, 12, 12, 12, 12, 3, 14, 12, 12, 12, 12, 12, 12, 12, 12, 14, 5, 12, 12, 0, 115, 43, 43, 115, 43, 43, 43, 8, 8, 8, 138, 138, 125, 143])  # noqa: E231
-        # fmt: on
+        expected_class_labels = torch.tensor([19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 67, 82, 19, 19, 17, 19, 19, 19, 19, 19, 19, 19, 19, 19, 12, 12, 42, 12, 12, 12, 12, 3, 14, 12, 12, 12, 12, 12, 12, 12, 12, 14, 5, 12, 12, 0, 115, 43, 43, 115, 43, 43, 43, 8, 8, 8, 138, 138, 125, 143])  # fmt: skip
         self.assertTrue(torch.allclose(inputs["class_labels"][1], expected_class_labels))
 
         # verify the mask labels
         self.assertEqual(len(inputs["mask_labels"]), 2)
         self.assertEqual(inputs["mask_labels"][0].shape, (79, 512, 711))
         self.assertEqual(inputs["mask_labels"][1].shape, (61, 512, 711))
-        self.assertEquals(inputs["mask_labels"][0].sum().item(), 315193.0)
-        self.assertEquals(inputs["mask_labels"][1].sum().item(), 350747.0)
+        self.assertEqual(inputs["mask_labels"][0].sum().item(), 315193.0)
+        self.assertEqual(inputs["mask_labels"][1].sum().item(), 350747.0)
 
     def test_binary_mask_to_rle(self):
         fake_binary_mask = np.zeros((20, 50))
