@@ -1,7 +1,9 @@
 """
 Fine-tune Idefics2 by tweaking the `Seq2SeqTrainer` class.
 
-One can run the script using `CUDA_VISIBLE_DEVICES=3 python src/transformers/models/idefics2/fine_tune_idefics2.py`.
+First set the CUDA_VISIBLE_DEVICES environment variable to the GPUs you want to use, e.g., `export CUDA_VISIBLE_DEVICES=1,2`.
+
+One can run the script using `python src/transformers/models/idefics2/fine_tune_idefics2.py`.
 """
 
 import json
@@ -31,6 +33,14 @@ from transformers import (
 DEVICE = "cuda:0"
 USE_LORA = False
 USE_QLORA = True
+PROMPT_LENGTH = 79
+MAX_LENGTH = 768
+
+import os
+
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["WANDB_PROJECT"] = "idefics2"
 
 ## Load model
 
@@ -112,7 +122,7 @@ class CustomDataset(Dataset):
         """
         Convert an ordered JSON object into a token sequence
         """
-        if type(obj) == dict:
+        if isinstance(obj, dict):
             if len(obj) == 1 and "text_sequence" in obj:
                 return obj["text_sequence"]
             else:
@@ -130,7 +140,7 @@ class CustomDataset(Dataset):
                         + rf"</s_{k}>"
                     )
                 return output
-        elif type(obj) == list:
+        elif isinstance(obj, list):
             return r"<sep/>".join(
                 [self.json2token(item, update_special_tokens_for_json_key, sort_json_key) for item in obj]
             )
@@ -165,6 +175,7 @@ eval_dataset = CustomDataset(hf_dataset=dataset, split="validation")
 
 ## Define data collator
 
+
 class MyDataCollator:
     def __init__(self, processor):
         self.processor = processor
@@ -183,26 +194,29 @@ class MyDataCollator:
                     "content": [
                         {"type": "text", "text": "Extract JSON."},
                         {"type": "image"},
-                    ]
+                    ],
                 },
-                {
-                    "role": "assistant",
-                    "content": [
-                        {"type": "text", "text": ground_truth}
-                    ]
-                }
+                {"role": "assistant", "content": [{"type": "text", "text": ground_truth}]},
             ]
             text = processor.apply_chat_template(messages, add_generation_prompt=False)
             texts.append(text.strip())
             images.append([image])
 
-        batch = processor(text=texts, images=images, padding="max_length", max_length=200, truncation=True, return_tensors="pt", )
+        batch = processor(
+            text=texts,
+            images=images,
+            padding="max_length",
+            max_length=MAX_LENGTH,
+            truncation=True,
+            return_tensors="pt",
+        )
 
         labels = batch["input_ids"].clone()
         labels[labels == processor.tokenizer.pad_token_id] = self.image_token_id
         batch["labels"] = labels
 
         return batch
+
 
 data_collator = MyDataCollator(processor)
 
@@ -251,10 +265,15 @@ def compute_metrics(eval_preds):
     preds, labels = eval_preds
     if isinstance(preds, tuple):
         preds = preds[0]
+
+    # Strip the prompt from the labels
+    labels = labels[:, PROMPT_LENGTH:]
+
     # Replace -100s used for padding as we can't decode them
-    preds = np.where(preds != -100, preds, processor.tokenizer.pad_token_id)
-    decoded_preds = processor.batch_decode(preds, skip_special_tokens=True)
     labels = np.where(labels != -100, labels, processor.tokenizer.pad_token_id)
+    preds = np.where(preds != -100, preds, processor.tokenizer.pad_token_id)
+    # Decode back into text, skipping special tokens like padding and image tokens
+    decoded_preds = processor.batch_decode(preds, skip_special_tokens=True)
     decoded_labels = processor.batch_decode(labels, skip_special_tokens=True)
 
     for pred, target in zip(decoded_preds, decoded_labels):
@@ -316,11 +335,11 @@ def compute_metrics(eval_preds):
 
 ## Define Training Arguments and Trainer
 
-generation_config = GenerationConfig.from_pretrained("HuggingFaceM4/idefics2-8b", max_new_tokens=200)
+generation_config = GenerationConfig.from_pretrained("HuggingFaceM4/idefics2-8b", max_new_tokens=MAX_LENGTH)
 
 training_args = Seq2SeqTrainingArguments(
     num_train_epochs=5,
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=2,
     per_device_eval_batch_size=8,
     gradient_accumulation_steps=8,
     warmup_steps=50,
@@ -335,7 +354,7 @@ training_args = Seq2SeqTrainingArguments(
     fp16=True,
     # push_to_hub_model_id="idefics2-8b-docvqa-finetuned-tutorial",
     remove_unused_columns=False,
-    report_to="none",
+    report_to="wandb",
     # eval_do_concat_batches=False,
     predict_with_generate=True,
     generation_config=generation_config,
@@ -445,9 +464,8 @@ class Idefics2Trainer(Seq2SeqTrainer):
 
         generated_tokens = self.model.generate(**custom_inputs, **gen_kwargs)
 
-        # TODO Strip the prompt from the generated_tokens
-        # Would require an update as well to the compute_metrics function to adjust the labels
-        # generated_tokens = generated_tokens[:, custom_inputs["input_ids"].size(1) :]
+        # Strip the prompt from the generated_tokens
+        generated_tokens = generated_tokens[:, PROMPT_LENGTH:]
 
         # Temporary hack to ensure the generation config is not initialized for each iteration of the evaluation loop
         # TODO: remove this hack when the legacy code that initializes generation_config from a model config is
