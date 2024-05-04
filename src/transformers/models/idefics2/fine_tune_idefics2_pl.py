@@ -190,7 +190,7 @@ def train_collate_fn(examples):
         texts.append(text.strip())
         images.append([image])
 
-    batch = processor(text=texts, images=images, padding=True, truncation=True, max_length=512, return_tensors="pt")
+    batch = processor(text=texts, images=images, padding=True, truncation=True, max_length=768, return_tensors="pt")
 
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = image_token_id
@@ -267,19 +267,18 @@ class Idefics2ModelPLModule(L.LightningModule):
         input_ids, attention_mask, pixel_values, pixel_attention_mask, answers = batch
 
         # autoregressively generate token IDs
-        generated_ids = model.generate(input_ids=input_ids, attention_mask=attention_mask,
+        generated_ids = self.model.generate(input_ids=input_ids, attention_mask=attention_mask,
                                        pixel_values=pixel_values, pixel_attention_mask=pixel_attention_mask,
                                        max_new_tokens=768)
         # turn them back into text, chopping of the prompt
         # important: we don't skip special tokens here, because we want to see them in the output
-        generated_texts = processor.batch_decode(generated_ids[:, input_ids.size(1):])
+        generated_texts = self.processor.batch_decode(generated_ids[:, input_ids.size(1):])
     
         predictions = []
         for seq in generated_texts:
             seq = seq.replace(self.processor.tokenizer.eos_token, "")
+            seq = seq.replace("<end_of_utterance>", "")
             seq = seq.replace(self.processor.tokenizer.pad_token, "")
-            seq = seq.replace(self.processor.tokenizer.pad_token, "")
-            # seq = re.sub(r"<.*?>", "", seq, count=1).strip()  # remove first task start token
             predictions.append(seq)
 
         scores = []
