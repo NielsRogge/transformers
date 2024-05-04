@@ -190,7 +190,7 @@ def train_collate_fn(examples):
         texts.append(text.strip())
         images.append([image])
 
-    batch = processor(text=texts, images=images, return_tensors="pt", padding=True)
+    batch = processor(text=texts, images=images, padding=True, truncation=True, max_length=512, return_tensors="pt")
 
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = image_token_id
@@ -227,7 +227,7 @@ def eval_collate_fn(examples):
         texts.append(text.strip())
         answers.append(ground_truth)
 
-    batch = processor(text=texts, images=images, return_tensors="pt", padding=True)
+    batch = processor(text=texts, images=images, return_tensors="pt", padding=True) 
 
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
@@ -276,7 +276,9 @@ class Idefics2ModelPLModule(L.LightningModule):
     
         predictions = []
         for seq in generated_texts:
-            seq = seq.replace(self.processor.tokenizer.eos_token, "").replace(self.processor.tokenizer.pad_token, "")
+            seq = seq.replace(self.processor.tokenizer.eos_token, "")
+            seq = seq.replace(self.processor.tokenizer.pad_token, "")
+            seq = seq.replace(self.processor.tokenizer.pad_token, "")
             # seq = re.sub(r"<.*?>", "", seq, count=1).strip()  # remove first task start token
             predictions.append(seq)
 
@@ -345,7 +347,7 @@ trainer = L.Trainer(
         # val_check_interval=config.get("val_check_interval"),
         check_val_every_n_epoch=config.get("check_val_every_n_epoch"),
         gradient_clip_val=config.get("gradient_clip_val"),
-        precision="16-mixed", # we'll use mixed precision
+        precision=16, # we'll use mixed precision
         num_sanity_val_steps=0,
         logger=wandb_logger,
         callbacks=[PushToHubCallback(), early_stop_callback],
