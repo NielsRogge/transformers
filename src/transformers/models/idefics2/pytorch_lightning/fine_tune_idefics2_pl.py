@@ -1,11 +1,11 @@
 import json
 import random
-from typing import Any, List, Dict
+from typing import Any, Dict
 import re
 from nltk import edit_distance
 
 from datasets import load_dataset
-from peft import LoraConfig
+from peft import LoraConfig, prepare_model_for_kbit_training, get_peft_model
 from transformers import AutoProcessor, BitsAndBytesConfig, Idefics2ForConditionalGeneration
 
 import torch
@@ -18,7 +18,10 @@ from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
-wandb_logger = WandbLogger(project="Idefics2-PL", name="demo-run-cord")
+wandb_logger = WandbLogger(project="Idefics2-PL", name="demo-run-cord-no-special-tokens")
+
+MAX_LENGTH = 768
+MODEL_ID = "nielsr/idefics2-cord-demo-v3"
 
 ## load dataset
 
@@ -26,14 +29,6 @@ dataset = load_dataset("naver-clova-ix/cord-v2")
 
 ## load model
 
-lora_config = LoraConfig(
-    r=8,
-    lora_alpha=8,
-    lora_dropout=0.1,
-    target_modules='.*(text_model|modality_projection|perceiver_resampler).*(down_proj|gate_proj|up_proj|k_proj|q_proj|v_proj|o_proj).*$',
-    use_dora=False,
-    init_lora_weights="gaussian"
-)
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
@@ -45,14 +40,22 @@ model = Idefics2ForConditionalGeneration.from_pretrained(
     torch_dtype=torch.float16,
     quantization_config=bnb_config,
 )
-model.add_adapter(lora_config)
-model.enable_adapters()
+# apply PEFT
+lora_config = LoraConfig(
+    r=8,
+    lora_alpha=8,
+    lora_dropout=0.1,
+    target_modules=".*(text_model|modality_projection|perceiver_resampler).*(down_proj|gate_proj|up_proj|k_proj|q_proj|v_proj|o_proj).*$",
+    use_dora=False,
+    init_lora_weights="gaussian",
+)
+
+model = prepare_model_for_kbit_training(model)
+model = get_peft_model(model, lora_config)
 
 ## Create a PyTorch Dataset
 
 processor = AutoProcessor.from_pretrained("HuggingFaceM4/idefics2-8b", do_image_splitting=False)
-
-added_tokens = []
 
 
 class Idefics2Dataset(Dataset):
@@ -111,32 +114,19 @@ class Idefics2Dataset(Dataset):
                 else:
                     keys = obj.keys()
                 for k in keys:
-                    if update_special_tokens_for_json_key:
-                        self.add_tokens([fr"<s_{k}>", fr"</s_{k}>"])
                     output += (
                         fr"<s_{k}>"
-                        + self.json2token(obj[k], update_special_tokens_for_json_key, sort_json_key)
+                        + self.json2token(obj[k], sort_json_key)
                         + fr"</s_{k}>"
                     )
                 return output
         elif type(obj) == list:
             return r"<sep/>".join(
-                [self.json2token(item, update_special_tokens_for_json_key, sort_json_key) for item in obj]
+                [self.json2token(item, sort_json_key) for item in obj]
             )
         else:
             obj = str(obj)
-            if f"<{obj}/>" in added_tokens:
-                obj = f"<{obj}/>"  # for categorical special tokens
             return obj
-    
-    def add_tokens(self, list_of_tokens: List[str]):
-        """
-        Add special tokens to tokenizer and resize the token embeddings of the decoder
-        """
-        newly_added_num = processor.tokenizer.add_tokens(list_of_tokens)
-        if newly_added_num > 0:
-            model.resize_token_embeddings(len(processor.tokenizer))
-            added_tokens.extend(list_of_tokens)
     
     def __len__(self) -> int:
         return self.dataset_length
@@ -190,7 +180,7 @@ def train_collate_fn(examples):
         texts.append(text.strip())
         images.append([image])
 
-    batch = processor(text=texts, images=images, padding=True, truncation=True, max_length=768, return_tensors="pt")
+    batch = processor(text=texts, images=images, padding=True, truncation=True, max_length=MAX_LENGTH, return_tensors="pt")
 
     labels = batch["input_ids"].clone()
     labels[labels == processor.tokenizer.pad_token_id] = image_token_id
@@ -269,23 +259,14 @@ class Idefics2ModelPLModule(L.LightningModule):
         # autoregressively generate token IDs
         generated_ids = self.model.generate(input_ids=input_ids, attention_mask=attention_mask,
                                        pixel_values=pixel_values, pixel_attention_mask=pixel_attention_mask,
-                                       max_new_tokens=768)
+                                       max_new_tokens=MAX_LENGTH)
         # turn them back into text, chopping of the prompt
         # important: we don't skip special tokens here, because we want to see them in the output
-        generated_texts = self.processor.batch_decode(generated_ids[:, input_ids.size(1):])
-    
-        predictions = []
-        for seq in generated_texts:
-            seq = seq.replace(self.processor.tokenizer.eos_token, "")
-            seq = seq.replace("<end_of_utterance>", "")
-            seq = seq.replace(self.processor.tokenizer.pad_token, "")
-            predictions.append(seq)
+        predictions = self.processor.batch_decode(generated_ids[:, input_ids.size(1):], skip_special_tokens=True)
 
         scores = []
         for pred, answer in zip(predictions, answers):
             pred = re.sub(r"(?:(?<=>) | (?=</s_))", "", pred)
-            answer = answer.replace(self.processor.tokenizer.eos_token, "") 
-
             scores.append(edit_distance(pred, answer) / max(len(pred), len(answer)))
 
             if self.config.get("verbose", False) and len(scores) == 1:
@@ -313,6 +294,7 @@ config = {"max_epochs": 10,
           # "val_check_interval": 0.2, # how many times we want to validate during an epoch
           "check_val_every_n_epoch": 1,
           "gradient_clip_val": 1.0,
+          "accumulate_grad_batches": 8,
           "lr": 1e-4,
           "batch_size": 4,
           # "seed":2022,
@@ -327,26 +309,26 @@ model_module = Idefics2ModelPLModule(config, processor, model)
 class PushToHubCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         print(f"Pushing model to the hub, epoch {trainer.current_epoch}")
-        pl_module.model.push_to_hub("nielsr/idefics2-cord-demo",
+        pl_module.model.push_to_hub(MODEL_ID,
                                     commit_message=f"Training in progress, epoch {trainer.current_epoch}")
 
     def on_train_end(self, trainer, pl_module):
         print(f"Pushing model to the hub after training")
-        pl_module.processor.push_to_hub("nielsr/idefics2-cord-demo",
+        pl_module.processor.push_to_hub(MODEL_ID,
                                     commit_message=f"Training done")
-        pl_module.model.push_to_hub("nielsr/idefics2-cord-demo",
+        pl_module.model.push_to_hub(MODEL_ID,
                                     commit_message=f"Training done")
 
 early_stop_callback = EarlyStopping(monitor="val_edit_distance", patience=3, verbose=False, mode="min")
 
 trainer = L.Trainer(
         accelerator="gpu",
-        devices="1",
+        devices=[0],
         max_epochs=config.get("max_epochs"),
-        # val_check_interval=config.get("val_check_interval"),
+        accumulate_grad_batches=config.get("accumulate_grad_batches"),
         check_val_every_n_epoch=config.get("check_val_every_n_epoch"),
         gradient_clip_val=config.get("gradient_clip_val"),
-        precision=16, # we'll use mixed precision
+        precision="16-mixed",
         num_sanity_val_steps=0,
         logger=wandb_logger,
         callbacks=[PushToHubCallback(), early_stop_callback],
