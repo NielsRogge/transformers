@@ -10,6 +10,7 @@ from transformers import AutoProcessor, BitsAndBytesConfig, Idefics2ForCondition
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+torch.set_float32_matmul_precision("medium")
 
 import numpy as np
 
@@ -20,7 +21,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 wandb_logger = WandbLogger(project="Idefics2-PL", name="demo-run-cord-no-special-tokens")
 
-MAX_LENGTH = 768
+MAX_LENGTH = 512
 MODEL_ID = "nielsr/idefics2-cord-demo-v3"
 
 ## load dataset
@@ -50,7 +51,7 @@ lora_config = LoraConfig(
     init_lora_weights="gaussian",
 )
 
-model = prepare_model_for_kbit_training(model)
+# model = prepare_model_for_kbit_training(model)
 model = get_peft_model(model, lora_config)
 
 ## Create a PyTorch Dataset
