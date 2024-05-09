@@ -1,3 +1,7 @@
+"""
+Run this script with CUDA_VISIBLE_DEVICES=3 python src/transformers/models/idefics2/pytorch_lightning/fine_tune_idefics2_pl.py.
+"""
+
 import json
 import random
 from typing import Any, Dict
@@ -12,6 +16,10 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 torch.set_float32_matmul_precision("medium")
 
+from huggingface_hub import HfApi
+
+api = HfApi()
+
 import numpy as np
 
 import lightning as L
@@ -21,7 +29,7 @@ from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
 wandb_logger = WandbLogger(project="Idefics2-PL", name="demo-run-cord-no-special-tokens")
 
-MAX_LENGTH = 512
+MAX_LENGTH = 384
 MODEL_ID = "nielsr/idefics2-cord-demo-v3"
 
 ## load dataset
@@ -46,12 +54,13 @@ lora_config = LoraConfig(
     r=8,
     lora_alpha=8,
     lora_dropout=0.1,
-    target_modules=".*(text_model|modality_projection|perceiver_resampler).*(down_proj|gate_proj|up_proj|k_proj|q_proj|v_proj|o_proj).*$",
+    target_modules=[".*(text_model|modality_projection|perceiver_resampler).*(down_proj|gate_proj|up_proj|k_proj|q_proj|v_proj|o_proj).*$",
+                    "text_model.embed_tokens", "text_model.lm_head"],
     use_dora=False,
     init_lora_weights="gaussian",
 )
 
-# model = prepare_model_for_kbit_training(model)
+model = prepare_model_for_kbit_training(model)
 model = get_peft_model(model, lora_config)
 
 ## Create a PyTorch Dataset
@@ -297,7 +306,7 @@ config = {"max_epochs": 10,
           "gradient_clip_val": 1.0,
           "accumulate_grad_batches": 8,
           "lr": 1e-4,
-          "batch_size": 4,
+          "batch_size": 1,
           # "seed":2022,
           "num_nodes": 1,
           "warmup_steps": 50,
@@ -310,15 +319,32 @@ model_module = Idefics2ModelPLModule(config, processor, model)
 class PushToHubCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         print(f"Pushing model to the hub, epoch {trainer.current_epoch}")
-        pl_module.model.push_to_hub(MODEL_ID,
-                                    commit_message=f"Training in progress, epoch {trainer.current_epoch}")
+        # pl_module.model.push_to_hub(MODEL_ID,
+        #                             commit_message=f"Training in progress, epoch {trainer.current_epoch}")
+        # save the model
+        model.save_adapter("idefics2_adapter", save_embedding_layers=True)
+        # upload idefics2_adapter folder to the hub
+        api.upload_folder(
+            folder_path="idefics2_adapter",
+            repo_id=MODEL_ID,
+            repo_type="model",
+            commit_message=f"Training in progress, epoch {trainer.current_epoch}",
+        )
 
     def on_train_end(self, trainer, pl_module):
         print(f"Pushing model to the hub after training")
         pl_module.processor.push_to_hub(MODEL_ID,
                                     commit_message=f"Training done")
-        pl_module.model.push_to_hub(MODEL_ID,
-                                    commit_message=f"Training done")
+        # pl_module.model.push_to_hub(MODEL_ID,
+        #                             commit_message=f"Training done")
+        # save the model
+        model.save_adapter("idefics2_adapter", save_embedding_layers=True)
+        api.upload_folder(
+            folder_path="idefics2_adapter",
+            repo_id=MODEL_ID,
+            repo_type="model",
+            commit_message=f"Training in progress, epoch {trainer.current_epoch}",
+        )
 
 early_stop_callback = EarlyStopping(monitor="val_edit_distance", patience=3, verbose=False, mode="min")
 
