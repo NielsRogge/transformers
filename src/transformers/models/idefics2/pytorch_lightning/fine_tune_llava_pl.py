@@ -1,5 +1,5 @@
 """
-Run this script with CUDA_VISIBLE_DEVICES=3 python src/transformers/models/idefics2/pytorch_lightning/fine_tune_idefics2_pl.py.
+Run this script with CUDA_VISIBLE_DEVICES=3 python src/transformers/models/llava/pytorch_lightning/fine_tune_llava_pl.py.
 """
 
 import json
@@ -10,7 +10,7 @@ from nltk import edit_distance
 
 from datasets import load_dataset
 from peft import LoraConfig, prepare_model_for_kbit_training, get_peft_model
-from transformers import AutoProcessor, BitsAndBytesConfig, Idefics2ForConditionalGeneration
+from transformers import AutoProcessor, BitsAndBytesConfig, LlavaForConditionalGeneration
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -27,10 +27,10 @@ from lightning.pytorch.callbacks import Callback
 from lightning.pytorch.loggers import WandbLogger
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 
-wandb_logger = WandbLogger(project="Idefics2-PL", name="demo-run-cord-no-special-tokens")
+wandb_logger = WandbLogger(project="llava-PL", name="demo-run-cord-no-special-tokens")
 
 MAX_LENGTH = 384
-REPO_ID = "nielsr/idefics2-cord-demo-v4"
+REPO_ID = "nielsr/llava-cord-demo-v4"
 
 ## load dataset
 
@@ -38,14 +38,30 @@ dataset = load_dataset("naver-clova-ix/cord-v2")
 
 ## load model
 
+def find_all_linear_names(model):
+    cls = torch.nn.Linear
+    lora_module_names = set()
+    multimodal_keywords = ['multi_modal_projector', 'vision_model']
+    for name, module in model.named_modules():
+        if any(mm_keyword in name for mm_keyword in multimodal_keywords):
+            continue
+        if isinstance(module, cls):
+            names = name.split('.')
+            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
+
+    if 'lm_head' in lora_module_names: # needed for 16-bit
+        lora_module_names.remove('lm_head')
+    return list(lora_module_names)
+
+
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
     bnb_4bit_quant_type="nf4",
     bnb_4bit_compute_dtype=torch.float16
 )
 
-model = Idefics2ForConditionalGeneration.from_pretrained(
-    "HuggingFaceM4/idefics2-8b",
+model = LlavaForConditionalGeneration.from_pretrained(
+    "llava-hf/llava-1.5-7b-hf",
     torch_dtype=torch.float16,
     quantization_config=bnb_config,
 )
@@ -54,23 +70,22 @@ lora_config = LoraConfig(
     r=8,
     lora_alpha=8,
     lora_dropout=0.1,
-    target_modules=[".*(text_model|modality_projection|perceiver_resampler).*(down_proj|gate_proj|up_proj|k_proj|q_proj|v_proj|o_proj).*$",
-                    "text_model.embed_tokens", "text_model.lm_head"],
-    use_dora=False,
+    target_modules=find_all_linear_names(model),
     init_lora_weights="gaussian",
 )
 
 model = prepare_model_for_kbit_training(model)
 model = get_peft_model(model, lora_config)
 
-## Create PyTorch Datasets
+## Create a PyTorch Dataset
 
-processor = AutoProcessor.from_pretrained("HuggingFaceM4/idefics2-8b", do_image_splitting=False, size={"longest_edge": 448, "shortest_edge": 378})
+processor = AutoProcessor.from_pretrained("llava-hf/llava-1.5-7b-hf")
+processor.tokenizer.padding_side = "right"
 
 
-class Idefics2Dataset(Dataset):
+class LlavaDataset(Dataset):
     """
-    PyTorch Dataset for Idefics2. This class takes a HuggingFace Dataset as input.
+    PyTorch Dataset for LLaVa. This class takes a HuggingFace Dataset as input.
     
     Each row, consists of image path(png/jpg/jpeg) and gt data (json/jsonl/txt).
     """
@@ -157,73 +172,45 @@ class Idefics2Dataset(Dataset):
         
         return image, target_sequence
     
-train_dataset = Idefics2Dataset("naver-clova-ix/cord-v2",  split="train", sort_json_key=False)
-val_dataset = Idefics2Dataset("naver-clova-ix/cord-v2", split="validation", sort_json_key=False)
+train_dataset = LlavaDataset("naver-clova-ix/cord-v2",  split="train", sort_json_key=False)
+val_dataset = LlavaDataset("naver-clova-ix/cord-v2", split="validation", sort_json_key=False)
 
 ## Create PyTorch DataLoaders
 
-image_token_id = processor.tokenizer.additional_special_tokens_ids[processor.tokenizer.additional_special_tokens.index("<image>")]
-
-
 def train_collate_fn(examples):
-    texts = []
     images = []
+    texts = []
     for example in examples:
         image, ground_truth = example
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Extract JSON."},
-                    {"type": "image"},
-                ]
-            },
-            {
-                "role": "assistant",
-                "content": [
-                    {"type": "text", "text": ground_truth}
-                ]
-            }
-        ]
-        text = processor.apply_chat_template(messages, add_generation_prompt=False)
-        texts.append(text.strip())
-        images.append([image])
+        images.append(image)
+        prompt = f"USER: <image>\nExtract JSON.\nASSISTANT: {ground_truth}"
+        texts.append(prompt)
 
     batch = processor(text=texts, images=images, padding=True, truncation=True, max_length=MAX_LENGTH, return_tensors="pt")
 
     labels = batch["input_ids"].clone()
-    labels[labels == processor.tokenizer.pad_token_id] = image_token_id
+    labels[labels == processor.tokenizer.pad_token_id] = -100
     batch["labels"] = labels
 
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
     pixel_values = batch["pixel_values"]
-    pixel_attention_mask = batch["pixel_attention_mask"]
     labels = batch["labels"]
     
-    return input_ids, attention_mask, pixel_values, pixel_attention_mask, labels
+    return input_ids, attention_mask, pixel_values, labels
 
 
 def eval_collate_fn(examples):
     
-    # we feed the prompt to the model
+    # we only feed the prompt to the model
     images = []
     texts = []
     answers = []
     for example in examples:
         image, ground_truth = example
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "Extract JSON."},
-                    {"type": "image"},
-                ]
-            },
-        ]
-        text = processor.apply_chat_template(messages, add_generation_prompt=True)
-        images.append([image])
-        texts.append(text.strip())
+        images.append(image)
+        prompt = f"USER: <image>\nExtract JSON.\nASSISTANT:"
+        texts.append(prompt)
         answers.append(ground_truth)
 
     batch = processor(text=texts, images=images, return_tensors="pt", padding=True) 
@@ -231,13 +218,12 @@ def eval_collate_fn(examples):
     input_ids = batch["input_ids"]
     attention_mask = batch["attention_mask"]
     pixel_values = batch["pixel_values"]
-    pixel_attention_mask = batch["pixel_attention_mask"]
     
-    return input_ids, attention_mask, pixel_values, pixel_attention_mask, answers
+    return input_ids, attention_mask, pixel_values, answers
 
 ## Create a PyTorch Lightning Module
 
-class Idefics2ModelPLModule(L.LightningModule):
+class LlavaModelPLModule(L.LightningModule):
     def __init__(self, config, processor, model):
         super().__init__()
         self.config = config
@@ -248,12 +234,11 @@ class Idefics2ModelPLModule(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
 
-        input_ids, attention_mask, pixel_values, pixel_attention_mask, labels = batch
+        input_ids, attention_mask, pixel_values, labels = batch
 
         outputs = self.model(input_ids=input_ids,
                                 attention_mask=attention_mask,
                                 pixel_values=pixel_values,
-                                pixel_attention_mask=pixel_attention_mask,
                                 labels=labels)
         loss = outputs.loss
         
@@ -263,12 +248,11 @@ class Idefics2ModelPLModule(L.LightningModule):
 
     def validation_step(self, batch, batch_idx, dataset_idx=0):
         
-        input_ids, attention_mask, pixel_values, pixel_attention_mask, answers = batch
+        input_ids, attention_mask, pixel_values, answers = batch
 
         # autoregressively generate token IDs
         generated_ids = self.model.generate(input_ids=input_ids, attention_mask=attention_mask,
-                                       pixel_values=pixel_values, pixel_attention_mask=pixel_attention_mask,
-                                       max_new_tokens=MAX_LENGTH)
+                                       pixel_values=pixel_values, max_new_tokens=MAX_LENGTH)
         # turn them back into text, chopping of the prompt
         # important: we don't skip special tokens here, because we want to see them in the output
         predictions = self.processor.batch_decode(generated_ids[:, input_ids.size(1):], skip_special_tokens=True)
@@ -305,7 +289,7 @@ config = {"max_epochs": 10,
           "gradient_clip_val": 1.0,
           "accumulate_grad_batches": 8,
           "lr": 1e-4,
-          "batch_size": 1,
+          "batch_size": 2,
           # "seed":2022,
           "num_nodes": 1,
           "warmup_steps": 50,
@@ -313,7 +297,7 @@ config = {"max_epochs": 10,
           "verbose": True,
 }
 
-model_module = Idefics2ModelPLModule(config, processor, model)
+model_module = LlavaModelPLModule(config, processor, model)
 
 class PushToHubCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
@@ -321,10 +305,10 @@ class PushToHubCallback(Callback):
         # pl_module.model.push_to_hub(REPO_ID,
         #                             commit_message=f"Training in progress, epoch {trainer.current_epoch}")
         # save the model
-        model.save_adapter("idefics2_adapter", save_embedding_layers=True)
-        # upload idefics2_adapter folder to the hub
+        model.save_pretrained("llava_adapter", save_embedding_layers=True)
+        # upload llava_adapter folder to the hub
         api.upload_folder(
-            folder_path="idefics2_adapter",
+            folder_path="llava_adapter",
             repo_id=REPO_ID,
             repo_type="model",
             commit_message=f"Training in progress, epoch {trainer.current_epoch}",
@@ -337,9 +321,9 @@ class PushToHubCallback(Callback):
         # pl_module.model.push_to_hub(REPO_ID,
         #                             commit_message=f"Training done")
         # save the model
-        pl_module.model.save_adapter("idefics2_adapter", save_embedding_layers=True)
+        pl_module.model.save_adapter("llava_adapter", save_embedding_layers=True)
         api.upload_folder(
-            folder_path="idefics2_adapter",
+            folder_path="llava_adapter",
             repo_id=REPO_ID,
             repo_type="model",
             commit_message=f"Training in progress, epoch {trainer.current_epoch}",
