@@ -1,3 +1,8 @@
+"""
+Script to fine-tune Idefics2 on a small subsample of the DUDE dataset for demo purposes.
+"""
+
+
 from datasets import load_dataset
 from torch.utils.data import Dataset, DataLoader
 from transformers import AutoProcessor, BitsAndBytesConfig, Idefics2ForConditionalGeneration
