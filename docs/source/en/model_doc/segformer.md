@@ -109,18 +109,116 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## SegformerConfig
 
-[[autodoc]] SegformerConfig
+
+    This is the configuration class to store the configuration of a [`SegformerModel`]. It is used to instantiate an
+    SegFormer model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the SegFormer
+    [nvidia/segformer-b0-finetuned-ade-512-512](https://huggingface.co/nvidia/segformer-b0-finetuned-ade-512-512)
+    architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        num_encoder_blocks (`int`, *optional*, defaults to 4):
+            The number of encoder blocks (i.e. stages in the Mix Transformer encoder).
+        depths (`List[int]`, *optional*, defaults to `[2, 2, 2, 2]`):
+            The number of layers in each encoder block.
+        sr_ratios (`List[int]`, *optional*, defaults to `[8, 4, 2, 1]`):
+            Sequence reduction ratios in each encoder block.
+        hidden_sizes (`List[int]`, *optional*, defaults to `[32, 64, 160, 256]`):
+            Dimension of each of the encoder blocks.
+        patch_sizes (`List[int]`, *optional*, defaults to `[7, 3, 3, 3]`):
+            Patch size before each encoder block.
+        strides (`List[int]`, *optional*, defaults to `[4, 2, 2, 2]`):
+            Stride before each encoder block.
+        num_attention_heads (`List[int]`, *optional*, defaults to `[1, 2, 5, 8]`):
+            Number of attention heads for each attention layer in each block of the Transformer encoder.
+        mlp_ratios (`List[int]`, *optional*, defaults to `[4, 4, 4, 4]`):
+            Ratio of the size of the hidden layer compared to the size of the input layer of the Mix FFNs in the
+            encoder blocks.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        classifier_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability before the classification head.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        drop_path_rate (`float`, *optional*, defaults to 0.1):
+            The dropout probability for stochastic depth, used in the blocks of the Transformer encoder.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        decoder_hidden_size (`int`, *optional*, defaults to 256):
+            The dimension of the all-MLP decode head.
+        semantic_loss_ignore_index (`int`, *optional*, defaults to 255):
+            The index that is ignored by the loss function of the semantic segmentation model.
+
+    Example:
+
+    ```python
+    >>> from transformers import SegformerModel, SegformerConfig
+
+    >>> # Initializing a SegFormer nvidia/segformer-b0-finetuned-ade-512-512 style configuration
+    >>> configuration = SegformerConfig()
+
+    >>> # Initializing a model from the nvidia/segformer-b0-finetuned-ade-512-512 style configuration
+    >>> model = SegformerModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## SegformerFeatureExtractor
 
-[[autodoc]] SegformerFeatureExtractor
-    - __call__
+No docstring available for SegformerFeatureExtractor
+
+Methods: __call__
     - post_process_semantic_segmentation
 
 ## SegformerImageProcessor
 
-[[autodoc]] SegformerImageProcessor
-    - preprocess
+
+    Constructs a Segformer image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `(size["height"],
+            size["width"])`. Can be overridden by the `do_resize` parameter in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 512, "width": 512}`):
+            Size of the output image after resizing. Can be overridden by the `size` parameter in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by the `resample` parameter in the
+            `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_reduce_labels (`bool`, *optional*, defaults to `False`):
+            Whether or not to reduce all label values of segmentation maps by 1. Usually used for datasets where 0 is
+            used for background, and background itself is not included in all classes of a dataset (e.g. ADE20k). The
+            background label will be replaced by 255. Can be overridden by the `do_reduce_labels` parameter in the
+            `preprocess` method.
+    
+
+Methods: preprocess
     - post_process_semantic_segmentation
 
 <frameworkcontent>
@@ -128,46 +226,84 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## SegformerModel
 
-[[autodoc]] SegformerModel
-    - forward
+The bare SegFormer encoder (Mix-Transformer) outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`SegformerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## SegformerDecodeHead
 
-[[autodoc]] SegformerDecodeHead
-    - forward
+No docstring available for SegformerDecodeHead
+
+Methods: forward
 
 ## SegformerForImageClassification
 
-[[autodoc]] SegformerForImageClassification
-    - forward
+
+    SegFormer Model transformer with an image classification head on top (a linear layer on top of the final hidden
+    states) e.g. for ImageNet.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`SegformerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## SegformerForSemanticSegmentation
 
-[[autodoc]] SegformerForSemanticSegmentation
-    - forward
+SegFormer Model transformer with an all-MLP decode head on top e.g. for ADE20k, CityScapes.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`SegformerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## TFSegformerDecodeHead
 
-[[autodoc]] TFSegformerDecodeHead
-    - call
+No docstring available for TFSegformerDecodeHead
+
+Methods: call
 
 ## TFSegformerModel
 
-[[autodoc]] TFSegformerModel
-    - call
+No docstring available for TFSegformerModel
+
+Methods: call
 
 ## TFSegformerForImageClassification
 
-[[autodoc]] TFSegformerForImageClassification
-    - call
+No docstring available for TFSegformerForImageClassification
+
+Methods: call
 
 ## TFSegformerForSemanticSegmentation
 
-[[autodoc]] TFSegformerForSemanticSegmentation
-    - call
+No docstring available for TFSegformerForSemanticSegmentation
+
+Methods: call
 
 </tf>
 </frameworkcontent>

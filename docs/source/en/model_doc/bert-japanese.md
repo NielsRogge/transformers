@@ -79,4 +79,32 @@ API reference information.
 
 ## BertJapaneseTokenizer
 
-[[autodoc]] BertJapaneseTokenizer
+
+    Construct a BERT tokenizer for Japanese text.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer
+    to: this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to a one-wordpiece-per-line vocabulary file.
+        spm_file (`str`, *optional*):
+            Path to [SentencePiece](https://github.com/google/sentencepiece) file (generally has a .spm or .model
+            extension) that contains the vocabulary.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether to lower case the input. Only has an effect when do_basic_tokenize=True.
+        do_word_tokenize (`bool`, *optional*, defaults to `True`):
+            Whether to do word tokenization.
+        do_subword_tokenize (`bool`, *optional*, defaults to `True`):
+            Whether to do subword tokenization.
+        word_tokenizer_type (`str`, *optional*, defaults to `"basic"`):
+            Type of word tokenizer. Choose from ["basic", "mecab", "sudachi", "jumanpp"].
+        subword_tokenizer_type (`str`, *optional*, defaults to `"wordpiece"`):
+            Type of subword tokenizer. Choose from ["wordpiece", "character", "sentencepiece",].
+        mecab_kwargs (`dict`, *optional*):
+            Dictionary passed to the `MecabTokenizer` constructor.
+        sudachi_kwargs (`dict`, *optional*):
+            Dictionary passed to the `SudachiTokenizer` constructor.
+        jumanpp_kwargs (`dict`, *optional*):
+            Dictionary passed to the `JumanppTokenizer` constructor.
+    

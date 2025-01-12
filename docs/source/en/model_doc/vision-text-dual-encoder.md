@@ -30,35 +30,116 @@ new zero-shot vision tasks such as image classification or retrieval.
 
 ## VisionTextDualEncoderConfig
 
-[[autodoc]] VisionTextDualEncoderConfig
+
+    [`VisionTextDualEncoderConfig`] is the configuration class to store the configuration of a
+    [`VisionTextDualEncoderModel`]. It is used to instantiate [`VisionTextDualEncoderModel`] model according to the
+    specified arguments, defining the text model and vision model configs.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        projection_dim (`int`, *optional*, defaults to 512):
+            Dimensionality of text and vision projection layers.
+        logit_scale_init_value (`float`, *optional*, defaults to 2.6592):
+            The initial value of the *logit_scale* parameter. Default is used as per the original CLIP implementation.
+        kwargs (*optional*):
+            Dictionary of keyword arguments.
+
+    Examples:
+
+    ```python
+    >>> from transformers import ViTConfig, BertConfig, VisionTextDualEncoderConfig, VisionTextDualEncoderModel
+
+    >>> # Initializing a BERT and ViT configuration
+    >>> config_vision = ViTConfig()
+    >>> config_text = BertConfig()
+
+    >>> config = VisionTextDualEncoderConfig.from_vision_text_configs(config_vision, config_text, projection_dim=512)
+
+    >>> # Initializing a BERT and ViT model (with random weights)
+    >>> model = VisionTextDualEncoderModel(config=config)
+
+    >>> # Accessing the model configuration
+    >>> config_vision = model.config.vision_config
+    >>> config_text = model.config.text_config
+
+    >>> # Saving the model, including its configuration
+    >>> model.save_pretrained("vit-bert")
+
+    >>> # loading model and config from pretrained folder
+    >>> vision_text_config = VisionTextDualEncoderConfig.from_pretrained("vit-bert")
+    >>> model = VisionTextDualEncoderModel.from_pretrained("vit-bert", config=vision_text_config)
+    ```
 
 ## VisionTextDualEncoderProcessor
 
-[[autodoc]] VisionTextDualEncoderProcessor
+
+    Constructs a VisionTextDualEncoder processor which wraps an image processor and a tokenizer into a single
+    processor.
+
+    [`VisionTextDualEncoderProcessor`] offers all the functionalities of [`AutoImageProcessor`] and [`AutoTokenizer`].
+    See the [`~VisionTextDualEncoderProcessor.__call__`] and [`~VisionTextDualEncoderProcessor.decode`] for more
+    information.
+
+    Args:
+        image_processor ([`AutoImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`PreTrainedTokenizer`], *optional*):
+            The tokenizer is a required input.
+    
 
 <frameworkcontent>
 <pt>
 
 ## VisionTextDualEncoderModel
 
-[[autodoc]] VisionTextDualEncoderModel
-    - forward
+
+    This class can be used to initialize a vision-text dual encoder model with any pretrained vision autoencoding model
+    as the vision encoder and any pretrained text model as the text encoder. The vision and text encoders are loaded
+    via the [`~AutoModel.from_pretrained`] method. The projection layers are automatically added to the model and
+    should be fine-tuned on a downstream task, like contrastive image-text modeling.
+
+    In [LiT: Zero-Shot Transfer with Locked-image Text Tuning](https://arxiv.org/abs/2111.07991) it is shown how
+    leveraging pre-trained (locked/frozen) image and text model for contrastive learning yields significant improvment
+    on new zero-shot vision tasks such as image classification or retrieval.
+
+    After such a Vision-Text-Dual-Encoder model has been trained/fine-tuned, it can be saved/loaded just like any other
+    models (see the examples for more information).
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`VisionEncoderDecoderConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## FlaxVisionTextDualEncoderModel
 
-[[autodoc]] FlaxVisionTextDualEncoderModel
-    - __call__
+No docstring available for FlaxVisionTextDualEncoderModel
+
+Methods: __call__
 
 </tf>
 <jax>
 
 ## TFVisionTextDualEncoderModel
 
-[[autodoc]] TFVisionTextDualEncoderModel
-    - call
+No docstring available for TFVisionTextDualEncoderModel
+
+Methods: call
 
 </jax>
 </frameworkcontent>

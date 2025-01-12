@@ -191,53 +191,328 @@ Below is an expected speedup diagram that compares inference time between the na
 
 ## SiglipConfig
 
-[[autodoc]] SiglipConfig
-    - from_text_vision_configs
+
+    [`SiglipConfig`] is the configuration class to store the configuration of a [`SiglipModel`]. It is used to
+    instantiate a Siglip model according to the specified arguments, defining the text model and vision model configs.
+    Instantiating a configuration with the defaults will yield a similar configuration to that of the Siglip
+    [google/siglip-base-patch16-224](https://huggingface.co/google/siglip-base-patch16-224) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        text_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`SiglipTextConfig`].
+        vision_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`SiglipVisionConfig`].
+        kwargs (*optional*):
+            Dictionary of keyword arguments.
+
+    Example:
+
+    ```python
+    >>> from transformers import SiglipConfig, SiglipModel
+
+    >>> # Initializing a SiglipConfig with google/siglip-base-patch16-224 style configuration
+    >>> configuration = SiglipConfig()
+
+    >>> # Initializing a SiglipModel (with random weights) from the google/siglip-base-patch16-224 style configuration
+    >>> model = SiglipModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+
+    >>> # We can also initialize a SiglipConfig from a SiglipTextConfig and a SiglipVisionConfig
+    >>> from transformers import SiglipTextConfig, SiglipVisionConfig
+
+    >>> # Initializing a SiglipText and SiglipVision configuration
+    >>> config_text = SiglipTextConfig()
+    >>> config_vision = SiglipVisionConfig()
+
+    >>> config = SiglipConfig.from_text_vision_configs(config_text, config_vision)
+    ```
+
+Methods: from_text_vision_configs
 
 ## SiglipTextConfig
 
-[[autodoc]] SiglipTextConfig
+
+    This is the configuration class to store the configuration of a [`SiglipTextModel`]. It is used to instantiate a
+    Siglip text encoder according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the text encoder of the Siglip
+    [google/siglip-base-patch16-224](https://huggingface.co/google/siglip-base-patch16-224) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 32000):
+            Vocabulary size of the Siglip text model. Defines the number of different tokens that can be represented by
+            the `inputs_ids` passed when calling [`SiglipModel`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        max_position_embeddings (`int`, *optional*, defaults to 64):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu_pytorch_tanh"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` `"quick_gelu"` are supported.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        pad_token_id (`int`, *optional*, defaults to 1):
+            The id of the padding token in the vocabulary.
+        bos_token_id (`int`, *optional*, defaults to 49406):
+            The id of the beginning-of-sequence token in the vocabulary.
+        eos_token_id (`int`, *optional*, defaults to 49407):
+            The id of the end-of-sequence token in the vocabulary.
+
+    Example:
+
+    ```python
+    >>> from transformers import SiglipTextConfig, SiglipTextModel
+
+    >>> # Initializing a SiglipTextConfig with google/siglip-base-patch16-224 style configuration
+    >>> configuration = SiglipTextConfig()
+
+    >>> # Initializing a SiglipTextModel (with random weights) from the google/siglip-base-patch16-224 style configuration
+    >>> model = SiglipTextModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## SiglipVisionConfig
 
-[[autodoc]] SiglipVisionConfig
+
+    This is the configuration class to store the configuration of a [`SiglipVisionModel`]. It is used to instantiate a
+    Siglip vision encoder according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the vision encoder of the Siglip
+    [google/siglip-base-patch16-224](https://huggingface.co/google/siglip-base-patch16-224) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        num_channels (`int`, *optional*, defaults to 3):
+            Number of channels in the input images.
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 16):
+            The size (resolution) of each patch.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu_pytorch_tanh"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` `"quick_gelu"` are supported.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+
+    Example:
+
+    ```python
+    >>> from transformers import SiglipVisionConfig, SiglipVisionModel
+
+    >>> # Initializing a SiglipVisionConfig with google/siglip-base-patch16-224 style configuration
+    >>> configuration = SiglipVisionConfig()
+
+    >>> # Initializing a SiglipVisionModel (with random weights) from the google/siglip-base-patch16-224 style configuration
+    >>> model = SiglipVisionModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## SiglipTokenizer
 
-[[autodoc]] SiglipTokenizer
-    - build_inputs_with_special_tokens
+
+    Construct a Siglip tokenizer. Based on [SentencePiece](https://github.com/google/sentencepiece).
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a *.spm* extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        pad_token (`str`, *optional*, defaults to `"</s>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        additional_special_tokens (`List[str]`, *optional*):
+            Additional special tokens used by the tokenizer.
+        sp_model_kwargs (`dict`, *optional*):
+            Will be passed to the `SentencePieceProcessor.__init__()` method. The [Python wrapper for
+            SentencePiece](https://github.com/google/sentencepiece/tree/master/python) can be used, among other things,
+            to set:
+
+            - `enable_sampling`: Enable subword regularization.
+            - `nbest_size`: Sampling parameters for unigram. Invalid for BPE-Dropout.
+
+              - `nbest_size = {0,1}`: No sampling is performed.
+              - `nbest_size > 1`: samples from the nbest_size results.
+              - `nbest_size < 0`: assuming that nbest_size is infinite and samples from the all hypothesis (lattice)
+                using forward-filtering-and-backward-sampling algorithm.
+
+            - `alpha`: Smoothing parameter for unigram sampling, and dropout probability of merge operations for
+              BPE-dropout.
+        model_max_length (`int`, *optional*, defaults to 64):
+            The maximum length (in number of tokens) for model inputs.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
     - save_vocabulary
 
 ## SiglipImageProcessor
 
-[[autodoc]] SiglipImageProcessor
-    - preprocess
+
+    Constructs a SigLIP image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 224, "width": 224}`):
+            Size of the image after resizing. Can be overridden by `size` in the `preprocess` method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image by the specified mean and standard deviation. Can be overridden by
+            `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[0.5, 0.5, 0.5]`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `[0.5, 0.5, 0.5]`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB.
+    
+
+Methods: preprocess
 
 ## SiglipProcessor
 
-[[autodoc]] SiglipProcessor
+
+    Constructs a Siglip processor which wraps a Siglip image processor and a Siglip tokenizer into a single processor.
+
+    [`SiglipProcessor`] offers all the functionalities of [`SiglipImageProcessor`] and [`SiglipTokenizer`]. See the
+    [`~SiglipProcessor.__call__`] and [`~SiglipProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`SiglipImageProcessor`]):
+            The image processor is a required input.
+        tokenizer ([`SiglipTokenizer`]):
+            The tokenizer is a required input.
+    
 
 ## SiglipModel
 
-[[autodoc]] SiglipModel
-    - forward
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`SiglipConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     - get_text_features
     - get_image_features
 
 ## SiglipTextModel
 
-[[autodoc]] SiglipTextModel
-    - forward
+The text model from SigLIP without any head or projection on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`SiglipConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## SiglipVisionModel
 
-[[autodoc]] SiglipVisionModel
-    - forward
+The vision model from SigLIP without any head or projection on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`SiglipConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 
 ## SiglipForImageClassification
 
-[[autodoc]] SiglipForImageClassification
-    - forward
+
+    SigLIP vision encoder with an image classification head on top (a linear layer on top of the pooled final hidden states of
+    the patch tokens) e.g. for ImageNet.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`SiglipConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

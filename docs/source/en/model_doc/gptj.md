@@ -135,66 +135,182 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## GPTJConfig
 
-[[autodoc]] GPTJConfig
-    - all
+
+    This is the configuration class to store the configuration of a [`GPTJModel`]. It is used to instantiate a GPT-J
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the GPT-J
+    [EleutherAI/gpt-j-6B](https://huggingface.co/EleutherAI/gpt-j-6B) architecture. Configuration objects inherit from
+    [`PretrainedConfig`] and can be used to control the model outputs. Read the documentation from [`PretrainedConfig`]
+    for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 50400):
+            Vocabulary size of the GPT-J model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`GPTJModel`].
+        n_positions (`int`, *optional*, defaults to 2048):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        n_embd (`int`, *optional*, defaults to 4096):
+            Dimensionality of the embeddings and hidden states.
+        n_layer (`int`, *optional*, defaults to 28):
+            Number of hidden layers in the Transformer encoder.
+        n_head (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        rotary_dim (`int`, *optional*, defaults to 64):
+            Number of dimensions in the embedding that Rotary Position Embedding is applied to.
+        n_inner (`int`, *optional*, defaults to None):
+            Dimensionality of the inner feed-forward layers. `None` will set it to 4 times n_embd
+        activation_function (`str`, *optional*, defaults to `"gelu_new"`):
+            Activation function, to be selected in the list `["relu", "silu", "gelu", "tanh", "gelu_new"]`.
+        resid_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        embd_pdrop (`int`, *optional*, defaults to 0.1):
+            The dropout ratio for the embeddings.
+        attn_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-5):
+            The epsilon to use in the layer normalization layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+
+    Example:
+
+    ```python
+    >>> from transformers import GPTJModel, GPTJConfig
+
+    >>> # Initializing a GPT-J 6B configuration
+    >>> configuration = GPTJConfig()
+
+    >>> # Initializing a model from the configuration
+    >>> model = GPTJModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+
+Methods: all
 
 <frameworkcontent>
 <pt>
 
 ## GPTJModel
 
-[[autodoc]] GPTJModel
-    - forward
+The bare GPT-J Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`GPTJConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTJForCausalLM
 
-[[autodoc]] GPTJForCausalLM
-    - forward
+
+    The GPT-J Model transformer with a language modeling head on top.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`GPTJConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTJForSequenceClassification
 
-[[autodoc]] GPTJForSequenceClassification
-    - forward
+
+    The GPT-J Model transformer with a sequence classification head on top (linear layer).
+
+    [`GPTJForSequenceClassification`] uses the last token in order to do the classification, as other causal models
+    (e.g. GPT, GPT-2, GPT-Neo) do.
+
+    Since it does classification on the last token, it requires to know the position of the last token. If a
+    `pad_token_id` is defined in the configuration, it finds the last token that is not a padding token in each row. If
+    no `pad_token_id` is defined, it simply takes the last value in each row of the batch. Since it cannot guess the
+    padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last value in
+    each row of the batch).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`GPTJConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTJForQuestionAnswering
 
-[[autodoc]] GPTJForQuestionAnswering
-    - forward
+
+    The GPT-J Model transformer with a span classification head on top for extractive question-answering tasks like
+    SQuAD (a linear layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`GPTJConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## TFGPTJModel
 
-[[autodoc]] TFGPTJModel
-    - call
+No docstring available for TFGPTJModel
+
+Methods: call
 
 ## TFGPTJForCausalLM
 
-[[autodoc]] TFGPTJForCausalLM
-    - call
+No docstring available for TFGPTJForCausalLM
+
+Methods: call
 
 ## TFGPTJForSequenceClassification
 
-[[autodoc]] TFGPTJForSequenceClassification
-    - call
+No docstring available for TFGPTJForSequenceClassification
+
+Methods: call
 
 ## TFGPTJForQuestionAnswering
 
-[[autodoc]] TFGPTJForQuestionAnswering
-    - call
+No docstring available for TFGPTJForQuestionAnswering
+
+Methods: call
 
 </tf>
 <jax>
 
 ## FlaxGPTJModel
 
-[[autodoc]] FlaxGPTJModel
-    - __call__
+No docstring available for FlaxGPTJModel
+
+Methods: __call__
 
 ## FlaxGPTJForCausalLM
 
-[[autodoc]] FlaxGPTJForCausalLM
-    - __call__
+No docstring available for FlaxGPTJForCausalLM
+
+Methods: __call__
 </jax>
 </frameworkcontent>

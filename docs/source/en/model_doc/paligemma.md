@@ -94,13 +94,87 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## PaliGemmaConfig
 
-[[autodoc]] PaliGemmaConfig
+
+    This is the configuration class to store the configuration of a [`PaliGemmaForConditionalGeneration`]. It is used to instantiate an
+    PaliGemmamodel according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the PaliGemma-2B.
+
+    e.g. [paligemma-hf/paligemma-2b](https://huggingface.co/paligemma-hf/paligemma-2b)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`PaliGemmaVisionConfig`,  *optional*):
+            Custom vision config or dict
+        text_config (`Union[AutoConfig, dict]`, *optional*):
+            The config object of the text backbone. Can be any of `LlamaConfig` or `MistralConfig`.
+        ignore_index (`int`, *optional*, defaults to -100):
+            The ignore index for the loss function.
+        image_token_index (`int`, *optional*, defaults to 256000):
+            The image token index to encode the image prompt.
+        vocab_size (`int`, *optional*, defaults to 257152):
+            Vocabulary size of the PaliGemmamodel. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`~PaliGemmaForConditionalGeneration`]
+        projection_dim (`int`, *optional*, defaults to 2048):
+            Dimension of the multimodal projection space.
+        hidden_size (`int`, *optional*, defaults to 2048):
+            Dimension of the hidden layer of the Language model.
+
+    Example:
+
+    ```python
+    >>> from transformers import PaliGemmaForConditionalGeneration, PaliGemmaConfig, SiglipVisionConfig, GemmaConfig
+
+    >>> # Initializing a Siglip-like vision config
+    >>> vision_config = SiglipVisionConfig()
+
+    >>> # Initializing a PaliGemma config
+    >>> text_config = GemmaConfig()
+
+    >>> # Initializing a PaliGemma paligemma-3b-224 style configuration
+    >>> configuration = PaliGemmaConfig(vision_config, text_config)
+
+    >>> # Initializing a model from the paligemma-3b-224 style configuration
+    >>> model = PaliGemmaForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## PaliGemmaProcessor
 
-[[autodoc]] PaliGemmaProcessor
+
+    Constructs a PaliGemma processor which wraps a PaliGemma image processor and a PaliGemma tokenizer into a single processor.
+
+    [`PaliGemmaProcessor`] offers all the functionalities of [`SiglipImageProcessor`] and [`GemmaTokenizerFast`]. See the
+    [`~PaliGemmaProcessor.__call__`] and [`~PaliGemmaProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`SiglipImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`GemmaTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+    
 
 ## PaliGemmaForConditionalGeneration
 
-[[autodoc]] PaliGemmaForConditionalGeneration
-    - forward
+The PALIGEMMA model which consists of a vision backbone and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`PaliGemmaConfig`] or [`PaliGemmaVisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

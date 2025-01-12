@@ -159,25 +159,230 @@ The original code can be found [here](https://github.com/kyutai-labs/moshi).
 
 ## MoshiConfig
 
-[[autodoc]] MoshiConfig
+
+    This is the configuration class to store the configuration of a [`MoshiModel`]. It is used to instantiate a
+    Moshi model according to the specified arguments, defining the audio encoder, Moshi depth decoder and Moshi decoder
+    configs. Instantiating a configuration with the defaults will yield a similar configuration to that of the Moshiko model,
+    e.g. [kmhf/hf-moshiko](https://huggingface.co/kmhf/hf-moshiko)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 32000):
+            Vocabulary size of the MoshiDecoder model. Defines the number of different tokens that can be
+            represented by the `inputs_ids` passed when calling [`MoshiDecoder`].
+        hidden_size (`int`, *optional*, defaults to 4096):
+            Dimensionality of the layers and the pooler layer of the main decoder.
+        num_hidden_layers (`int`, *optional*, defaults to 32):
+            Number of decoder layers.
+        num_attention_heads (`int`, *optional*, defaults to 32):
+            Number of attention heads for each attention layer in the main decoder block.
+        num_key_value_heads (`int`, *optional*):
+            This is the number of key_value heads that should be used to implement Grouped Query Attention. If
+            `num_key_value_heads=num_attention_heads`, the model will use Multi Head Attention (MHA), if
+            `num_key_value_heads=1` the model will use Multi Query Attention (MQA) otherwise GQA is used. When
+            converting a multi-head checkpoint to a GQA checkpoint, each group key and value head should be constructed
+            by meanpooling all the original heads within that group. For more details checkout [this
+            paper](https://arxiv.org/pdf/2305.13245.pdf). If it is not specified, will default to `num_attention_heads`.
+        audio_vocab_size (`int`, *optional*):
+            Vocabulary size of the audio part of model. Defines the number of different tokens that can be
+            represented by the `audio_codes` passed when calling the Moshi models.
+        max_position_embeddings (`int`, *optional*, defaults to 3000):
+            The maximum sequence length that this model might ever be used with. Typically, set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        rope_theta (`float`, *optional*, defaults to 10000.0):
+            The base period of the RoPE embeddings.
+        hidden_act (`str` or `function`, *optional*, defaults to `"silu"`):
+            The non-linear activation function (function or string) in the decoder.
+        head_dim (`int`, *optional*, defaults to `hidden_size // num_attention_heads`):
+            The attention head dimension.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models). Only
+            relevant if `config.is_decoder=True`.
+        sliding_window (`int`, *optional*, defaults to 3000):
+            Sliding window attention window size. If not specified, will default to `3000`.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        ffn_dim (`int`, *optional*, defaults to 22528):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the main decoder block. Must be even.
+        rms_norm_eps (`float`, *optional*, defaults to 1e-08):
+            The epsilon used by the rms normalization layers.
+        num_codebooks (`int`, *optional*, defaults to 8):
+            The number of audio codebooks for each audio channels.
+        tie_word_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether to tie weight embeddings
+        kwargs (*optional*):
+            Dictionary of keyword arguments. Notably:
+                - **audio_encoder_config** ([`PretrainedConfig`], *optional*) -- An instance of a configuration object that
+                  defines the audio encoder config.
+                - **depth__config** ([`PretrainedConfig`], *optional*) -- An instance of a configuration object that
+                  defines the depth decoder config.
+
+
+    Example:
+
+    ```python
+    >>> from transformers import (
+    ...     MoshiConfig,
+    ...     MoshiForConditionalGeneration,
+    ... )
+
+    >>> configuration = MoshiConfig()
+
+    >>> # Initializing a MoshiForConditionalGeneration (with random weights) from the kmhf/hf-moshiko style configuration
+    >>> model = MoshiForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+
+    >>> # Saving the model, including its configuration
+    >>> model.save_pretrained("kmhf/hf-moshiko")
+
+    >>> # loading model and config from pretrained folder
+    >>> moshi_config = MoshiConfig.from_pretrained("kmhf/hf-moshiko")
+    >>> model = MoshiForConditionalGeneration.from_pretrained("kmhf/hf-moshiko", config=moshi_config)
+    ```
 
 ## MoshiDepthConfig
 
-[[autodoc]] MoshiDepthConfig
+
+    This is the configuration class to store the configuration of a [`MoshiDepthDecoder`]. It is used to instantiate a
+    Moshi depth decoder model according to the specified arguments, defining the Moshi depth decoder config.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 32000):
+            Vocabulary size of the MoshiDepthDecoder model. Defines the number of different tokens that can be
+            represented by the `inputs_ids` passed when calling [`MoshiDepthDecoder`].
+        hidden_size (`int`, *optional*, defaults to 1024):
+            Dimensionality of the layers and the pooler layer of the depth decoder.
+        input_size (`int`, *optional*, defaults to 4096):
+            Dimensionality of the input hidden states. Used to connect the main decoder to the depth decoder.
+        num_hidden_layers (`int`, *optional*, defaults to 6):
+            Number of depth decoder layers.
+        num_attention_heads (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the depth decoder block.
+        num_key_value_heads (`int`, *optional*):
+            This is the number of key_value heads that should be used to implement Grouped Query Attention. If
+            `num_key_value_heads=num_attention_heads`, the model will use Multi Head Attention (MHA), if
+            `num_key_value_heads=1` the model will use Multi Query Attention (MQA) otherwise GQA is used. When
+            converting a multi-head checkpoint to a GQA checkpoint, each group key and value head should be constructed
+            by meanpooling all the original heads within that group. For more details checkout [this
+            paper](https://arxiv.org/pdf/2305.13245.pdf). If it is not specified, will default to `num_attention_heads`.
+        audio_vocab_size (`int`, *optional*, defaults to 2048):
+            Vocabulary size of the audio part of model. Defines the number of different tokens that can be
+            represented by the `audio_codes` passed when calling the Moshi models.
+        max_position_embeddings (`int`, *optional*, defaults to 9):
+            The maximum sequence length that this model might ever be used with. Typically, set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        hidden_act (`str` or `function`, *optional*, defaults to `"silu"`):
+            The non-linear activation function (function or string) in the depth decoder.
+        head_dim (`int`, *optional*, defaults to `hidden_size // num_attention_heads`):
+            The attention head dimension.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models). Only
+            relevant if `config.is_decoder=True`.
+        sliding_window (`int`, *optional*, defaults to 8):
+            Sliding window attention window size. If not specified, will default to `8`.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        ffn_dim (`int`, *optional*, defaults to 5632):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the depth decoder block. Must be even.
+        rms_norm_eps (`float`, *optional*, defaults to 1e-08):
+            The epsilon used by the rms normalization layers.
+        num_codebooks (`int`, *optional*, defaults to 8):
+            The number of audio codebooks for each audio channels.
+        tie_word_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether to tie weight embeddings
+        kwargs (*optional*):
+            Dictionary of keyword arguments. Notably:
+                - **audio_encoder_config** ([`PretrainedConfig`], *optional*) -- An instance of a configuration object that
+                  defines the audio encoder config.
+
+    Example:
+
+    ```python
+    >>> from transformers import (
+    ...     MoshiDepthConfig,
+    ...     MoshiDepthDecoder,
+    ... )
+
+    >>> configuration = MoshiDepthConfig()
+
+    >>> # Initializing a MoshiDepthDecoder (with random weights) from the kmhf/hf-moshiko style configuration
+    >>> model = MoshiDepthDecoder(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## MoshiModel
 
-[[autodoc]] MoshiModel
-    - forward
+The bare Moshi Model outputting raw hidden-states without any specific head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MoshiConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+    Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`MoshiDecoderLayer`]
+
+    Args:
+        config: MoshiConfig
+    
+
+Methods: forward
 
 ## MoshiForCausalLM
 
-[[autodoc]] MoshiForCausalLM
-    - forward
+The Moshi decoder model with a text language modelling head on top. Only usable for text.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MoshiConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MoshiForConditionalGeneration
 
-[[autodoc]] MoshiForConditionalGeneration
-    - forward
+The original Moshi model with an audio encoder, a Moshi depth decoder and a Moshi decoder, for speech-to-speech.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MoshiConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     - generate
     - get_unconditional_inputs

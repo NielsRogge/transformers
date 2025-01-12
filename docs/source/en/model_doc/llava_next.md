@@ -281,18 +281,156 @@ model = AutoModelForImageTextToText.from_pretrained(
 
 ## LlavaNextConfig
 
-[[autodoc]] LlavaNextConfig
+
+    This is the configuration class to store the configuration of a [`LlavaNextForConditionalGeneration`]. It is used to instantiate an
+    Llava-NeXT model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the [llava-hf/llava-v1.6-mistral-7b-hf](https://huggingface.co/llava-hf/llava-v1.6-mistral-7b-hf)
+    model.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`Union[AutoConfig, dict]`,  *optional*, defaults to `CLIPVisionConfig`):
+            The config object or dictionary of the vision backbone.
+        text_config (`Union[AutoConfig, dict]`, *optional*, defaults to `LlamaConfig`):
+            The config object or dictionary of the text backbone.
+        ignore_index (`int`, *optional*, defaults to -100):
+            The ignore index for the loss function.
+        image_token_index (`int`, *optional*, defaults to 32000):
+            The image token index to encode the image prompt.
+        projector_hidden_act (`str`, *optional*, defaults to `"gelu"`):
+            The activation function used by the multimodal projector.
+        vision_feature_select_strategy (`str`, *optional*, defaults to `"default"`):
+            The feature selection strategy used to select the vision feature from the vision backbone.
+            Can be one of `"default"` or `"full"`. If `"default"`, the CLS token is removed from the vision features.
+            If `"full"`, the full vision features are used.
+        vision_feature_layer (`int`, *optional*, defaults to -2):
+            The index of the layer to select the vision feature.
+        image_grid_pinpoints (`List`, *optional*, defaults to `[[336, 672], [672, 336], [672, 672], [1008, 336], [336, 1008]]`):
+            A list of possible resolutions to use for processing high resolution images. Each item in the list should be a tuple or list
+            of the form `(height, width)`.
+        tie_word_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether the model's input and output word embeddings should be tied.
+        image_seq_length (`int`, *optional*, defaults to 576):
+            Sequence length of one image embedding.
+        multimodal_projector_bias (`bool`, *optional*, defaults to `True`):
+            Whether to use bias in the multimodal projector.
+
+    Example:
+
+    ```python
+    >>> from transformers import LlavaNextForConditionalGeneration, LlavaNextConfig, CLIPVisionConfig, LlamaConfig
+
+    >>> # Initializing a CLIP-vision config
+    >>> vision_config = CLIPVisionConfig()
+
+    >>> # Initializing a Llama config
+    >>> text_config = LlamaConfig()
+
+    >>> # Initializing a Llava-Next llava-hf/llava-v1.6-mistral-7b-hf style configuration
+    >>> configuration = LlavaNextConfig(vision_config, text_config)
+
+    >>> # Initializing a model from the llava-hf/llava-v1.6-mistral-7b-hf style configuration
+    >>> model = LlavaNextForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## LlavaNextImageProcessor
 
-[[autodoc]] LlavaNextImageProcessor
-    - preprocess
+
+    Constructs a LLaVa-NeXT image processor. Based on [`CLIPImageProcessor`] with incorporation of additional techniques
+    for processing high resolution images as explained in the [LLaVa paper](https://arxiv.org/abs/2310.03744).
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 224}`):
+            Size of the image after resizing. The shortest edge of the image is resized to size["shortest_edge"], with
+            the longest edge resized to keep the input aspect ratio. Can be overridden by `size` in the `preprocess`
+            method.
+        image_grid_pinpoints (`List` *optional*, defaults to `[[672, 336], [336, 672], [672, 672], [336, 1008], [1008, 336]]`):
+            A list of possible resolutions to use for processing high resolution images. The best resolution is selected
+            based on the original size of the image. Can be overridden by `image_grid_pinpoints` in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image to the specified `crop_size`. Can be overridden by `do_center_crop` in the
+            `preprocess` method.
+        crop_size (`Dict[str, int]` *optional*, defaults to 224):
+            Size of the output image after applying `center_crop`. Can be overridden by `crop_size` in the `preprocess`
+            method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[0.48145466, 0.4578275, 0.40821073]`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `[0.26862954, 0.26130258, 0.27577711]`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_pad (`bool`, *optional*, defaults to `True`):
+                Whether to pad the image. If `True`, will pad the patch dimension of the images in the batch to the largest
+                number of patches in the batch. Padding will be applied to the bottom and right with zeros.
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB.
+    
+
+Methods: preprocess
 
 ## LlavaNextProcessor
 
-[[autodoc]] LlavaNextProcessor
+
+    Constructs a LLaVa-NeXT processor which wraps a LLaVa-NeXT image processor and a LLaMa tokenizer into a single processor.
+
+    [`LlavaNextProcessor`] offers all the functionalities of [`LlavaNextImageProcessor`] and [`LlamaTokenizerFast`]. See the
+    [`~LlavaNextProcessor.__call__`] and [`~LlavaNextProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`LlavaNextImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`LlamaTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        patch_size (`int`, *optional*):
+            Patch size from the vision tower.
+        vision_feature_select_strategy (`str`, *optional*):
+            The feature selection strategy used to select the vision feature from the vision backbone.
+            Shoudl be same as in model's config
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+        image_token (`str`, *optional*, defaults to `"<image>"`):
+            Special token used to denote image location.
+        num_additional_image_tokens (`int`, *optional*, defaults to 0):
+            Number of additional tokens added to the image embeddings, such as CLS (+1). If the backbone has no CLS or other
+            extra tokens appended, no need to set this arg.
+    
 
 ## LlavaNextForConditionalGeneration
 
-[[autodoc]] LlavaNextForConditionalGeneration
-    - forward
+The LLAVA-NeXT model which consists of a vision backbone and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LlavaNextConfig`] or [`LlavaNextVisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

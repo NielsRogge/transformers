@@ -53,18 +53,183 @@ The resource should ideally demonstrate something new instead of duplicating an 
 
 ## OneFormer specific outputs
 
-[[autodoc]] models.oneformer.modeling_oneformer.OneFormerModelOutput
+Could not find docstring for models.oneformer.modeling_oneformer.OneFormerModelOutput
 
-[[autodoc]] models.oneformer.modeling_oneformer.OneFormerForUniversalSegmentationOutput
+Could not find docstring for models.oneformer.modeling_oneformer.OneFormerForUniversalSegmentationOutput
 
 ## OneFormerConfig
 
-[[autodoc]] OneFormerConfig
+
+    This is the configuration class to store the configuration of a [`OneFormerModel`]. It is used to instantiate a
+    OneFormer model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the OneFormer
+    [shi-labs/oneformer_ade20k_swin_tiny](https://huggingface.co/shi-labs/oneformer_ade20k_swin_tiny) architecture
+    trained on [ADE20k-150](https://huggingface.co/datasets/scene_parse_150).
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        backbone_config (`PretrainedConfig`, *optional*, defaults to `SwinConfig`):
+            The configuration of the backbone model.
+        backbone (`str`, *optional*):
+            Name of backbone to use when `backbone_config` is `None`. If `use_pretrained_backbone` is `True`, this
+            will load the corresponding pretrained weights from the timm or transformers library. If `use_pretrained_backbone`
+            is `False`, this loads the backbone's config and uses that to initialize the backbone with random weights.
+        use_pretrained_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to use pretrained weights for the backbone.
+        use_timm_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to load `backbone` from the timm library. If `False`, the backbone is loaded from the transformers
+            library.
+        backbone_kwargs (`dict`, *optional*):
+            Keyword arguments to be passed to AutoBackbone when loading from a checkpoint
+            e.g. `{'out_indices': (0, 1, 2, 3)}`. Cannot be specified if `backbone_config` is set.
+        ignore_value (`int`, *optional*, defaults to 255):
+            Values to be ignored in GT label while calculating loss.
+        num_queries (`int`, *optional*, defaults to 150):
+            Number of object queries.
+        no_object_weight (`float`, *optional*, defaults to 0.1):
+            Weight for no-object class predictions.
+        class_weight (`float`, *optional*, defaults to 2.0):
+            Weight for Classification CE loss.
+        mask_weight (`float`, *optional*, defaults to 5.0):
+            Weight for binary CE loss.
+        dice_weight (`float`, *optional*, defaults to 5.0):
+            Weight for dice loss.
+        contrastive_weight (`float`, *optional*, defaults to 0.5):
+            Weight for contrastive loss.
+        contrastive_temperature (`float`, *optional*, defaults to 0.07):
+            Initial value for scaling the contrastive logits.
+        train_num_points (`int`, *optional*, defaults to 12544):
+            Number of points to sample while calculating losses on mask predictions.
+        oversample_ratio (`float`, *optional*, defaults to 3.0):
+            Ratio to decide how many points to oversample.
+        importance_sample_ratio (`float`, *optional*, defaults to 0.75):
+            Ratio of points that are sampled via importance sampling.
+        init_std (`float`, *optional*, defaults to 0.02):
+            Standard deviation for normal intialization.
+        init_xavier_std (`float`, *optional*, defaults to 1.0):
+            Standard deviation for xavier uniform initialization.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-05):
+            Epsilon for layer normalization.
+        is_training (`bool`, *optional*, defaults to `False`):
+            Whether to run in training or inference mode.
+        use_auxiliary_loss (`bool`, *optional*, defaults to `True`):
+            Whether to calculate loss using intermediate predictions from transformer decoder.
+        output_auxiliary_logits (`bool`, *optional*, defaults to `True`):
+            Whether to return intermediate predictions from transformer decoder.
+        strides (`list`, *optional*, defaults to `[4, 8, 16, 32]`):
+            List containing the strides for feature maps in the encoder.
+        task_seq_len (`int`, *optional*, defaults to 77):
+            Sequence length for tokenizing text list input.
+        text_encoder_width (`int`, *optional*, defaults to 256):
+            Hidden size for text encoder.
+        text_encoder_context_length (`int`, *optional*, defaults to 77):
+            Input sequence length for text encoder.
+        text_encoder_num_layers (`int`, *optional*, defaults to 6):
+            Number of layers for transformer in text encoder.
+        text_encoder_vocab_size (`int`, *optional*, defaults to 49408):
+            Vocabulary size for tokenizer.
+        text_encoder_proj_layers (`int`, *optional*, defaults to 2):
+            Number of layers in MLP for project text queries.
+        text_encoder_n_ctx (`int`, *optional*, defaults to 16):
+            Number of learnable text context queries.
+        conv_dim (`int`, *optional*, defaults to 256):
+            Feature map dimension to map outputs from the backbone.
+        mask_dim (`int`, *optional*, defaults to 256):
+            Dimension for feature maps in pixel decoder.
+        hidden_dim (`int`, *optional*, defaults to 256):
+            Dimension for hidden states in transformer decoder.
+        encoder_feedforward_dim (`int`, *optional*, defaults to 1024):
+            Dimension for FFN layer in pixel decoder.
+        norm (`str`, *optional*, defaults to `"GN"`):
+            Type of normalization.
+        encoder_layers (`int`, *optional*, defaults to 6):
+            Number of layers in pixel decoder.
+        decoder_layers (`int`, *optional*, defaults to 10):
+            Number of layers in transformer decoder.
+        use_task_norm (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the task token.
+        num_attention_heads (`int`, *optional*, defaults to 8):
+            Number of attention heads in transformer layers in the pixel and transformer decoders.
+        dropout (`float`, *optional*, defaults to 0.1):
+            Dropout probability for pixel and transformer decoders.
+        dim_feedforward (`int`, *optional*, defaults to 2048):
+            Dimension for FFN layer in transformer decoder.
+        pre_norm (`bool`, *optional*, defaults to `False`):
+            Whether to normalize hidden states before attention layers in transformer decoder.
+        enforce_input_proj (`bool`, *optional*, defaults to `False`):
+            Whether to project hidden states in transformer decoder.
+        query_dec_layers (`int`, *optional*, defaults to 2):
+            Number of layers in query transformer.
+        common_stride (`int`, *optional*, defaults to 4):
+            Common stride used for features in pixel decoder.
+
+    Examples:
+    ```python
+    >>> from transformers import OneFormerConfig, OneFormerModel
+
+    >>> # Initializing a OneFormer shi-labs/oneformer_ade20k_swin_tiny configuration
+    >>> configuration = OneFormerConfig()
+    >>> # Initializing a model (with random weights) from the shi-labs/oneformer_ade20k_swin_tiny style configuration
+    >>> model = OneFormerModel(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+    
 
 ## OneFormerImageProcessor
 
-[[autodoc]] OneFormerImageProcessor
-    - preprocess
+
+    Constructs a OneFormer image processor. The image processor can be used to prepare image(s), task input(s) and
+    optional text inputs and targets for the model.
+
+    This image processor inherits from [`BaseImageProcessor`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the input to a certain `size`.
+        size (`int`, *optional*, defaults to 800):
+            Resize the input to the given size. Only has an effect if `do_resize` is set to `True`. If size is a
+            sequence like `(width, height)`, output size will be matched to this. If size is an int, smaller edge of
+            the image will be matched to this number. i.e, if `height > width`, then image will be rescaled to `(size *
+            height / width, size)`.
+        resample (`int`, *optional*, defaults to `Resampling.BILINEAR`):
+            An optional resampling filter. This can be one of `PIL.Image.Resampling.NEAREST`,
+            `PIL.Image.Resampling.BOX`, `PIL.Image.Resampling.BILINEAR`, `PIL.Image.Resampling.HAMMING`,
+            `PIL.Image.Resampling.BICUBIC` or `PIL.Image.Resampling.LANCZOS`. Only has an effect if `do_resize` is set
+            to `True`.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the input to a certain `scale`.
+        rescale_factor (`float`, *optional*, defaults to `1/ 255`):
+            Rescale the input by the given factor. Only has an effect if `do_rescale` is set to `True`.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether or not to normalize the input with mean and standard deviation.
+        image_mean (`int`, *optional*, defaults to `[0.485, 0.456, 0.406]`):
+            The sequence of means for each channel, to be used when normalizing images. Defaults to the ImageNet mean.
+        image_std (`int`, *optional*, defaults to `[0.229, 0.224, 0.225]`):
+            The sequence of standard deviations for each channel, to be used when normalizing images. Defaults to the
+            ImageNet std.
+        ignore_index (`int`, *optional*):
+            Label to be assigned to background pixels in segmentation maps. If provided, segmentation map pixels
+            denoted with 0 (background) will be replaced with `ignore_index`.
+        do_reduce_labels (`bool`, *optional*, defaults to `False`):
+            Whether or not to decrement all label values of segmentation maps by 1. Usually used for datasets where 0
+            is used for background, and background itself is not included in all classes of a dataset (e.g. ADE20k).
+            The background label will be replaced by `ignore_index`.
+        repo_path (`str`, *optional*, defaults to `"shi-labs/oneformer_demo"`):
+            Path to hub repo or local directory containing the JSON file with class information for the dataset.
+            If unset, will look for `class_info_file` in the current working directory.
+        class_info_file (`str`, *optional*):
+            JSON file containing class information for the dataset. See `shi-labs/oneformer_demo/cityscapes_panoptic.json` for an example.
+        num_text (`int`, *optional*):
+            Number of text entries in the text input list.
+        num_labels (`int`, *optional*):
+            The number of labels in the segmentation map.
+    
+
+Methods: preprocess
     - encode_inputs
     - post_process_semantic_segmentation
     - post_process_instance_segmentation
@@ -72,15 +237,47 @@ The resource should ideally demonstrate something new instead of duplicating an 
 
 ## OneFormerProcessor
 
-[[autodoc]] OneFormerProcessor
+
+    Constructs an OneFormer processor which wraps [`OneFormerImageProcessor`] and
+    [`CLIPTokenizer`]/[`CLIPTokenizerFast`] into a single processor that inherits both the image processor and
+    tokenizer functionalities.
+
+    Args:
+        image_processor ([`OneFormerImageProcessor`]):
+            The image processor is a required input.
+        tokenizer ([`CLIPTokenizer`, `CLIPTokenizerFast`]):
+            The tokenizer is a required input.
+        max_seq_len (`int`, *optional*, defaults to 77)):
+            Sequence length for input text list.
+        task_seq_len (`int`, *optional*, defaults to 77):
+            Sequence length for input task token.
+    
 
 ## OneFormerModel
 
-[[autodoc]] OneFormerModel
-    - forward
+The bare OneFormer Model outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use it as a
+    regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and behavior.
+
+    Parameters:
+        config ([`OneFormerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## OneFormerForUniversalSegmentation
 
-[[autodoc]] OneFormerForUniversalSegmentation
-    - forward
+OneFormer Model for instance, semantic and panoptic image segmentation.
+    This model is a PyTorch [nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use it as a
+    regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and behavior.
+
+    Parameters:
+        config ([`OneFormerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     

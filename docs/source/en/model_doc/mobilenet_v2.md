@@ -68,31 +68,163 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## MobileNetV2Config
 
-[[autodoc]] MobileNetV2Config
+
+    This is the configuration class to store the configuration of a [`MobileNetV2Model`]. It is used to instantiate a
+    MobileNetV2 model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the MobileNetV2
+    [google/mobilenet_v2_1.0_224](https://huggingface.co/google/mobilenet_v2_1.0_224) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        depth_multiplier (`float`, *optional*, defaults to 1.0):
+            Shrinks or expands the number of channels in each layer. Default is 1.0, which starts the network with 32
+            channels. This is sometimes also called "alpha" or "width multiplier".
+        depth_divisible_by (`int`, *optional*, defaults to 8):
+            The number of channels in each layer will always be a multiple of this number.
+        min_depth (`int`, *optional*, defaults to 8):
+            All layers will have at least this many channels.
+        expand_ratio (`float`, *optional*, defaults to 6.0):
+            The number of output channels of the first layer in each block is input channels times expansion ratio.
+        output_stride (`int`, *optional*, defaults to 32):
+            The ratio between the spatial resolution of the input and output feature maps. By default the model reduces
+            the input dimensions by a factor of 32. If `output_stride` is 8 or 16, the model uses dilated convolutions
+            on the depthwise layers instead of regular convolutions, so that the feature maps never become more than 8x
+            or 16x smaller than the input image.
+        first_layer_is_expansion (`bool`, *optional*, defaults to `True`):
+            True if the very first convolution layer is also the expansion layer for the first expansion block.
+        finegrained_output (`bool`, *optional*, defaults to `True`):
+            If true, the number of output channels in the final convolution layer will stay large (1280) even if
+            `depth_multiplier` is less than 1.
+        hidden_act (`str` or `function`, *optional*, defaults to `"relu6"`):
+            The non-linear activation function (function or string) in the Transformer encoder and convolution layers.
+        tf_padding (`bool`, *optional*, defaults to `True`):
+            Whether to use TensorFlow padding rules on the convolution layers.
+        classifier_dropout_prob (`float`, *optional*, defaults to 0.8):
+            The dropout ratio for attached classifiers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 0.001):
+            The epsilon used by the layer normalization layers.
+        semantic_loss_ignore_index (`int`, *optional*, defaults to 255):
+            The index that is ignored by the loss function of the semantic segmentation model.
+
+    Example:
+
+    ```python
+    >>> from transformers import MobileNetV2Config, MobileNetV2Model
+
+    >>> # Initializing a "mobilenet_v2_1.0_224" style configuration
+    >>> configuration = MobileNetV2Config()
+
+    >>> # Initializing a model from the "mobilenet_v2_1.0_224" style configuration
+    >>> model = MobileNetV2Model(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## MobileNetV2FeatureExtractor
 
-[[autodoc]] MobileNetV2FeatureExtractor
-    - preprocess
+No docstring available for MobileNetV2FeatureExtractor
+
+Methods: preprocess
     - post_process_semantic_segmentation
 
 ## MobileNetV2ImageProcessor
 
-[[autodoc]] MobileNetV2ImageProcessor
-    - preprocess
+
+    Constructs a MobileNetV2 image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 256}`):
+            Size of the image after resizing. The shortest edge of the image is resized to size["shortest_edge"], with
+            the longest edge resized to keep the input aspect ratio. Can be overridden by `size` in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `PILImageResampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by the `resample` parameter in the
+            `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image. If the input size is smaller than `crop_size` along any edge, the image
+            is padded with 0's and then center cropped. Can be overridden by the `do_center_crop` parameter in the
+            `preprocess` method.
+        crop_size (`Dict[str, int]`, *optional*, defaults to `{"height": 224, "width": 224}`):
+            Desired output size when applying center-cropping. Only has an effect if `do_center_crop` is set to `True`.
+            Can be overridden by the `crop_size` parameter in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter in the
+            `preprocess` method.
+        do_normalize:
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+    
+
+Methods: preprocess
     - post_process_semantic_segmentation
 
 ## MobileNetV2Model
 
-[[autodoc]] MobileNetV2Model
-    - forward
+The bare MobileNetV2 model outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MobileNetV2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MobileNetV2ForImageClassification
 
-[[autodoc]] MobileNetV2ForImageClassification
-    - forward
+
+    MobileNetV2 model with an image classification head on top (a linear layer on top of the pooled features), e.g. for
+    ImageNet.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MobileNetV2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MobileNetV2ForSemanticSegmentation
 
-[[autodoc]] MobileNetV2ForSemanticSegmentation
-    - forward
+
+    MobileNetV2 model with a semantic segmentation head on top, e.g. for Pascal VOC.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MobileNetV2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

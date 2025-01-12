@@ -50,16 +50,127 @@ Here is a quick example of how to encode and decode an audio using this model:
 
 ## EncodecConfig
 
-[[autodoc]] EncodecConfig
+
+    This is the configuration class to store the configuration of an [`EncodecModel`]. It is used to instantiate a
+    Encodec model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the
+    [facebook/encodec_24khz](https://huggingface.co/facebook/encodec_24khz) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        target_bandwidths (`List[float]`, *optional*, defaults to `[1.5, 3.0, 6.0, 12.0, 24.0]`):
+            The range of diffent bandwiths the model can encode audio with.
+        sampling_rate (`int`, *optional*, defaults to 24000):
+            The sampling rate at which the audio waveform should be digitalized expressed in hertz (Hz).
+        audio_channels (`int`, *optional*, defaults to 1):
+            Number of channels in the audio data. Either 1 for mono or 2 for stereo.
+        normalize (`bool`, *optional*, defaults to `False`):
+            Whether the audio shall be normalized when passed.
+        chunk_length_s (`float`, *optional*):
+            If defined the audio is pre-processed into chunks of lengths `chunk_length_s` and then encoded.
+        overlap (`float`, *optional*):
+            Defines the overlap between each chunk. It is used to compute the `chunk_stride` using the following
+            formulae : `int((1.0 - self.overlap) * self.chunk_length)`.
+        hidden_size (`int`, *optional*, defaults to 128):
+            Intermediate representation dimension.
+        num_filters (`int`, *optional*, defaults to 32):
+            Number of convolution kernels of first `EncodecConv1d` down sampling layer.
+        num_residual_layers (`int`,  *optional*, defaults to 1):
+            Number of residual layers.
+        upsampling_ratios (`Sequence[int]` , *optional*, defaults to `[8, 5, 4, 2]`):
+            Kernel size and stride ratios. The encoder uses downsampling ratios instead of upsampling ratios, hence it
+            will use the ratios in the reverse order to the ones specified here that must match the decoder order.
+        norm_type (`str`, *optional*, defaults to `"weight_norm"`):
+            Normalization method. Should be in `["weight_norm", "time_group_norm"]`
+        kernel_size (`int`, *optional*, defaults to 7):
+            Kernel size for the initial convolution.
+        last_kernel_size (`int`, *optional*, defaults to 7):
+            Kernel size for the last convolution layer.
+        residual_kernel_size (`int`, *optional*, defaults to 3):
+            Kernel size for the residual layers.
+        dilation_growth_rate (`int`, *optional*, defaults to 2):
+            How much to increase the dilation with each layer.
+        use_causal_conv (`bool`, *optional*, defaults to `True`):
+            Whether to use fully causal convolution.
+        pad_mode (`str`, *optional*, defaults to `"reflect"`):
+            Padding mode for the convolutions.
+        compress (`int`, *optional*, defaults to 2):
+            Reduced dimensionality in residual branches (from Demucs v3).
+        num_lstm_layers (`int`, *optional*, defaults to 2):
+            Number of LSTM layers at the end of the encoder.
+        trim_right_ratio (`float`, *optional*, defaults to 1.0):
+            Ratio for trimming at the right of the transposed convolution under the `use_causal_conv = True` setup. If
+            equal to 1.0, it means that all the trimming is done at the right.
+        codebook_size (`int`, *optional*, defaults to 1024):
+            Number of discret codes that make up VQVAE.
+        codebook_dim (`int`, *optional*):
+            Dimension of the codebook vectors. If not defined, uses `hidden_size`.
+        use_conv_shortcut (`bool`, *optional*, defaults to `True`):
+            Whether to use a convolutional layer as the 'skip' connection in the `EncodecResnetBlock` block. If False,
+            an identity function will be used, giving a generic residual connection.
+
+    Example:
+
+    ```python
+    >>> from transformers import EncodecModel, EncodecConfig
+
+    >>> # Initializing a "facebook/encodec_24khz" style configuration
+    >>> configuration = EncodecConfig()
+
+    >>> # Initializing a model (with random weights) from the "facebook/encodec_24khz" style configuration
+    >>> model = EncodecModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## EncodecFeatureExtractor
 
-[[autodoc]] EncodecFeatureExtractor
-    - __call__
+
+    Constructs an EnCodec feature extractor.
+
+    This feature extractor inherits from [`~feature_extraction_sequence_utils.SequenceFeatureExtractor`] which contains
+    most of the main methods. Users should refer to this superclass for more information regarding those methods.
+
+    Instantiating a feature extractor with the defaults will yield a similar configuration to that of the
+    [facebook/encodec_24khz](https://huggingface.co/facebook/encodec_24khz) architecture.
+
+    Args:
+        feature_size (`int`, *optional*, defaults to 1):
+            The feature dimension of the extracted features. Use 1 for mono, 2 for stereo.
+        sampling_rate (`int`, *optional*, defaults to 24000):
+            The sampling rate at which the audio waveform should be digitalized expressed in hertz (Hz).
+        padding_value (`float`, *optional*, defaults to 0.0):
+            The value that is used to fill the padding values.
+        chunk_length_s (`float`, *optional*):
+            If defined the audio is pre-processed into chunks of lengths `chunk_length_s` and then encoded.
+        overlap (`float`, *optional*):
+            Defines the overlap between each chunk. It is used to compute the `chunk_stride` using the following
+            formulae : `int((1.0 - self.overlap) * self.chunk_length)`.
+    
+
+Methods: __call__
 
 ## EncodecModel
 
-[[autodoc]] EncodecModel
-    - decode
+The EnCodec neural audio codec model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`EncodecConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: decode
     - encode
     - forward

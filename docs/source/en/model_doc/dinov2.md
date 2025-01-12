@@ -70,34 +70,132 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## Dinov2Config
 
-[[autodoc]] Dinov2Config
+
+    This is the configuration class to store the configuration of a [`Dinov2Model`]. It is used to instantiate an
+    Dinov2 model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the Dinov2
+    [google/dinov2-base-patch16-224](https://huggingface.co/google/dinov2-base-patch16-224) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        mlp_ratio (`int`, *optional*, defaults to 4):
+            Ratio of the hidden size of the MLPs relative to the `hidden_size`.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 14):
+            The size (resolution) of each patch.
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        qkv_bias (`bool`, *optional*, defaults to `True`):
+            Whether to add a bias to the queries, keys and values.
+        layerscale_value (`float`, *optional*, defaults to 1.0):
+           Initial value to use for layer scale.
+        drop_path_rate (`float`, *optional*, defaults to 0.0):
+            Stochastic depth rate per sample (when applied in the main path of residual layers).
+        use_swiglu_ffn (`bool`, *optional*, defaults to `False`):
+            Whether to use the SwiGLU feedforward neural network.
+        out_features (`List[str]`, *optional*):
+            If used as backbone, list of features to output. Can be any of `"stem"`, `"stage1"`, `"stage2"`, etc.
+            (depending on how many stages the model has). If unset and `out_indices` is set, will default to the
+            corresponding stages. If unset and `out_indices` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
+        out_indices (`List[int]`, *optional*):
+            If used as backbone, list of indices of features to output. Can be any of 0, 1, 2, etc. (depending on how
+            many stages the model has). If unset and `out_features` is set, will default to the corresponding stages.
+            If unset and `out_features` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
+        apply_layernorm (`bool`, *optional*, defaults to `True`):
+            Whether to apply layer normalization to the feature maps in case the model is used as backbone.
+        reshape_hidden_states (`bool`, *optional*, defaults to `True`):
+            Whether to reshape the feature maps to 4D tensors of shape `(batch_size, hidden_size, height, width)` in
+            case the model is used as backbone. If `False`, the feature maps will be 3D tensors of shape `(batch_size,
+            seq_len, hidden_size)`.
+
+    Example:
+
+    ```python
+    >>> from transformers import Dinov2Config, Dinov2Model
+
+    >>> # Initializing a Dinov2 dinov2-base-patch16-224 style configuration
+    >>> configuration = Dinov2Config()
+
+    >>> # Initializing a model (with random weights) from the dinov2-base-patch16-224 style configuration
+    >>> model = Dinov2Model(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 <frameworkcontent>
 <pt>
 
 ## Dinov2Model
 
-[[autodoc]] Dinov2Model
-    - forward
+The bare DINOv2 Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`Dinov2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## Dinov2ForImageClassification
 
-[[autodoc]] Dinov2ForImageClassification
-    - forward
+
+    Dinov2 Model transformer with an image classification head on top (a linear layer on top of the final hidden state
+    of the [CLS] token) e.g. for ImageNet.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`Dinov2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <jax>
 
 ## FlaxDinov2Model
 
-[[autodoc]] FlaxDinov2Model
-    - __call__
+No docstring available for FlaxDinov2Model
+
+Methods: __call__
 
 
 ## FlaxDinov2ForImageClassification
 
-[[autodoc]] FlaxDinov2ForImageClassification
-    - __call__
+No docstring available for FlaxDinov2ForImageClassification
+
+Methods: __call__
 
 </jax>
 </frameworkcontent>

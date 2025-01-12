@@ -103,17 +103,105 @@ print(tokenizer.decode(outputs[0]))
 
 ## DbrxConfig
 
-[[autodoc]] DbrxConfig
+
+
+    This is the configuration class to store the configuration of a [`DbrxModel`]. It is used to instantiate a Dbrx model according to the
+    specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a different configuration to that of the [databricks/dbrx-instruct](https://huggingface.co/databricks/dbrx-instruct) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        d_model (`int`, *optional*, defaults to 2048):
+            Dimensionality of the embeddings and hidden states.
+        n_heads (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        n_layers (`int`, *optional*, defaults to 24):
+            Number of hidden layers in the Transformer encoder.
+        max_seq_len (`int`, *optional*, defaults to 2048):
+            The maximum sequence length of the model.
+        vocab_size (`int`, *optional*, defaults to 32000):
+            Vocabulary size of the Dbrx model. Defines the maximum number of different tokens that can be represented by
+            the `inputs_ids` passed when calling [`DbrxModel`].
+        resid_pdrop (`float`, *optional*, defaults to 0.0):
+            The dropout probability applied to the attention output before combining with residual.
+        emb_pdrop (`float`, *optional*, defaults to 0.0):
+            The dropout probability for the embedding layer.
+        attn_config (`dict`, *optional*):
+            A dictionary used to configure the model's attention module.
+        ffn_config (`dict`, *optional*):
+            A dictionary used to configure the model's FFN module.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        output_router_logits (`bool`, *optional*, defaults to `False`):
+            Whether or not the router logits should be returned by the model. Enabling this will also
+            allow the model to output the auxiliary loss. See [here]() for more details.
+
+
+    Example:
+    ```python
+    >>> from transformers import DbrxConfig, DbrxModel
+
+    >>> # Initializing a Dbrx configuration
+    >>> configuration = DbrxConfig(n_layers=2, d_model=256, n_heads=8, vocab_size=128)
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = DbrxModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+    
 
 
 ## DbrxModel
 
-[[autodoc]] DbrxModel
-    - forward
+The bare DBRX Model outputting raw hidden-states without any specific head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`DbrxConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+Transformer decoder consisting of *config.num_hidden_layers*. Each layer is a [`DbrxBlock`] layer.
+
+    Args:
+        config ([`DbrxConfig`]): Model configuration class with all parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+    
+
+Methods: forward
 
 
 ## DbrxForCausalLM
 
-[[autodoc]] DbrxForCausalLM
-    - forward
+The DBRX Model transformer for causal language modeling.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`DbrxConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 

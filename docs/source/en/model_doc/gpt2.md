@@ -208,99 +208,416 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## GPT2Config
 
-[[autodoc]] GPT2Config
+
+    This is the configuration class to store the configuration of a [`GPT2Model`] or a [`TFGPT2Model`]. It is used to
+    instantiate a GPT-2 model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the GPT-2
+    [openai-community/gpt2](https://huggingface.co/openai-community/gpt2) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 50257):
+            Vocabulary size of the GPT-2 model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`GPT2Model`] or [`TFGPT2Model`].
+        n_positions (`int`, *optional*, defaults to 1024):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        n_embd (`int`, *optional*, defaults to 768):
+            Dimensionality of the embeddings and hidden states.
+        n_layer (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        n_head (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        n_inner (`int`, *optional*):
+            Dimensionality of the inner feed-forward layers. `None` will set it to 4 times n_embd
+        activation_function (`str`, *optional*, defaults to `"gelu_new"`):
+            Activation function, to be selected in the list `["relu", "silu", "gelu", "tanh", "gelu_new"]`.
+        resid_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        embd_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the embeddings.
+        attn_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-05):
+            The epsilon to use in the layer normalization layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        summary_type (`string`, *optional*, defaults to `"cls_index"`):
+            Argument used when doing sequence summary, used in the models [`GPT2DoubleHeadsModel`] and
+            [`TFGPT2DoubleHeadsModel`].
+
+            Has to be one of the following options:
+
+                - `"last"`: Take the last token hidden state (like XLNet).
+                - `"first"`: Take the first token hidden state (like BERT).
+                - `"mean"`: Take the mean of all tokens hidden states.
+                - `"cls_index"`: Supply a Tensor of classification token position (like GPT/GPT-2).
+                - `"attn"`: Not implemented now, use multi-head attention.
+        summary_use_proj (`bool`, *optional*, defaults to `True`):
+            Argument used when doing sequence summary, used in the models [`GPT2DoubleHeadsModel`] and
+            [`TFGPT2DoubleHeadsModel`].
+
+            Whether or not to add a projection after the vector extraction.
+        summary_activation (`str`, *optional*):
+            Argument used when doing sequence summary. Used in for the multiple choice head in
+            [`GPT2DoubleHeadsModel`].
+
+            Pass `"tanh"` for a tanh activation to the output, any other value will result in no activation.
+        summary_proj_to_labels (`bool`, *optional*, defaults to `True`):
+            Argument used when doing sequence summary, used in the models [`GPT2DoubleHeadsModel`] and
+            [`TFGPT2DoubleHeadsModel`].
+
+            Whether the projection outputs should have `config.num_labels` or `config.hidden_size` classes.
+        summary_first_dropout (`float`, *optional*, defaults to 0.1):
+            Argument used when doing sequence summary, used in the models [`GPT2DoubleHeadsModel`] and
+            [`TFGPT2DoubleHeadsModel`].
+
+            The dropout ratio to be used after the projection and activation.
+        scale_attn_weights (`bool`, *optional*, defaults to `True`):
+            Scale attention weights by dividing by sqrt(hidden_size)..
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+        bos_token_id (`int`, *optional*, defaults to 50256):
+            Id of the beginning of sentence token in the vocabulary.
+        eos_token_id (`int`, *optional*, defaults to 50256):
+            Id of the end of sentence token in the vocabulary.
+        scale_attn_by_inverse_layer_idx (`bool`, *optional*, defaults to `False`):
+            Whether to additionally scale attention weights by `1 / layer_idx + 1`.
+        reorder_and_upcast_attn (`bool`, *optional*, defaults to `False`):
+            Whether to scale keys (K) prior to computing attention (dot-product) and upcast attention
+            dot-product/softmax to float() when training with mixed precision.
+
+    Example:
+
+    ```python
+    >>> from transformers import GPT2Config, GPT2Model
+
+    >>> # Initializing a GPT2 configuration
+    >>> configuration = GPT2Config()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = GPT2Model(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## GPT2Tokenizer
 
-[[autodoc]] GPT2Tokenizer
-    - save_vocabulary
+
+    Construct a GPT-2 tokenizer. Based on byte-level Byte-Pair-Encoding.
+
+    This tokenizer has been trained to treat spaces like parts of the tokens (a bit like sentencepiece) so a word will
+    be encoded differently whether it is at the beginning of the sentence (without space) or not:
+
+    ```python
+    >>> from transformers import GPT2Tokenizer
+
+    >>> tokenizer = GPT2Tokenizer.from_pretrained("openai-community/gpt2")
+    >>> tokenizer("Hello world")["input_ids"]
+    [15496, 995]
+
+    >>> tokenizer(" Hello world")["input_ids"]
+    [18435, 995]
+    ```
+
+    You can get around that behavior by passing `add_prefix_space=True` when instantiating this tokenizer or when you
+    call it on some text, but since the model was not pretrained this way, it might yield a decrease in performance.
+
+    <Tip>
+
+    When used with `is_split_into_words=True`, this tokenizer will add a space before each word (even the first one).
+
+    </Tip>
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        merges_file (`str`):
+            Path to the merges file.
+        errors (`str`, *optional*, defaults to `"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See
+            [bytes.decode](https://docs.python.org/3/library/stdtypes.html#bytes.decode) for more information.
+        unk_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
+            The beginning of sequence token.
+        eos_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
+            The end of sequence token.
+        pad_token (`str`, *optional*):
+            The token used for padding, for example when batching sequences of different lengths.
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial space to the input. This allows to treat the leading word just as any
+            other word. (GPT2 tokenizer detect beginning of words by the preceding space).
+        add_bos_token (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial beginning of sentence token to the input. This allows to treat the leading
+            word just as any other word.
+    
+
+Methods: save_vocabulary
 
 ## GPT2TokenizerFast
 
-[[autodoc]] GPT2TokenizerFast
+
+    Construct a "fast" GPT-2 tokenizer (backed by HuggingFace's *tokenizers* library). Based on byte-level
+    Byte-Pair-Encoding.
+
+    This tokenizer has been trained to treat spaces like parts of the tokens (a bit like sentencepiece) so a word will
+    be encoded differently whether it is at the beginning of the sentence (without space) or not:
+
+    ```python
+    >>> from transformers import GPT2TokenizerFast
+
+    >>> tokenizer = GPT2TokenizerFast.from_pretrained("openai-community/gpt2")
+    >>> tokenizer("Hello world")["input_ids"]
+    [15496, 995]
+
+    >>> tokenizer(" Hello world")["input_ids"]
+    [18435, 995]
+    ```
+
+    You can get around that behavior by passing `add_prefix_space=True` when instantiating this tokenizer, but since
+    the model was not pretrained this way, it might yield a decrease in performance.
+
+    <Tip>
+
+    When used with `is_split_into_words=True`, this tokenizer needs to be instantiated with `add_prefix_space=True`.
+
+    </Tip>
+
+    This tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`, *optional*):
+            Path to the vocabulary file.
+        merges_file (`str`, *optional*):
+            Path to the merges file.
+        tokenizer_file (`str`, *optional*):
+            Path to [tokenizers](https://github.com/huggingface/tokenizers) file (generally has a .json extension) that
+            contains everything needed to load the tokenizer.
+        unk_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
+            The beginning of sequence token.
+        eos_token (`str`, *optional*, defaults to `"<|endoftext|>"`):
+            The end of sequence token.
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial space to the input. This allows to treat the leading word just as any
+            other word. (GPT2 tokenizer detect beginning of words by the preceding space).
+    
 
 ## GPT2 specific outputs
 
-[[autodoc]] models.gpt2.modeling_gpt2.GPT2DoubleHeadsModelOutput
+Could not find docstring for models.gpt2.modeling_gpt2.GPT2DoubleHeadsModelOutput
 
-[[autodoc]] models.gpt2.modeling_tf_gpt2.TFGPT2DoubleHeadsModelOutput
+Could not find docstring for models.gpt2.modeling_tf_gpt2.TFGPT2DoubleHeadsModelOutput
 
 <frameworkcontent>
 <pt>
 
 ## GPT2Model
 
-[[autodoc]] GPT2Model
-    - forward
+The bare GPT2 Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPT2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPT2LMHeadModel
 
-[[autodoc]] GPT2LMHeadModel
-    - forward
+
+    The GPT2 Model transformer with a language modeling head on top (linear layer with weights tied to the input
+    embeddings).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPT2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPT2DoubleHeadsModel
 
-[[autodoc]] GPT2DoubleHeadsModel
-    - forward
+
+The GPT2 Model transformer with a language modeling and a multiple-choice classification head on top e.g. for
+RocStories/SWAG tasks. The two heads are two linear layers. The language modeling head has its weights tied to the
+input embeddings, the classification head takes as input the input of a specified classification token index in the
+input sequence).
+
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPT2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPT2ForQuestionAnswering
 
-[[autodoc]] GPT2ForQuestionAnswering
-    - forward
+
+    The GPT-2 Model transformer with a span classification head on top for extractive question-answering tasks like
+    SQuAD (a linear layer on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPT2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPT2ForSequenceClassification
 
-[[autodoc]] GPT2ForSequenceClassification
-    - forward
+
+    The GPT2 Model transformer with a sequence classification head on top (linear layer).
+
+    [`GPT2ForSequenceClassification`] uses the last token in order to do the classification, as other causal models
+    (e.g. GPT-1) do.
+
+    Since it does classification on the last token, it requires to know the position of the last token. If a
+    `pad_token_id` is defined in the configuration, it finds the last token that is not a padding token in each row. If
+    no `pad_token_id` is defined, it simply takes the last value in each row of the batch. Since it cannot guess the
+    padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last value in
+    each row of the batch).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPT2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPT2ForTokenClassification
 
-[[autodoc]] GPT2ForTokenClassification
-    - forward
+
+    GPT2 Model with a token classification head on top (a linear layer on top of the hidden-states output) e.g. for
+    Named-Entity-Recognition (NER) tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPT2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## TFGPT2Model
 
-[[autodoc]] TFGPT2Model
-    - call
+No docstring available for TFGPT2Model
+
+Methods: call
 
 ## TFGPT2LMHeadModel
 
-[[autodoc]] TFGPT2LMHeadModel
-    - call
+No docstring available for TFGPT2LMHeadModel
+
+Methods: call
 
 ## TFGPT2DoubleHeadsModel
 
-[[autodoc]] TFGPT2DoubleHeadsModel
-    - call
+No docstring available for TFGPT2DoubleHeadsModel
+
+Methods: call
 
 ## TFGPT2ForSequenceClassification
 
-[[autodoc]] TFGPT2ForSequenceClassification
-    - call
+No docstring available for TFGPT2ForSequenceClassification
+
+Methods: call
 
 ## TFSequenceClassifierOutputWithPast
 
-[[autodoc]] modeling_tf_outputs.TFSequenceClassifierOutputWithPast
+Could not find docstring for modeling_tf_outputs.TFSequenceClassifierOutputWithPast
 
 ## TFGPT2Tokenizer
 
-[[autodoc]] TFGPT2Tokenizer
+No docstring available for TFGPT2Tokenizer
 
 </tf>
 <jax>
 
 ## FlaxGPT2Model
 
-[[autodoc]] FlaxGPT2Model
-    - __call__
+No docstring available for FlaxGPT2Model
+
+Methods: __call__
 
 ## FlaxGPT2LMHeadModel
 
-[[autodoc]] FlaxGPT2LMHeadModel
-    - __call__
+No docstring available for FlaxGPT2LMHeadModel
+
+Methods: __call__
 
 </jax>
 </frameworkcontent>

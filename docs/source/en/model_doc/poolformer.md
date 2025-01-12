@@ -57,24 +57,154 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## PoolFormerConfig
 
-[[autodoc]] PoolFormerConfig
+
+    This is the configuration class to store the configuration of [`PoolFormerModel`]. It is used to instantiate a
+    PoolFormer model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the PoolFormer
+    [sail/poolformer_s12](https://huggingface.co/sail/poolformer_s12) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of channels in the input image.
+        patch_size (`int`, *optional*, defaults to 16):
+            The size of the input patch.
+        stride (`int`, *optional*, defaults to 16):
+            The stride of the input patch.
+        pool_size (`int`, *optional*, defaults to 3):
+            The size of the pooling window.
+        mlp_ratio (`float`, *optional*, defaults to 4.0):
+            The ratio of the number of channels in the output of the MLP to the number of channels in the input.
+        depths (`list`, *optional*, defaults to `[2, 2, 6, 2]`):
+            The depth of each encoder block.
+        hidden_sizes (`list`, *optional*, defaults to `[64, 128, 320, 512]`):
+            The hidden sizes of each encoder block.
+        patch_sizes (`list`, *optional*, defaults to `[7, 3, 3, 3]`):
+            The size of the input patch for each encoder block.
+        strides (`list`, *optional*, defaults to `[4, 2, 2, 2]`):
+            The stride of the input patch for each encoder block.
+        padding (`list`, *optional*, defaults to `[2, 1, 1, 1]`):
+            The padding of the input patch for each encoder block.
+        num_encoder_blocks (`int`, *optional*, defaults to 4):
+            The number of encoder blocks.
+        drop_path_rate (`float`, *optional*, defaults to 0.0):
+            The dropout rate for the dropout layers.
+        hidden_act (`str`, *optional*, defaults to `"gelu"`):
+            The activation function for the hidden layers.
+        use_layer_scale (`bool`, *optional*, defaults to `True`):
+            Whether to use layer scale.
+        layer_scale_init_value (`float`, *optional*, defaults to 1e-05):
+            The initial value for the layer scale.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The initializer range for the weights.
+
+    Example:
+
+    ```python
+    >>> from transformers import PoolFormerConfig, PoolFormerModel
+
+    >>> # Initializing a PoolFormer sail/poolformer_s12 style configuration
+    >>> configuration = PoolFormerConfig()
+
+    >>> # Initializing a model (with random weights) from the sail/poolformer_s12 style configuration
+    >>> model = PoolFormerModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+    
 
 ## PoolFormerFeatureExtractor
 
-[[autodoc]] PoolFormerFeatureExtractor
-    - __call__
+No docstring available for PoolFormerFeatureExtractor
+
+Methods: __call__
 
 ## PoolFormerImageProcessor
 
-[[autodoc]] PoolFormerImageProcessor
-    - preprocess
+
+    Constructs a PoolFormer image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 224}`):
+            Size of the image after resizing. Can be overridden by `size` in the `preprocess` method. If crop_pct is
+            unset:
+            - size is `{"height": h, "width": w}`: the image is resized to `(h, w)`.
+            - size is `{"shortest_edge": s}`: the shortest edge of the image is resized to s whilst maintaining the
+              aspect ratio.
+
+            If crop_pct is set:
+            - size is `{"height": h, "width": w}`: the image is resized to `(int(floor(h/crop_pct)),
+              int(floor(w/crop_pct)))`
+            - size is `{"height": c, "width": c}`: the shortest edge of the image is resized to `int(floor(c/crop_pct)`
+              whilst maintaining the aspect ratio.
+            - size is `{"shortest_edge": c}`: the shortest edge of the image is resized to `int(floor(c/crop_pct)`
+              whilst maintaining the aspect ratio.
+        crop_pct (`float`, *optional*, defaults to 0.9):
+            Percentage of the image to crop from the center. Can be overridden by `crop_pct` in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image. If the input size is smaller than `crop_size` along any edge, the image
+            is padded with 0's and then center cropped. Can be overridden by `do_center_crop` in the `preprocess`
+            method.
+        crop_size (`Dict[str, int]`, *optional*, defaults to `{"height": 224, "width": 224}`):
+            Size of the image after applying center crop. Only has an effect if `do_center_crop` is set to `True`. Can
+            be overridden by the `crop_size` parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter in the
+            `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Controls whether to normalize the image. Can be overridden by the `do_normalize` parameter in the
+            `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+    
+
+Methods: preprocess
 
 ## PoolFormerModel
 
-[[autodoc]] PoolFormerModel
-    - forward
+The bare PoolFormer Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PoolFormerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PoolFormerForImageClassification
 
-[[autodoc]] PoolFormerForImageClassification
-    - forward
+
+    PoolFormer Model transformer with an image classification head on top
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PoolFormerConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

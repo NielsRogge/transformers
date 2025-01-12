@@ -171,32 +171,260 @@ model = ChameleonForConditionalGeneration.from_pretrained(
 
 ## ChameleonConfig
 
-[[autodoc]] ChameleonConfig
+
+    This is the configuration class to store the configuration of a [`ChameleonModel`]. It is used to instantiate a
+    chameleon model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the
+    [meta/chameleon-7B](https://huggingface.co/meta/chameleon-7B).
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 65536):
+            Vocabulary size of the chameleon model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`ChameleonModel`]; this includes text and image tokens.
+        hidden_size (`int`, *optional*, defaults to 4096):
+            Dimension of the hidden representations.
+        intermediate_size (`int`, *optional*, defaults to 11008):
+            Dimension of the MLP representations.
+        num_hidden_layers (`int`, *optional*, defaults to 32):
+            Number of hidden layers in the Transformer decoder.
+        num_attention_heads (`int`, *optional*, defaults to 32):
+            Number of attention heads for each attention layer in the Transformer decoder.
+        num_key_value_heads (`int`, *optional*, defaults to 32):
+            This is the number of key_value heads that should be used to implement Grouped Query Attention. If
+            `num_key_value_heads=num_attention_heads`, the model will use Multi Head Attention (MHA), if
+            `num_key_value_heads=1 the model will use Multi Query Attention (MQA) otherwise GQA is used. When
+            converting a multi-head checkpoint to a GQA checkpoint, each group key and value head should be constructed
+            by meanpooling all the original heads within that group. For more details checkout [this
+            paper](https://arxiv.org/pdf/2305.13245.pdf). If it is not specified, will default to
+            `num_attention_heads`.
+        hidden_act (`str` or `function`, *optional*, defaults to `"silu"`):
+            The non-linear activation function (function or string) in the decoder.
+        max_position_embeddings (`int`, *optional*, defaults to 4096):
+            The maximum sequence length that this model might ever be used with. Chameleon supports up to 4096 tokens.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        rms_norm_eps (`float`, *optional*, defaults to 1e-05):
+            The epsilon used by the rms normalization layers.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models). Only
+            relevant if `config.is_decoder=True`.
+        pad_token_id (`int`, *optional*):
+            Padding token id.
+        bos_token_id (`int`, *optional*, defaults to 1):
+            Beginning of stream token id.
+        eos_token_id (`int`, *optional*, defaults to 2):
+            End of stream token id.
+        tie_word_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether to tie weight embeddings
+        rope_theta (`float`, *optional*, defaults to 10000.0):
+            The base period of the RoPE embeddings.
+        rope_scaling (`Dict`, *optional*):
+            Dictionary containing the scaling configuration for the RoPE embeddings. Currently supports two scaling
+            strategies: linear and dynamic. Their scaling factor must be a float greater than 1. The expected format is
+            `{"type": strategy name, "factor": scaling factor}`. When using this flag, don't update
+            `max_position_embeddings` to the expected new maximum. See the following thread for more information on how
+            these scaling strategies behave:
+            https://www.reddit.com/r/Localchameleon/comments/14mrgpr/dynamically_scaled_rope_further_increases/. This is an
+            experimental feature, subject to breaking API changes in future versions.
+        attention_bias (`bool`, defaults to `False`, *optional*, defaults to `False`):
+            Whether to use a bias in the query, key, value and output projection layers during self-attention.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        model_parallel_size (`int`, *optional*, defaults to 1):
+            Number of shards used when training the model. This will be used in qk layernorm because the original Chameleon inference
+            doesn't do reduction in those layers and each rank has its own biases.
+        swin_norm (`bool`, *optional*, defaults to `False`):
+            Use Swin Transformer normalization.
+        vq_config (`dict`, *optional*):
+            ChameleonVQConfig instance containing the configuration for the VQ-VAE model.
+        vocabulary_map (`dict`, *optional*):
+            A dictionary containing the vocabulary map from the tokenizer. Used to obtain tokens from the image inputs.
+        mlp_bias (`bool`, *optional*, defaults to `False`):
+            Whether to use a bias in up_proj, down_proj and gate_proj layers in the MLP layers.
+
+
+    ```python
+    >>> from transformers import ChameleonModel, ChameleonConfig
+
+    >>> # Initializing a chameleon chameleon-7b style configuration
+    >>> configuration = ChameleonConfig()
+
+    >>> # Initializing a model from the chameleon-7b style configuration
+    >>> model = ChameleonModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## ChameleonVQVAEConfig
 
-[[autodoc]] ChameleonVQVAEConfig
+
+    This is the configuration class to store the configuration of a [`ChameleonVQModel`]. It is used to instantiate a
+    `ChameleonVQModel` according to the specified arguments, defining the model architecture.
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information. Instantiating a
+    configuration with the defaults will yield a similar configuration to the VQModel of the
+    [meta/chameleon-7B](https://huggingface.co/meta/chameleon-7B).
+
+    Args:
+        embed_dim (`int`, *optional*, defaults to 256):
+            Dimensionality of each embedding vector.
+        num_embeddings (`int`, *optional*, defaults to 8192):
+            Number of codebook embeddings.
+        double_latent (`bool`, *optional*, defaults to `False`):
+            Whether to use double z channels.
+        latent_channels (`int`, *optional*, defaults to 256):
+            Number of channels for the latent space.
+        resolution (`int`, *optional*, defaults to 512):
+            Resolution of the input images.
+        in_channels (`int`, *optional*, defaults to 3):
+            Number of input channels.
+        base_channels (`int`, *optional*, defaults to 128):
+            Base channel count.
+        channel_multiplier (`List[int]`, *optional*, defaults to `[1, 1, 2, 2, 4]`):
+            Channel multipliers for each resolution.
+        num_res_blocks (`int`, *optional*, defaults to 2):
+            Number of residual blocks.
+        attn_resolutions (`List[int]`, *optional*):
+            Resolutions to apply attention.
+        dropout (`float`, *optional*, defaults to 0.0):
+            Dropout rate.
+        attn_type (`str`, *optional*, defaults to `"vanilla"`):
+            Attention type used in VQ-GAN encoder. Can be "vanilla" or None.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+    
 
 ## ChameleonProcessor
 
-[[autodoc]] ChameleonProcessor
+
+    Constructs a Chameleon processor which wraps a Chameleon image processor and a Chameleon tokenizer into a single
+    processor.
+
+    [`ChameleonProcessor`] offers all the functionalities of [`ChameleonImageProcessor`] and [`LlamaTokenizerFast`].
+    See the [`~ChameleonProcessor.__call__`] and [`~ChameleonProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`ChameleonImageProcessor`]):
+            The image processor is a required input.
+        tokenizer ([`LlamaTokenizerFast`]):
+            The tokenizer is a required input.
+        image_seq_length (`int`, *optional*, defaults to 1024):
+            Sequence length of one image embedding.
+        image_token (`str`, *optional*, defaults to `"<image>"`):
+            The special token used to indicate image in the text.
+    
 
 ## ChameleonImageProcessor
 
-[[autodoc]] ChameleonImageProcessor
-    - preprocess
+
+    Constructs a Chameleon image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 512}`):
+            Size of the image after resizing. The shortest edge of the image is resized to size["shortest_edge"], with
+            the longest edge resized to keep the input aspect ratio. Can be overridden by `size` in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to 1):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image to the specified `crop_size`. Can be overridden by `do_center_crop` in the
+            `preprocess` method.
+        crop_size (`Dict[str, int]` *optional*, defaults to {"height": 512, "width": 512}):
+            Size of the output image after applying `center_crop`. Can be overridden by `crop_size` in the `preprocess`
+            method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to 0.0078):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[1.0, 1.0, 1.0]`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `[1.0, 1.0, 1.0]`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB.
+    
+
+Methods: preprocess
 
 ## ChameleonVQVAE
 
-[[autodoc]] ChameleonVQVAE
-    - forward
+The VQ-VAE model used in Chameleon for encoding/decoding images into discrete tokens.
+    This model follows the "Make-a-scene: Scene-based text-to-image generation with human priors" paper from
+    [ Oran Gafni, Adam Polyak, Oron Ashual, Shelly Sheynin, Devi Parikh, and Yaniv Taigman](https://arxiv.org/abs/2203.13131).
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`ChameleonVQVAEConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## ChameleonModel
 
-[[autodoc]] ChameleonModel
-    - forward
+The bare chameleon Model outputting raw hidden-states without any specific head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`ChameleonConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+    Transformer decoder consisting of *config.num_hidden_layers* layers. Each layer is a [`ChameleonDecoderLayer`]
+
+    Args:
+        config: ChameleonConfig
+    
+
+Methods: forward
 
 ## ChameleonForConditionalGeneration
 
-[[autodoc]] ChameleonForConditionalGeneration
-    - forward
+Chameleon Model with a head on top used for outputting logits for next token prediction.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`ChameleonConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

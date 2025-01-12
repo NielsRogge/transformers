@@ -578,55 +578,307 @@ In case of a conversational set-up, then each table-question pair must be provid
 - [Text classification task guide](../tasks/sequence_classification)
 - [Masked language modeling task guide](../tasks/masked_language_modeling)
 
-## TAPAS specific outputs
-[[autodoc]] models.tapas.modeling_tapas.TableQuestionAnsweringOutput
+Could not find docstring for models.tapas.modeling_tapas.TableQuestionAnsweringOutput
 
-## TapasConfig
-[[autodoc]] TapasConfig
 
-## TapasTokenizer
-[[autodoc]] TapasTokenizer
-    - __call__
+    This is the configuration class to store the configuration of a [`TapasModel`]. It is used to instantiate a TAPAS
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the TAPAS
+    [google/tapas-base-finetuned-sqa](https://huggingface.co/google/tapas-base-finetuned-sqa) architecture.
+
+    Configuration objects inherit from [`PreTrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Hyperparameters additional to BERT are taken from run_task_main.py and hparam_utils.py of the original
+    implementation. Original implementation available at https://github.com/google-research/tapas/tree/master.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the TAPAS model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`TapasModel`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `Callable`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"swish"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 1024):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        type_vocab_sizes (`List[int]`, *optional*, defaults to `[3, 256, 256, 2, 256, 256, 10]`):
+            The vocabulary sizes of the `token_type_ids` passed when calling [`TapasModel`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        positive_label_weight (`float`, *optional*, defaults to 10.0):
+            Weight for positive labels.
+        num_aggregation_labels (`int`, *optional*, defaults to 0):
+            The number of aggregation operators to predict.
+        aggregation_loss_weight (`float`, *optional*, defaults to 1.0):
+            Importance weight for the aggregation loss.
+        use_answer_as_supervision (`bool`, *optional*):
+            Whether to use the answer as the only supervision for aggregation examples.
+        answer_loss_importance (`float`, *optional*, defaults to 1.0):
+            Importance weight for the regression loss.
+        use_normalized_answer_loss (`bool`, *optional*, defaults to `False`):
+            Whether to normalize the answer loss by the maximum of the predicted and expected value.
+        huber_loss_delta (`float`, *optional*):
+            Delta parameter used to calculate the regression loss.
+        temperature (`float`, *optional*, defaults to 1.0):
+            Value used to control (OR change) the skewness of cell logits probabilities.
+        aggregation_temperature (`float`, *optional*, defaults to 1.0):
+            Scales aggregation logits to control the skewness of probabilities.
+        use_gumbel_for_cells (`bool`, *optional*, defaults to `False`):
+            Whether to apply Gumbel-Softmax to cell selection.
+        use_gumbel_for_aggregation (`bool`, *optional*, defaults to `False`):
+            Whether to apply Gumbel-Softmax to aggregation selection.
+        average_approximation_function (`string`, *optional*, defaults to `"ratio"`):
+            Method to calculate the expected average of cells in the weak supervision case. One of `"ratio"`,
+            `"first_order"` or `"second_order"`.
+        cell_selection_preference (`float`, *optional*):
+            Preference for cell selection in ambiguous cases. Only applicable in case of weak supervision for
+            aggregation (WTQ, WikiSQL). If the total mass of the aggregation probabilities (excluding the "NONE"
+            operator) is higher than this hyperparameter, then aggregation is predicted for an example.
+        answer_loss_cutoff (`float`, *optional*):
+            Ignore examples with answer loss larger than cutoff.
+        max_num_rows (`int`, *optional*, defaults to 64):
+            Maximum number of rows.
+        max_num_columns (`int`, *optional*, defaults to 32):
+            Maximum number of columns.
+        average_logits_per_cell (`bool`, *optional*, defaults to `False`):
+            Whether to average logits per cell.
+        select_one_column (`bool`, *optional*, defaults to `True`):
+            Whether to constrain the model to only select cells from a single column.
+        allow_empty_column_selection (`bool`, *optional*, defaults to `False`):
+            Whether to allow not to select any column.
+        init_cell_selection_weights_to_zero (`bool`, *optional*, defaults to `False`):
+            Whether to initialize cell selection weights to 0 so that the initial probabilities are 50%.
+        reset_position_index_per_cell (`bool`, *optional*, defaults to `True`):
+            Whether to restart position indexes at every cell (i.e. use relative position embeddings).
+        disable_per_token_loss (`bool`, *optional*, defaults to `False`):
+            Whether to disable any (strong or weak) supervision on cells.
+        aggregation_labels (`Dict[int, label]`, *optional*):
+            The aggregation labels used to aggregate the results. For example, the WTQ models have the following
+            aggregation labels: `{0: "NONE", 1: "SUM", 2: "AVERAGE", 3: "COUNT"}`
+        no_aggregation_label_index (`int`, *optional*):
+            If the aggregation labels are defined and one of these labels represents "No aggregation", this should be
+            set to its index. For example, the WTQ models have the "NONE" aggregation label at index 0, so that value
+            should be set to 0 for these models.
+
+
+    Example:
+
+    ```python
+    >>> from transformers import TapasModel, TapasConfig
+
+    >>> # Initializing a default (SQA) Tapas configuration
+    >>> configuration = TapasConfig()
+    >>> # Initializing a model from the configuration
+    >>> model = TapasModel(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+
+
+    Construct a TAPAS tokenizer. Based on WordPiece. Flattens a table and one or more related sentences to be used by
+    TAPAS models.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods. [`TapasTokenizer`] creates several token type ids to
+    encode tabular structure. To be more precise, it adds 7 token type ids, in the following order: `segment_ids`,
+    `column_ids`, `row_ids`, `prev_labels`, `column_ranks`, `inv_column_ranks` and `numeric_relations`:
+
+    - segment_ids: indicate whether a token belongs to the question (0) or the table (1). 0 for special tokens and
+      padding.
+    - column_ids: indicate to which column of the table a token belongs (starting from 1). Is 0 for all question
+      tokens, special tokens and padding.
+    - row_ids: indicate to which row of the table a token belongs (starting from 1). Is 0 for all question tokens,
+      special tokens and padding. Tokens of column headers are also 0.
+    - prev_labels: indicate whether a token was (part of) an answer to the previous question (1) or not (0). Useful in
+      a conversational setup (such as SQA).
+    - column_ranks: indicate the rank of a table token relative to a column, if applicable. For example, if you have a
+      column "number of movies" with values 87, 53 and 69, then the column ranks of these tokens are 3, 1 and 2
+      respectively. 0 for all question tokens, special tokens and padding.
+    - inv_column_ranks: indicate the inverse rank of a table token relative to a column, if applicable. For example, if
+      you have a column "number of movies" with values 87, 53 and 69, then the inverse column ranks of these tokens are
+      1, 3 and 2 respectively. 0 for all question tokens, special tokens and padding.
+    - numeric_relations: indicate numeric relations between the question and the tokens of the table. 0 for all
+      question tokens, special tokens and padding.
+
+    [`TapasTokenizer`] runs end-to-end tokenization on a table and associated sentences: punctuation splitting and
+    wordpiece.
+
+    Args:
+        vocab_file (`str`):
+            File containing the vocabulary.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        do_basic_tokenize (`bool`, *optional*, defaults to `True`):
+            Whether or not to do basic tokenization before WordPiece.
+        never_split (`Iterable`, *optional*):
+            Collection of tokens which will never be split during tokenization. Only has an effect when
+            `do_basic_tokenize=True`
+        unk_token (`str`, *optional*, defaults to `"[UNK]"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"[PAD]"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        empty_token (`str`, *optional*, defaults to `"[EMPTY]"`):
+            The token used for empty cell values in a table. Empty cell values include "", "n/a", "nan" and "?".
+        tokenize_chinese_chars (`bool`, *optional*, defaults to `True`):
+            Whether or not to tokenize Chinese characters. This should likely be deactivated for Japanese (see this
+            [issue](https://github.com/huggingface/transformers/issues/328)).
+        strip_accents (`bool`, *optional*):
+            Whether or not to strip all accents. If this option is not specified, then it will be determined by the
+            value for `lowercase` (as in the original BERT).
+        cell_trim_length (`int`, *optional*, defaults to -1):
+            If > 0: Trim cells so that the length is <= this value. Also disables further cell trimming, should thus be
+            used with `truncation` set to `True`.
+        max_column_id (`int`, *optional*):
+            Max column id to extract.
+        max_row_id (`int`, *optional*):
+            Max row id to extract.
+        strip_column_names (`bool`, *optional*, defaults to `False`):
+            Whether to add empty strings instead of column names.
+        update_answer_coordinates (`bool`, *optional*, defaults to `False`):
+            Whether to recompute the answer coordinates from the answer text.
+        min_question_length (`int`, *optional*):
+            Minimum length of each question in terms of tokens (will be skipped otherwise).
+        max_question_length (`int`, *optional*):
+            Maximum length of each question in terms of tokens (will be skipped otherwise).
+        clean_up_tokenization_spaces (`bool`, *optional*, defaults to `True`):
+            Whether or not to cleanup spaces after decoding, cleanup consists in removing potential artifacts like
+            extra spaces.
+    
+
+Methods: __call__
     - convert_logits_to_predictions
     - save_vocabulary
 
 <frameworkcontent>
 <pt>
 
-## TapasModel
-[[autodoc]] TapasModel
-    - forward
-    
-## TapasForMaskedLM
-[[autodoc]] TapasForMaskedLM
-    - forward
+The bare Tapas Model transformer outputting raw hidden-states without any specific head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its models (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
 
-## TapasForSequenceClassification
-[[autodoc]] TapasForSequenceClassification
-    - forward
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`TapasConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+    This class is a small change compared to [`BertModel`], taking into account the additional token type ids.
+
+    The model can behave as an encoder (with only self-attention) as well as a decoder, in which case a layer of
+    cross-attention is added between the self-attention layers, following the architecture described in [Attention is
+    all you need](https://arxiv.org/abs/1706.03762) by Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit,
+    Llion Jones, Aidan N. Gomez, Lukasz Kaiser and Illia Polosukhin.
+
     
-## TapasForQuestionAnswering
-[[autodoc]] TapasForQuestionAnswering
-    - forward
+
+Methods: forward
+    
+Tapas Model with a `language modeling` head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its models (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`TapasConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
+
+
+    Tapas Model with a sequence classification head on top (a linear layer on top of the pooled output), e.g. for table
+    entailment tasks, such as TabFact (Chen et al., 2020).
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its models (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`TapasConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
+    
+
+    Tapas Model with a cell selection head and optional aggregation head on top for question-answering tasks on tables
+    (linear layers on top of the hidden-states output to compute `logits` and optional `logits_aggregation`), e.g. for
+    SQA, WTQ or WikiSQL-supervised tasks.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its models (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`TapasConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
-## TFTapasModel
-[[autodoc]] TFTapasModel
-    - call
-    
-## TFTapasForMaskedLM
-[[autodoc]] TFTapasForMaskedLM
-    - call
+No docstring available for TFTapasModel
 
-## TFTapasForSequenceClassification
-[[autodoc]] TFTapasForSequenceClassification
-    - call
+Methods: call
     
-## TFTapasForQuestionAnswering
-[[autodoc]] TFTapasForQuestionAnswering
-    - call
+No docstring available for TFTapasForMaskedLM
+
+Methods: call
+
+No docstring available for TFTapasForSequenceClassification
+
+Methods: call
+    
+No docstring available for TFTapasForQuestionAnswering
+
+Methods: call
 
 </tf>
 </frameworkcontent>

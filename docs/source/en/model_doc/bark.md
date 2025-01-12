@@ -180,53 +180,353 @@ To save the audio, simply take the sample rate from the model config and some sc
 
 ## BarkConfig
 
-[[autodoc]] BarkConfig
-    - all
+
+    This is the configuration class to store the configuration of a [`BarkModel`]. It is used to instantiate a Bark
+    model according to the specified sub-models configurations, defining the model architecture.
+
+    Instantiating a configuration with the defaults will yield a similar configuration to that of the Bark
+    [suno/bark](https://huggingface.co/suno/bark) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+    semantic_config ([`BarkSemanticConfig`], *optional*):
+        Configuration of the underlying semantic sub-model.
+    coarse_acoustics_config ([`BarkCoarseConfig`], *optional*):
+        Configuration of the underlying coarse acoustics sub-model.
+    fine_acoustics_config ([`BarkFineConfig`], *optional*):
+        Configuration of the underlying fine acoustics sub-model.
+    codec_config ([`AutoConfig`], *optional*):
+        Configuration of the underlying codec sub-model.
+
+    Example:
+
+    ```python
+    >>> from transformers import (
+    ...     BarkSemanticConfig,
+    ...     BarkCoarseConfig,
+    ...     BarkFineConfig,
+    ...     BarkModel,
+    ...     BarkConfig,
+    ...     AutoConfig,
+    ... )
+
+    >>> # Initializing Bark sub-modules configurations.
+    >>> semantic_config = BarkSemanticConfig()
+    >>> coarse_acoustics_config = BarkCoarseConfig()
+    >>> fine_acoustics_config = BarkFineConfig()
+    >>> codec_config = AutoConfig.from_pretrained("facebook/encodec_24khz")
+
+
+    >>> # Initializing a Bark module style configuration
+    >>> configuration = BarkConfig.from_sub_model_configs(
+    ...     semantic_config, coarse_acoustics_config, fine_acoustics_config, codec_config
+    ... )
+
+    >>> # Initializing a model (with random weights)
+    >>> model = BarkModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+    
+
+Methods: all
 
 ## BarkProcessor
 
-[[autodoc]] BarkProcessor
-    - all
+
+    Constructs a Bark processor which wraps a text tokenizer and optional Bark voice presets into a single processor.
+
+    Args:
+        tokenizer ([`PreTrainedTokenizer`]):
+            An instance of [`PreTrainedTokenizer`].
+        speaker_embeddings (`Dict[Dict[str]]`, *optional*):
+            Optional nested speaker embeddings dictionary. The first level contains voice preset names (e.g
+            `"en_speaker_4"`). The second level contains `"semantic_prompt"`, `"coarse_prompt"` and `"fine_prompt"`
+            embeddings. The values correspond to the path of the corresponding `np.ndarray`. See
+            [here](https://suno-ai.notion.site/8b8e8749ed514b0cbf3f699013548683?v=bc67cff786b04b50b3ceb756fd05f68c) for
+            a list of `voice_preset_names`.
+
+    
+
+Methods: all
     - __call__
 
 ## BarkModel
 
-[[autodoc]] BarkModel
-    - generate
+
+    The full Bark model, a text-to-speech model composed of 4 sub-models:
+    - [`BarkSemanticModel`] (also referred to as the 'text' model): a causal auto-regressive transformer model that
+      takes
+    as input tokenized text, and predicts semantic text tokens that capture the meaning of the text.
+    - [`BarkCoarseModel`] (also refered to as the 'coarse acoustics' model), also a causal autoregressive transformer,
+    that takes into input the results of the last model. It aims at regressing the first two audio codebooks necessary
+    to `encodec`.
+    - [`BarkFineModel`] (the 'fine acoustics' model), this time a non-causal autoencoder transformer, which iteratively
+    predicts the last codebooks based on the sum of the previous codebooks embeddings.
+    - having predicted all the codebook channels from the [`EncodecModel`], Bark uses it to decode the output audio
+      array.
+
+    It should be noted that each of the first three modules can support conditional speaker embeddings to condition the
+    output sound according to specific predefined voice.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BarkConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: generate
     - enable_cpu_offload
 
 ## BarkSemanticModel
 
-[[autodoc]] BarkSemanticModel
-    - forward
+Bark semantic (or text) model. It shares the same architecture as the coarse model.
+    It is a GPT-2 like autoregressive model with a language modeling head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BarkSemanticConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BarkCoarseModel
 
-[[autodoc]] BarkCoarseModel
-    - forward
+Bark coarse acoustics model.
+    It shares the same architecture as the semantic (or text) model. It is a GPT-2 like autoregressive model with a
+    language modeling head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BarkCoarseConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BarkFineModel
 
-[[autodoc]] BarkFineModel
-    - forward
+Bark fine acoustics model. It is a non-causal GPT-like model with `config.n_codes_total` embedding layers and
+    language modeling heads, one for each codebook.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BarkFineConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BarkCausalModel
 
-[[autodoc]] BarkCausalModel
-    - forward
+No docstring available for BarkCausalModel
+
+Methods: forward
 
 ## BarkCoarseConfig
 
-[[autodoc]] BarkCoarseConfig
-    - all
+
+    This is the configuration class to store the configuration of a [`BarkCoarseModel`]. It is used to instantiate the model
+    according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the Bark [suno/bark](https://huggingface.co/suno/bark)
+    architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        block_size (`int`, *optional*, defaults to 1024):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        input_vocab_size (`int`, *optional*, defaults to 10_048):
+            Vocabulary size of a Bark sub-model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`BarkCoarseModel`]. Defaults to 10_048 but should be carefully thought with
+            regards to the chosen sub-model.
+        output_vocab_size (`int`, *optional*, defaults to 10_048):
+            Output vocabulary size of a Bark sub-model. Defines the number of different tokens that can be represented
+            by the: `output_ids` when passing forward a [`BarkCoarseModel`]. Defaults to 10_048 but should be carefully thought
+            with regards to the chosen sub-model.
+        num_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the given sub-model.
+        num_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer architecture.
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the architecture.
+        dropout (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        bias (`bool`, *optional*, defaults to `True`):
+            Whether or not to use bias in the linear layers and layer norm layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+
+    Example:
+
+    ```python
+    >>> from transformers import BarkCoarseConfig, BarkCoarseModel
+
+    >>> # Initializing a Bark sub-module style configuration
+    >>> configuration = BarkCoarseConfig()
+
+    >>> # Initializing a model (with random weights) from the suno/bark style configuration
+    >>> model = BarkCoarseModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+
+Methods: all
 
 ## BarkFineConfig
 
-[[autodoc]] BarkFineConfig
-    - all
+
+    This is the configuration class to store the configuration of a [`BarkFineModel`]. It is used to instantiate the model
+    according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the Bark [suno/bark](https://huggingface.co/suno/bark)
+    architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        block_size (`int`, *optional*, defaults to 1024):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        input_vocab_size (`int`, *optional*, defaults to 10_048):
+            Vocabulary size of a Bark sub-model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`BarkFineModel`]. Defaults to 10_048 but should be carefully thought with
+            regards to the chosen sub-model.
+        output_vocab_size (`int`, *optional*, defaults to 10_048):
+            Output vocabulary size of a Bark sub-model. Defines the number of different tokens that can be represented
+            by the: `output_ids` when passing forward a [`BarkFineModel`]. Defaults to 10_048 but should be carefully thought
+            with regards to the chosen sub-model.
+        num_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the given sub-model.
+        num_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer architecture.
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the architecture.
+        dropout (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        bias (`bool`, *optional*, defaults to `True`):
+            Whether or not to use bias in the linear layers and layer norm layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+
+        n_codes_total (`int`, *optional*, defaults to 8):
+            The total number of audio codebooks predicted. Used in the fine acoustics sub-model.
+        n_codes_given (`int`, *optional*, defaults to 1):
+            The number of audio codebooks predicted in the coarse acoustics sub-model. Used in the acoustics
+            sub-models.
+    Example:
+
+    ```python
+    >>> from transformers import BarkFineConfig, BarkFineModel
+
+    >>> # Initializing a Bark sub-module style configuration
+    >>> configuration = BarkFineConfig()
+
+    >>> # Initializing a model (with random weights) from the suno/bark style configuration
+    >>> model = BarkFineModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+
+Methods: all
 
 ## BarkSemanticConfig
 
-[[autodoc]] BarkSemanticConfig
-    - all
+
+    This is the configuration class to store the configuration of a [`BarkSemanticModel`]. It is used to instantiate the model
+    according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the Bark [suno/bark](https://huggingface.co/suno/bark)
+    architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        block_size (`int`, *optional*, defaults to 1024):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        input_vocab_size (`int`, *optional*, defaults to 10_048):
+            Vocabulary size of a Bark sub-model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`BarkSemanticModel`]. Defaults to 10_048 but should be carefully thought with
+            regards to the chosen sub-model.
+        output_vocab_size (`int`, *optional*, defaults to 10_048):
+            Output vocabulary size of a Bark sub-model. Defines the number of different tokens that can be represented
+            by the: `output_ids` when passing forward a [`BarkSemanticModel`]. Defaults to 10_048 but should be carefully thought
+            with regards to the chosen sub-model.
+        num_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the given sub-model.
+        num_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer architecture.
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the architecture.
+        dropout (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        bias (`bool`, *optional*, defaults to `True`):
+            Whether or not to use bias in the linear layers and layer norm layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+
+    Example:
+
+    ```python
+    >>> from transformers import BarkSemanticConfig, BarkSemanticModel
+
+    >>> # Initializing a Bark sub-module style configuration
+    >>> configuration = BarkSemanticConfig()
+
+    >>> # Initializing a model (with random weights) from the suno/bark style configuration
+    >>> model = BarkSemanticModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+
+Methods: all
 

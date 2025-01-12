@@ -65,5 +65,65 @@ Note that sentencepiece is required to use our tokenizer and can be installed wi
 
 ## GPTSw3Tokenizer
 
-[[autodoc]] GPTSw3Tokenizer
-    - save_vocabulary
+
+    Construct an GPTSw3 tokenizer. Based on [SentencePiece](https://github.com/google/sentencepiece).
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Example usage:
+    ```python
+    >>> from transformers import GPTSw3Tokenizer
+
+    >>> tokenizer = GPTSw3Tokenizer.from_pretrained("AI-Sweden-Models/gpt-sw3-126m")
+    >>> tokenizer("Svenska är kul!")["input_ids"]
+    [1814, 377, 3617, 63504]
+    ```
+
+    Args:
+        vocab_file (`str`):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a *.spm* extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        do_lower_case (`bool`, *optional*, defaults to `False`):
+            Whether or not to lowercase the input when tokenizing.
+        remove_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to strip the text when tokenizing (removing excess spaces before and after the string).
+        keep_accents (`bool`, *optional*, defaults to `False`):
+            Whether or not to keep accents when tokenizing.
+        pad_token (`str`, *optional*):
+            The token used for padding, for example when batching sequences of different lengths. If not provided, will
+            default to '<pad>' or '<unk>' depending on model size.
+        unk_token (`str`, *optional*):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead. If not provided, will default to '<unk>'.
+        eos_token (`str`, *optional*):
+            The end of sequence token seen during pretraining. If not provided, will default to '<|endoftext|>'
+        bos_token (`str`, *optional*):
+            The beginning of sequence token that can be used for downstream task, was not seen during pretraining. If
+            not provided, will default to '<s>' or '<|endoftext|>', depending on model size.
+        sp_model_kwargs (`dict`, *optional*):
+            Will be passed to the `SentencePieceProcessor.__init__()` method. The [Python wrapper for
+            SentencePiece](https://github.com/google/sentencepiece/tree/master/python) can be used, among other things,
+            to set:
+
+            - `enable_sampling`: Enable subword regularization.
+            - `nbest_size`: Sampling parameters for unigram. Invalid for BPE-Dropout.
+
+              - `nbest_size = {0,1}`: No sampling is performed.
+              - `nbest_size > 1`: samples from the nbest_size results.
+              - `nbest_size < 0`: assuming that nbest_size is infinite and samples from the all hypothesis (lattice)
+                using forward-filtering-and-backward-sampling algorithm.
+
+            - `alpha`: Smoothing parameter for unigram sampling, and dropout probability of merge operations for
+              BPE-dropout.
+
+    Attributes:
+        sp_model (`SentencePieceProcessor`):
+            The *SentencePiece* processor that is used for every conversion (string, tokens and IDs).
+        whitespaces (`set`):
+            The whitespaces that are replaced in the whitespace normalization in preprocessing.
+        non_printing_characters_re (`Pattern`):
+            The compiled regular expression to remove non-printing characters in preprocessing.
+    
+
+Methods: save_vocabulary

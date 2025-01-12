@@ -83,24 +83,162 @@ Below is a expected speedup diagram that compares pure inference time between th
 
 ## GPTBigCodeConfig
 
-[[autodoc]] GPTBigCodeConfig
+
+    This is the configuration class to store the configuration of a [`GPTBigCodeModel`]. It is used to instantiate a
+    GPTBigCode model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the GPTBigCode
+    [gpt_bigcode](https://huggingface.co/gpt_bigcode) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 50257):
+            Vocabulary size of the GPT-2 model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`GPTBigCodeModel`].
+        n_positions (`int`, *optional*, defaults to 1024):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        n_embd (`int`, *optional*, defaults to 768):
+            Dimensionality of the embeddings and hidden states.
+        n_layer (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        n_head (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        n_inner (`int`, *optional*, defaults to None):
+            Dimensionality of the inner feed-forward layers. `None` will set it to 4 times n_embd
+        activation_function (`str`, *optional*, defaults to `"gelu_pytorch_tanh"`):
+            Activation function, to be selected in the list `["relu", "silu", "gelu", "tanh", "gelu_new",
+            "gelu_pytorch_tanh"]`.
+        resid_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        embd_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the embeddings.
+        attn_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-5):
+            The epsilon to use in the layer normalization layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        scale_attn_weights (`bool`, *optional*, defaults to `True`):
+            Scale attention weights by dividing by sqrt(hidden_size)..
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+        attention_softmax_in_fp32 (`bool`, *optional*, defaults to `True`):
+            Whether to call the fused softmax in float32.
+        scale_attention_softmax_in_fp32 (`bool`, *optional*, defaults to `True`):
+            Whether to scale the attention softmax in float32.
+        attention_type (`bool`, *optional*, defaults to `True`):
+            Whether to use Multi-Query Attion (`True`) or Multi-Head Attention (`False`).
+    Example:
+
+    ```python
+    >>> from transformers import GPTBigCodeConfig, GPTBigCodeModel
+
+    >>> # Initializing a GPTBigCode configuration
+    >>> configuration = GPTBigCodeConfig()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = GPTBigCodeModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## GPTBigCodeModel
 
-[[autodoc]] GPTBigCodeModel
-    - forward
+The bare GPT_BIGCODE Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPTBigCodeConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTBigCodeForCausalLM
 
-[[autodoc]] GPTBigCodeForCausalLM
-    - forward
+
+    The GPT_BIGCODE Model transformer with a language modeling head on top (linear layer with weights tied to the input
+    embeddings).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPTBigCodeConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTBigCodeForSequenceClassification
 
-[[autodoc]] GPTBigCodeForSequenceClassification
-    - forward
+
+    The GPTBigCode Model transformer with a sequence classification head on top (linear layer).
+
+    [`GPTBigCodeForSequenceClassification`] uses the last token in order to do the classification, as other causal
+    models (e.g. GPT-1) do.
+
+    Since it does classification on the last token, it requires to know the position of the last token. If a
+    `pad_token_id` is defined in the configuration, it finds the last token that is not a padding token in each row. If
+    no `pad_token_id` is defined, it simply takes the last value in each row of the batch. Since it cannot guess the
+    padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last value in
+    each row of the batch).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPTBigCodeConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTBigCodeForTokenClassification
 
-[[autodoc]] GPTBigCodeForTokenClassification
-    - forward
+
+    GPT_BIGCODE Model with a token classification head on top (a linear layer on top of the hidden-states output) e.g.
+    for Named-Entity-Recognition (NER) tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`GPTBigCodeConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

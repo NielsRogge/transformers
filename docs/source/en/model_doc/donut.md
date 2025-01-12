@@ -190,22 +190,129 @@ We refer to the [tutorial notebooks](https://github.com/NielsRogge/Transformers-
 
 ## DonutSwinConfig
 
-[[autodoc]] DonutSwinConfig
+
+    This is the configuration class to store the configuration of a [`DonutSwinModel`]. It is used to instantiate a
+    Donut model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the Donut
+    [naver-clova-ix/donut-base](https://huggingface.co/naver-clova-ix/donut-base) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 4):
+            The size (resolution) of each patch.
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        embed_dim (`int`, *optional*, defaults to 96):
+            Dimensionality of patch embedding.
+        depths (`list(int)`, *optional*, defaults to `[2, 2, 6, 2]`):
+            Depth of each layer in the Transformer encoder.
+        num_heads (`list(int)`, *optional*, defaults to `[3, 6, 12, 24]`):
+            Number of attention heads in each layer of the Transformer encoder.
+        window_size (`int`, *optional*, defaults to 7):
+            Size of windows.
+        mlp_ratio (`float`, *optional*, defaults to 4.0):
+            Ratio of MLP hidden dimensionality to embedding dimensionality.
+        qkv_bias (`bool`, *optional*, defaults to `True`):
+            Whether or not a learnable bias should be added to the queries, keys and values.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings and encoder.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        drop_path_rate (`float`, *optional*, defaults to 0.1):
+            Stochastic depth rate.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder. If string, `"gelu"`, `"relu"`,
+            `"selu"` and `"gelu_new"` are supported.
+        use_absolute_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether or not to add absolute position embeddings to the patch embeddings.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-05):
+            The epsilon used by the layer normalization layers.
+
+    Example:
+
+    ```python
+    >>> from transformers import DonutSwinConfig, DonutSwinModel
+
+    >>> # Initializing a Donut naver-clova-ix/donut-base style configuration
+    >>> configuration = DonutSwinConfig()
+
+    >>> # Randomly initializing a model from the naver-clova-ix/donut-base style configuration
+    >>> model = DonutSwinModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## DonutImageProcessor
 
-[[autodoc]] DonutImageProcessor
-    - preprocess
+
+    Constructs a Donut image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 224}`):
+            Size of the image after resizing. The shortest edge of the image is resized to size["shortest_edge"], with
+            the longest edge resized to keep the input aspect ratio. Can be overridden by `size` in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_thumbnail (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image using thumbnail method.
+        do_align_long_axis (`bool`, *optional*, defaults to `False`):
+            Whether to align the long axis of the image with the long axis of `size` by rotating by 90 degrees.
+        do_pad (`bool`, *optional*, defaults to `True`):
+            Whether to pad the image. If `random_padding` is set to `True` in `preprocess`, each image is padded with a
+            random amont of padding on each size, up to the largest image size in the batch. Otherwise, all images are
+            padded to the largest image size in the batch.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            Image standard deviation.
+    
+
+Methods: preprocess
 
 ## DonutFeatureExtractor
 
-[[autodoc]] DonutFeatureExtractor
-    - __call__
+No docstring available for DonutFeatureExtractor
+
+Methods: __call__
 
 ## DonutProcessor
 
-[[autodoc]] DonutProcessor
-    - __call__
+
+    Constructs a Donut processor which wraps a Donut image processor and an XLMRoBERTa tokenizer into a single
+    processor.
+
+    [`DonutProcessor`] offers all the functionalities of [`DonutImageProcessor`] and
+    [`XLMRobertaTokenizer`/`XLMRobertaTokenizerFast`]. See the [`~DonutProcessor.__call__`] and
+    [`~DonutProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`DonutImageProcessor`], *optional*):
+            An instance of [`DonutImageProcessor`]. The image processor is a required input.
+        tokenizer ([`XLMRobertaTokenizer`/`XLMRobertaTokenizerFast`], *optional*):
+            An instance of [`XLMRobertaTokenizer`/`XLMRobertaTokenizerFast`]. The tokenizer is a required input.
+    
+
+Methods: __call__
     - from_pretrained
     - save_pretrained
     - batch_decode
@@ -213,5 +320,15 @@ We refer to the [tutorial notebooks](https://github.com/NielsRogge/Transformers-
 
 ## DonutSwinModel
 
-[[autodoc]] DonutSwinModel
-    - forward
+The bare Donut Swin Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`DonutSwinConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

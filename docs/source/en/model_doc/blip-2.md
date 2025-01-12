@@ -54,54 +54,324 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## Blip2Config
 
-[[autodoc]] Blip2Config
-    - from_vision_qformer_text_configs
+
+    [`Blip2Config`] is the configuration class to store the configuration of a [`Blip2ForConditionalGeneration`]. It is
+    used to instantiate a BLIP-2 model according to the specified arguments, defining the vision model, Q-Former model
+    and language model configs. Instantiating a configuration with the defaults will yield a similar configuration to
+    that of the BLIP-2 [Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2.7b) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`Blip2VisionConfig`].
+        qformer_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`Blip2QFormerConfig`].
+        text_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize any [`PretrainedConfig`].
+        num_query_tokens (`int`, *optional*, defaults to 32):
+            The number of query tokens passed through the Transformer.
+        image_text_hidden_size (`int`, *optional*, defaults to 256):
+            Dimentionality of the hidden state of the image-text fusion layer.
+
+        image_token_index (`int`, *optional*):
+            Token index of special image token.
+        kwargs (*optional*):
+            Dictionary of keyword arguments.
+
+    Example:
+
+    ```python
+    >>> from transformers import (
+    ...     Blip2VisionConfig,
+    ...     Blip2QFormerConfig,
+    ...     OPTConfig,
+    ...     Blip2Config,
+    ...     Blip2ForConditionalGeneration,
+    ... )
+
+    >>> # Initializing a Blip2Config with Salesforce/blip2-opt-2.7b style configuration
+    >>> configuration = Blip2Config()
+
+    >>> # Initializing a Blip2ForConditionalGeneration (with random weights) from the Salesforce/blip2-opt-2.7b style configuration
+    >>> model = Blip2ForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+
+    >>> # We can also initialize a Blip2Config from a Blip2VisionConfig, Blip2QFormerConfig and any PretrainedConfig
+
+    >>> # Initializing BLIP-2 vision, BLIP-2 Q-Former and language model configurations
+    >>> vision_config = Blip2VisionConfig()
+    >>> qformer_config = Blip2QFormerConfig()
+    >>> text_config = OPTConfig()
+
+    >>> config = Blip2Config.from_text_vision_configs(vision_config, qformer_config, text_config)
+    ```
+
+Methods: from_vision_qformer_text_configs
 
 ## Blip2VisionConfig
 
-[[autodoc]] Blip2VisionConfig
+
+    This is the configuration class to store the configuration of a [`Blip2VisionModel`]. It is used to instantiate a
+    BLIP-2 vision encoder according to the specified arguments, defining the model architecture. Instantiating a
+    configuration defaults will yield a similar configuration to that of the BLIP-2
+    [Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2.7b) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 1408):
+            Dimensionality of the encoder layers and the pooler layer.
+        intermediate_size (`int`, *optional*, defaults to 6144):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        num_hidden_layers (`int`, *optional*, defaults to 39):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 14):
+            The size (resolution) of each patch.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` `"gelu"` are supported. layer_norm_eps (`float`, *optional*, defaults
+            to 1e-5): The epsilon used by the layer normalization layers.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        qkv_bias (`bool`, *optional*, defaults to `True`):
+            Whether to add a bias to the queries and values in the self-attention layers.
+
+    Example:
+
+    ```python
+    >>> from transformers import Blip2VisionConfig, Blip2VisionModel
+
+    >>> # Initializing a Blip2VisionConfig with Salesforce/blip2-opt-2.7b style configuration
+    >>> configuration = Blip2VisionConfig()
+
+    >>> # Initializing a Blip2VisionModel (with random weights) from the Salesforce/blip2-opt-2.7b style configuration
+    >>> model = Blip2VisionModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## Blip2QFormerConfig
 
-[[autodoc]] Blip2QFormerConfig
+
+    This is the configuration class to store the configuration of a [`Blip2QFormerModel`]. It is used to instantiate a
+    BLIP-2 Querying Transformer (Q-Former) model according to the specified arguments, defining the model architecture.
+    Instantiating a configuration with the defaults will yield a similar configuration to that of the BLIP-2
+    [Salesforce/blip2-opt-2.7b](https://huggingface.co/Salesforce/blip2-opt-2.7b) architecture. Configuration objects
+    inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the documentation from
+    [`PretrainedConfig`] for more information.
+
+    Note that [`Blip2QFormerModel`] is very similar to [`BertLMHeadModel`] with interleaved cross-attention.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the Q-Former model. Defines the number of different tokens that can be represented by
+            the `inputs_ids` passed when calling the model.
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `Callable`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        position_embedding_type (`str`, *optional*, defaults to `"absolute"`):
+            Type of position embedding. Choose one of `"absolute"`, `"relative_key"`, `"relative_key_query"`. For
+            positional embeddings use `"absolute"`. For more information on `"relative_key"`, please refer to
+            [Self-Attention with Relative Position Representations (Shaw et al.)](https://arxiv.org/abs/1803.02155).
+            For more information on `"relative_key_query"`, please refer to *Method 4* in [Improve Transformer Models
+            with Better Relative Position Embeddings (Huang et al.)](https://arxiv.org/abs/2009.13658).
+        cross_attention_frequency (`int`, *optional*, defaults to 2):
+            The frequency of adding cross-attention to the Transformer layers.
+        encoder_hidden_size (`int`, *optional*, defaults to 1408):
+            The hidden size of the hidden states for cross-attention.
+        use_qformer_text_input (`bool`, *optional*, defaults to `False`):
+            Whether to use BERT-style embeddings.
+
+    Examples:
+
+    ```python
+    >>> from transformers import Blip2QFormerConfig, Blip2QFormerModel
+
+    >>> # Initializing a BLIP-2 Salesforce/blip2-opt-2.7b style configuration
+    >>> configuration = Blip2QFormerConfig()
+
+    >>> # Initializing a model (with random weights) from the Salesforce/blip2-opt-2.7b style configuration
+    >>> model = Blip2QFormerModel(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## Blip2Processor
 
-[[autodoc]] Blip2Processor
+
+    Constructs a BLIP-2 processor which wraps a BLIP image processor and an OPT/T5 tokenizer into a single processor.
+
+    [`BlipProcessor`] offers all the functionalities of [`BlipImageProcessor`] and [`AutoTokenizer`]. See the docstring
+    of [`~BlipProcessor.__call__`] and [`~BlipProcessor.decode`] for more information.
+
+    Args:
+        image_processor (`BlipImageProcessor`):
+            An instance of [`BlipImageProcessor`]. The image processor is a required input.
+        tokenizer (`AutoTokenizer`):
+            An instance of ['PreTrainedTokenizer`]. The tokenizer is a required input.
+        num_query_tokens (`int`, *optional*):
+            Number of tokens used by the Qformer as queries, should be same as in model's config.
+    
 
 ## Blip2VisionModel
 
-[[autodoc]] Blip2VisionModel
-    - forward
+No docstring available for Blip2VisionModel
+
+Methods: forward
 
 ## Blip2QFormerModel
 
-[[autodoc]] Blip2QFormerModel
-    - forward
+
+    Querying Transformer (Q-Former), used in BLIP-2.
+    
+
+Methods: forward
 
 ## Blip2Model
 
-[[autodoc]] Blip2Model
-    - forward
+
+    BLIP-2 Model for generating text and image features. The model consists of a vision encoder, Querying Transformer
+    (Q-Former) and a language model.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Blip2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     - get_text_features
     - get_image_features
     - get_qformer_features
 
 ## Blip2ForConditionalGeneration
 
-[[autodoc]] Blip2ForConditionalGeneration
-    - forward
+
+    BLIP-2 Model for generating text given an image and an optional text prompt. The model consists of a vision
+    encoder, Querying Transformer (Q-Former) and a language model.
+
+    One can optionally pass `input_ids` to the model, which serve as a text prompt, to make the language model continue
+    the prompt. Otherwise, the language model starts generating text from the [BOS] (beginning-of-sequence) token.
+
+    <Tip>
+
+    Note that Flan-T5 checkpoints cannot be cast to float16. They are pre-trained using bfloat16.
+
+    </Tip>
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Blip2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     - generate
 
 ## Blip2ForImageTextRetrieval
 
-[[autodoc]] Blip2ForImageTextRetrieval
-    - forward
+
+    BLIP-2 Model with a vision and text projector, and a classification head on top. The model is used in the context
+    of image-text retrieval. Given an image and a text, the model returns the probability of the text being relevant to
+    the image.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Blip2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## Blip2TextModelWithProjection
 
-[[autodoc]] Blip2TextModelWithProjection
+
+    BLIP-2 Text Model with a projection layer on top (a linear layer on top of the pooled output).
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Blip2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
 
 ## Blip2VisionModelWithProjection
 
-[[autodoc]] Blip2VisionModelWithProjection
+
+    BLIP-2 Vision Model with a projection layer on top (a linear layer on top of the pooled output).
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Blip2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+

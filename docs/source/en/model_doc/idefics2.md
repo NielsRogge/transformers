@@ -193,26 +193,140 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## Idefics2Config
 
-[[autodoc]] Idefics2Config
+
+    This is the configuration class to store the configuration of a [`Idefics2Model`]. It is used to instantiate a
+    Idefics2 model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the model of the Idefics2
+    [HuggingFaceM4/idefics2-8b](https://huggingface.co/HuggingFaceM4/idefics2-8b) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should cache the key/value pairs of the attention mechanism.
+        image_token_id (`int`, *optional*, defaults to 32001):
+            The id of the "image" token.
+        tie_word_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether or not to tie the word embeddings with the token embeddings.
+        vision_config (`IdeficsVisionConfig` or `dict`, *optional*):
+            Custom vision config or dict
+        perceiver_config (`IdeficsPerceiverConfig` or `dict`, *optional*):
+            Custom perceiver config or dict
+        text_config (`MistralConfig` or `dict`, *optional*):
+            Custom text config or dict for the text model
+
+    Example:
+    ```python
+    >>> from transformers import Idefics2Model, Idefics2Config
+    >>> # Initializing configuration
+    >>> configuration = Idefics2Config()
+    >>> # Initializing a model from the configuration
+    >>> model = Idefics2Model(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 
 ## Idefics2Model
 
-[[autodoc]] Idefics2Model
-    - forward
+Idefics2 model consisting of a SIGLIP vision encoder and Mistral language decoder
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Idefics2Config`] or [`Idefics2VisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 
 ## Idefics2ForConditionalGeneration
 
-[[autodoc]] Idefics2ForConditionalGeneration
-    - forward
+The Idefics2 Model with a language modeling head. It is made up a SigLIP vision encoder, with a language modeling head on top. 
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Idefics2Config`] or [`Idefics2VisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
 
 
-## Idefics2ImageProcessor
-[[autodoc]] Idefics2ImageProcessor
-    - preprocess
+Methods: forward
 
 
-## Idefics2Processor
-[[autodoc]] Idefics2Processor
-    - __call__
+
+    Constructs a Idefics image processor.
+
+    Args:
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB. This is useful if the input image is of a different format e.g. RGBA.
+            Only has an effect if the input image is in the PIL format.
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image. The longest edge of the image is resized to  be <= `size["longest_edge"]`, with the
+            shortest edge resized to keep the input aspect ratio, with a minimum size of `size["shortest_edge"]`.
+        size (`Dict`, *optional*):
+            Controls the size of the output image. This is a dictionary containing the keys "shortest_edge" and "longest_edge".
+        resample (`Resampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use when resizing the image.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image. If set to `True`, the image is rescaled to have pixel values between 0 and 1.
+        rescale_factor (`float`, *optional*, defaults to `1/255`):
+            Rescale factor to rescale the image by if `do_rescale` is set to `True`.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. If set to `True`, the image is normalized to have a mean of `image_mean` and
+            a standard deviation of `image_std`.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IDEFICS_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method. Can be
+            overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IDEFICS_STANDARD_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_pad (`bool`, *optional*, defaults to `True`):
+            Whether or not to pad the images to the largest height and width in the batch and number of images per
+            sample in the batch, such that the returned tensor is of shape (batch_size, max_num_images, num_channels, max_height, max_width).
+        do_image_splitting (`bool`, *optional*, defaults to `False`):
+            Whether to split the image into a sequence 4 equal sub-images concatenated with the original image. That
+            strategy was first introduced in https://arxiv.org/abs/2311.06607.
+    
+
+Methods: preprocess
+
+
+
+    Constructs a IDEFICS2 processor which wraps a LLama tokenizer and IDEFICS2 image processor into a single processor.
+
+    [`IdeficsProcessor`] offers all the functionalities of [`Idefics2ImageProcessor`] and [`LlamaTokenizerFast`]. See
+    the docstring of [`~IdeficsProcessor.__call__`] and [`~IdeficsProcessor.decode`] for more information.
+
+    Args:
+        image_processor (`Idefics2ImageProcessor`):
+            An instance of [`Idefics2ImageProcessor`]. The image processor is a required input.
+        tokenizer (`PreTrainedTokenizerBase`, *optional*):
+            An instance of [`PreTrainedTokenizerBase`]. This should correspond with the model's text model. The tokenizer is a required input.
+        image_seq_len (`int`, *optional*, defaults to 64):
+            The length of the image sequence i.e. the number of <image> tokens per image in the input.
+            This parameter is used to build the string from the input prompt and image tokens and should match the
+            config.perceiver_config.resampler_n_latents value for the model used.
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+    
+
+Methods: __call__

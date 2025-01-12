@@ -85,30 +85,154 @@ def make_box_first_token_mask(bboxes, words, tokenizer, max_seq_length=512):
 
 ## BrosConfig
 
-[[autodoc]] BrosConfig
+
+    This is the configuration class to store the configuration of a [`BrosModel`] or a [`TFBrosModel`]. It is used to
+    instantiate a Bros model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the Bros
+    [jinho8345/bros-base-uncased](https://huggingface.co/jinho8345/bros-base-uncased) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the Bros model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`BrosModel`] or [`TFBrosModel`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `Callable`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        type_vocab_size (`int`, *optional*, defaults to 2):
+            The vocabulary size of the `token_type_ids` passed when calling [`BrosModel`] or [`TFBrosModel`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        pad_token_id (`int`, *optional*, defaults to 0):
+            The index of the padding token in the token vocabulary.
+        dim_bbox (`int`, *optional*, defaults to 8):
+            The dimension of the bounding box coordinates. (x0, y1, x1, y0, x1, y1, x0, y1)
+        bbox_scale (`float`, *optional*, defaults to 100.0):
+            The scale factor of the bounding box coordinates.
+        n_relations (`int`, *optional*, defaults to 1):
+            The number of relations for SpadeEE(entity extraction), SpadeEL(entity linking) head.
+        classifier_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the classifier head.
+
+
+    Examples:
+
+    ```python
+    >>> from transformers import BrosConfig, BrosModel
+
+    >>> # Initializing a BROS jinho8345/bros-base-uncased style configuration
+    >>> configuration = BrosConfig()
+
+    >>> # Initializing a model from the jinho8345/bros-base-uncased style configuration
+    >>> model = BrosModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## BrosProcessor
 
-[[autodoc]] BrosProcessor
-    - __call__
+
+    Constructs a Bros processor which wraps a BERT tokenizer.
+
+    [`BrosProcessor`] offers all the functionalities of [`BertTokenizerFast`]. See the docstring of
+    [`~BrosProcessor.__call__`] and [`~BrosProcessor.decode`] for more information.
+
+    Args:
+        tokenizer (`BertTokenizerFast`, *optional*):
+            An instance of ['BertTokenizerFast`]. The tokenizer is a required input.
+    
+
+Methods: __call__
 
 ## BrosModel
 
-[[autodoc]] BrosModel
-    - forward
+The bare Bros Model transformer outputting raw hidden-states without any specific head on top.
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BrosConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 
 ## BrosForTokenClassification
 
-[[autodoc]] BrosForTokenClassification
-    - forward
+
+    Bros Model with a token classification head on top (a linear layer on top of the hidden-states output) e.g. for
+    Named-Entity-Recognition (NER) tasks.
+    
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BrosConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BrosSpadeEEForTokenClassification
 
-[[autodoc]] BrosSpadeEEForTokenClassification
-    - forward
+
+    Bros Model with a token classification head on top (initial_token_layers and subsequent_token_layer on top of the
+    hidden-states output) e.g. for Named-Entity-Recognition (NER) tasks. The initial_token_classifier is used to
+    predict the first token of each entity, and the subsequent_token_classifier is used to predict the subsequent
+    tokens within an entity. Compared to BrosForTokenClassification, this model is more robust to serialization errors
+    since it predicts next token from one token.
+    
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BrosConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BrosSpadeELForTokenClassification
 
-[[autodoc]] BrosSpadeELForTokenClassification
-    - forward
+
+    Bros Model with a token classification head on top (a entity_linker layer on top of the hidden-states output) e.g.
+    for Entity-Linking. The entity_linker is used to predict intra-entity links (one entity to another entity).
+    
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`BrosConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

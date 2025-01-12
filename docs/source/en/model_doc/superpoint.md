@@ -124,17 +124,85 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## SuperPointConfig
 
-[[autodoc]] SuperPointConfig
+
+    This is the configuration class to store the configuration of a [`SuperPointForKeypointDetection`]. It is used to instantiate a
+    SuperPoint model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the SuperPoint
+    [magic-leap-community/superpoint](https://huggingface.co/magic-leap-community/superpoint) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        encoder_hidden_sizes (`List`, *optional*, defaults to `[64, 64, 128, 128]`):
+            The number of channels in each convolutional layer in the encoder.
+        decoder_hidden_size (`int`, *optional*, defaults to 256): The hidden size of the decoder.
+        keypoint_decoder_dim (`int`, *optional*, defaults to 65): The output dimension of the keypoint decoder.
+        descriptor_decoder_dim (`int`, *optional*, defaults to 256): The output dimension of the descriptor decoder.
+        keypoint_threshold (`float`, *optional*, defaults to 0.005):
+            The threshold to use for extracting keypoints.
+        max_keypoints (`int`, *optional*, defaults to -1):
+            The maximum number of keypoints to extract. If `-1`, will extract all keypoints.
+        nms_radius (`int`, *optional*, defaults to 4):
+            The radius for non-maximum suppression.
+        border_removal_distance (`int`, *optional*, defaults to 4):
+            The distance from the border to remove keypoints.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+
+    Example:
+    ```python
+    >>> from transformers import SuperPointConfig, SuperPointForKeypointDetection
+
+    >>> # Initializing a SuperPoint superpoint style configuration
+    >>> configuration = SuperPointConfig()
+    >>> # Initializing a model from the superpoint style configuration
+    >>> model = SuperPointForKeypointDetection(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## SuperPointImageProcessor
 
-[[autodoc]] SuperPointImageProcessor
 
-- preprocess
+    Constructs a SuperPoint image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Controls whether to resize the image's (height, width) dimensions to the specified `size`. Can be overriden
+            by `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 480, "width": 640}`):
+            Resolution of the output image after `resize` is applied. Only has an effect if `do_resize` is set to
+            `True`. Can be overriden by `size` in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overriden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overriden by `rescale_factor` in the `preprocess`
+            method.
+    
+
+Methods: preprocess
 - post_process_keypoint_detection
 
 ## SuperPointForKeypointDetection
 
-[[autodoc]] SuperPointForKeypointDetection
+SuperPoint model outputting keypoints and descriptors.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
 
-- forward
+    Parameters:
+        config ([`SuperPointConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+    
+    SuperPoint model. It consists of a SuperPointEncoder, a SuperPointInterestPointDecoder and a
+    SuperPointDescriptorDecoder. SuperPoint was proposed in `SuperPoint: Self-Supervised Interest Point Detection and
+    Description <https://arxiv.org/abs/1712.07629>`__ by Daniel DeTone, Tomasz Malisiewicz, and Andrew Rabinovich. It
+    is a fully convolutional neural network that extracts keypoints and descriptors from an image. It is trained in a
+    self-supervised manner, using a combination of a photometric loss and a loss based on the homographic adaptation of
+    keypoints. It is made of a convolutional encoder and two decoders: one for keypoints and one for descriptors.
+    
+
+Methods: forward

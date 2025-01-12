@@ -58,15 +58,86 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## VanConfig
 
-[[autodoc]] VanConfig
+
+    This is the configuration class to store the configuration of a [`VanModel`]. It is used to instantiate a VAN model
+    according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the VAN
+    [Visual-Attention-Network/van-base](https://huggingface.co/Visual-Attention-Network/van-base) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        patch_sizes (`List[int]`, *optional*, defaults to `[7, 3, 3, 3]`):
+            Patch size to use in each stage's embedding layer.
+        strides (`List[int]`, *optional*, defaults to `[4, 2, 2, 2]`):
+            Stride size to use in each stage's embedding layer to downsample the input.
+        hidden_sizes (`List[int]`, *optional*, defaults to `[64, 128, 320, 512]`):
+            Dimensionality (hidden size) at each stage.
+        depths (`List[int]`, *optional*, defaults to `[3, 3, 12, 3]`):
+            Depth (number of layers) for each stage.
+        mlp_ratios (`List[int]`, *optional*, defaults to `[8, 8, 4, 4]`):
+            The expansion ratio for mlp layer at each stage.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in each layer. If string, `"gelu"`, `"relu"`,
+            `"selu"` and `"gelu_new"` are supported.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        layer_scale_init_value (`float`, *optional*, defaults to 0.01):
+            The initial value for layer scaling.
+        drop_path_rate (`float`, *optional*, defaults to 0.0):
+            The dropout probability for stochastic depth.
+        dropout_rate (`float`, *optional*, defaults to 0.0):
+            The dropout probability for dropout.
+
+    Example:
+    ```python
+    >>> from transformers import VanModel, VanConfig
+
+    >>> # Initializing a VAN van-base style configuration
+    >>> configuration = VanConfig()
+    >>> # Initializing a model from the van-base style configuration
+    >>> model = VanModel(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## VanModel
 
-[[autodoc]] VanModel
-    - forward
+The bare VAN model outputting raw features without any specific head on top. Note, VAN does not have an embedding layer.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`VanConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## VanForImageClassification
 
-[[autodoc]] VanForImageClassification
-    - forward
+
+    VAN Model with an image classification head on top (a linear layer on top of the pooled features), e.g. for
+    ImageNet.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`VanConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 

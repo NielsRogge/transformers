@@ -65,16 +65,90 @@ Here is a quick example of how to encode and decode an audio using this model:
 
 ## DacConfig
 
-[[autodoc]] DacConfig
+
+    This is the configuration class to store the configuration of an [`DacModel`]. It is used to instantiate a
+    Dac model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the
+    [descript/dac_16khz](https://huggingface.co/descript/dac_16khz) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        encoder_hidden_size (`int`, *optional*, defaults to 64):
+            Intermediate representation dimension for the encoder.
+        downsampling_ratios (`List[int]`, *optional*, defaults to `[2, 4, 8, 8]`):
+            Ratios for downsampling in the encoder. These are used in reverse order for upsampling in the decoder.
+        decoder_hidden_size (`int`, *optional*, defaults to 1536):
+            Intermediate representation dimension for the decoder.
+        n_codebooks (`int`, *optional*, defaults to 9):
+            Number of codebooks in the VQVAE.
+        codebook_size (`int`, *optional*, defaults to 1024):
+            Number of discrete codes in each codebook.
+        codebook_dim (`int`, *optional*, defaults to 8):
+            Dimension of the codebook vectors. If not defined, uses `encoder_hidden_size`.
+        quantizer_dropout (`bool`, *optional*, defaults to 0):
+            Whether to apply dropout to the quantizer.
+        commitment_loss_weight (float, *optional*, defaults to 0.25):
+            Weight of the commitment loss term in the VQVAE loss function.
+        codebook_loss_weight (float, *optional*, defaults to 1.0):
+            Weight of the codebook loss term in the VQVAE loss function.
+        sampling_rate (`int`, *optional*, defaults to 16000):
+            The sampling rate at which the audio waveform should be digitalized expressed in hertz (Hz).
+    Example:
+
+    ```python
+    >>> from transformers import DacModel, DacConfig
+
+    >>> # Initializing a "descript/dac_16khz" style configuration
+    >>> configuration = DacConfig()
+
+    >>> # Initializing a model (with random weights) from the "descript/dac_16khz" style configuration
+    >>> model = DacModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## DacFeatureExtractor
 
-[[autodoc]] DacFeatureExtractor
-    - __call__
+
+    Constructs an Dac feature extractor.
+
+    This feature extractor inherits from [`~feature_extraction_sequence_utils.SequenceFeatureExtractor`] which contains
+    most of the main methods. Users should refer to this superclass for more information regarding those methods.
+
+    Args:
+        feature_size (`int`, *optional*, defaults to 1):
+            The feature dimension of the extracted features. Use 1 for mono, 2 for stereo.
+        sampling_rate (`int`, *optional*, defaults to 16000):
+            The sampling rate at which the audio waveform should be digitalized, expressed in hertz (Hz).
+        padding_value (`float`, *optional*, defaults to 0.0):
+            The value that is used for padding.
+        hop_length (`int`, *optional*, defaults to 512):
+            Overlap length between successive windows.
+    
+
+Methods: __call__
 
 ## DacModel
 
-[[autodoc]] DacModel
-    - decode
+The DAC (Descript Audio Codec) model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`DacConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: decode
     - encode
     - forward

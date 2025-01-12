@@ -213,17 +213,144 @@ response = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_
 
 ## Qwen2AudioConfig
 
-[[autodoc]] Qwen2AudioConfig
+
+    This is the configuration class to store the configuration of a [`Qwen2AudioForConditionalGeneration`]. It is used to instantiate an
+    Qwen2-Audio model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the Qwen2-Audio.
+
+    e.g. [Qwen/Qwen2-Audio-7B](https://huggingface.co/Qwen/Qwen2-Audio-7B)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        audio_config (`Union[AutoConfig, dict]`,  *optional*, defaults to `CLIPVisionConfig`):
+            The config object or dictionary of the audio backbone.
+        text_config (`Union[AutoConfig, dict]`, *optional*, defaults to `LlamaConfig`):
+            The config object or dictionary of the text backbone.
+        audio_token_index (`int`, *optional*, defaults to 151646):
+            The image token index to encode the image prompt.
+
+    Example:
+
+    ```python
+    >>> from transformers import Qwen2AudioForConditionalGeneration, Qwen2AudioConfig, Qwen2AudioEncoderConfig, Qwen2Config
+
+    >>> # Initializing a Qwen2AudioEncoder config
+    >>> audio_config = Qwen2AudioEncoderConfig()
+
+    >>> # Initializing a Qwen2 config
+    >>> text_config = Qwen2Config()
+
+    >>> # Initializing a Qwen2Audio configuration
+    >>> configuration = Qwen2AudioConfig(audio_config, text_config)
+
+    >>> # Initializing a model from the qwen2-audio style configuration
+    >>> model = Qwen2AudioForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## Qwen2AudioConfig
 
-[[autodoc]] Qwen2AudioEncoderConfig
+
+    This is the configuration class to store the configuration of a [`Qwen2AudioEncoder`]. It is used to instantiate a
+    Qwen2-Audio audio encoder according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the audio encoder of the Qwen2-Audio
+    architecture.
+
+    e.g. [Qwen/Qwen2-Audio-7B](https://huggingface.co/Qwen/Qwen2-Audio-7B)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        num_mel_bins (`int`, *optional*, defaults to 128):
+            Number of mel features used per input features. Should correspond to the value used in the
+            `Qwen2AudioProcessor` class.
+        encoder_layers (`int`, *optional*, defaults to 32):
+            Number of encoder layers.
+        encoder_attention_heads (`int`, *optional*, defaults to 20):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        encoder_ffn_dim (`int`, *optional*, defaults to 5120):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in encoder.
+        encoder_layerdrop (`float`, *optional*, defaults to 0.0):
+            The LayerDrop probability for the encoder. See the [LayerDrop paper](see https://arxiv.org/abs/1909.11556)
+            for more details.
+        d_model (`int`, *optional*, defaults to 1280):
+            Dimensionality of the layers.
+        dropout (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        activation_function (`str`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        activation_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for activations inside the fully connected layer.
+        scale_embedding (`bool`, *optional*, defaults to `False`):
+            Scale embeddings by diving by sqrt(d_model).
+        init_std (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        max_source_positions (`int`, *optional*, defaults to 1500):
+            The maximum sequence length of log-mel filter-bank features that this model might ever be used with.
+
+    Example:
+
+    ```python
+    >>> from transformers import Qwen2AudioEncoderConfig, Qwen2AudioEncoder
+
+    >>> # Initializing a Qwen2AudioEncoderConfig
+    >>> configuration = Qwen2AudioEncoderConfig()
+
+    >>> # Initializing a Qwen2AudioEncoder (with random weights)
+    >>> model = Qwen2AudioEncoder(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## Qwen2AudioProcessor
 
-[[autodoc]] Qwen2AudioProcessor
+
+    Constructs a Qwen2Audio processor which wraps a Qwen2Audio feature extractor and a Qwen2Audio tokenizer into a single processor.
+
+    [`Qwen2AudioProcessor`] offers all the functionalities of [`WhisperFeatureExtractor`] and [`Qwen2TokenizerFast`]. See the
+    [`~Qwen2AudioProcessor.__call__`] and [`~Qwen2AudioProcessor.decode`] for more information.
+
+    Args:
+        feature_extractor ([`WhisperFeatureExtractor`], *optional*):
+            The feature extractor is a required input.
+        tokenizer ([`Qwen2TokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        chat_template (`Optional[str]`, *optional*):
+                The Jinja template to use for formatting the conversation. If not provided, the default chat template
+                is used.
+        audio_token (`str`, *optional*, defaults to `"<|AUDIO|>"`):
+            The token to use for audio tokens.
+        audio_bos_token (`str`, *optional*, defaults to `"<|audio_bos|>"`):
+            The token to use for audio bos tokens.
+        audio_eos_token (`str`, *optional*, defaults to `"<|audio_eos|>"`):
+            The token to use for audio eos tokens.
+    
 
 ## Qwen2AudioForConditionalGeneration
 
-[[autodoc]] Qwen2AudioForConditionalGeneration
-    - forward
+The QWEN2AUDIO model which consists of a audio backbone and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Qwen2AudioConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

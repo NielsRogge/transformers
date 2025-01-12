@@ -52,17 +52,148 @@ The PyTorch version of this model is only available in torch 1.9 and higher.
 
 ## MCTCTConfig
 
-[[autodoc]] MCTCTConfig
+
+    This is the configuration class to store the configuration of a [`MCTCTModel`]. It is used to instantiate an
+    M-CTC-T model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the M-CTC-T
+    [speechbrain/m-ctc-t-large](https://huggingface.co/speechbrain/m-ctc-t-large) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 8065):
+            Vocabulary size of the M-CTC-T model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`MCTCTModel`].
+        hidden_size (`int`, *optional*, defaults to 1536):
+            Dimension of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 36):
+            Number of hidden layers in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 6144):
+            Dimension of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 4):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        attention_head_dim (`int`, *optional*, defaults to 384):
+            Dimensions of each attention head for each attention layer in the Transformer encoder.
+        max_position_embeddings (`int`, *optional*, defaults to 920):
+            The maximum sequence length that this model might ever be used with (after log-mel spectrogram extraction).
+        layer_norm_eps (`float`, *optional*, defaults to 1e-05):
+            The epsilon used by the layer normalization layers.
+        layerdrop (`float`, *optional*, defaults to 0.3):
+            The probability of dropping an encoder layer during training. The default 0.3 value is used in the original
+            implementation.
+        hidden_act (`str` or `function`, *optional*, defaults to `"relu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.3):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.3):
+            The dropout ratio for the attention probabilities.
+        pad_token_id (`int`, *optional*, defaults to 1):
+            The tokenizer index of the pad token.
+        bos_token_id (`int`, *optional*, defaults to 0):
+            The tokenizer index of the bos token.
+        eos_token_id (`int`, *optional*, defaults to 2):
+            The tokenizer index of the eos token.
+        conv_glu_dim (`int`, *optional*, defaults to 1):
+            The dimension of the output of the `Conv1dSubsampler` layer in which GLU is applied on. Though the original
+            Flashlight code uses the value of 2, here it's adapted to 1 due to transposition differences.
+        conv_dropout (`int`, *optional*, defaults to 0.3):
+            The probability of randomly dropping the `Conv1dSubsampler` layer during training.
+        num_conv_layers (`int`, *optional*, defaults to 1):
+            Number of convolution layers before applying transformer encoder layers.
+        conv_kernel (`Sequence[int]`, *optional*, defaults to `(7,)`):
+            The kernel size of the 1D convolution applied before transformer layers. `len(conv_kernel)` must be equal
+            to `num_conv_layers`.
+        conv_stride (`Sequence[int]`, *optional*, defaults to `(3,)`):
+            The stride length of the 1D convolution applied before transformer layers. `len(conv_stride)` must be equal
+            to `num_conv_layers`.
+        input_feat_per_channel (`int`, *optional*, defaults to 80):
+            Feature dimensions of the channels of the input to the Conv1D layer.
+        input_channels (`int`, *optional*, defaults to 1):
+            Number of input channels of the input to the Conv1D layer.
+        conv_channels (`List[int]`, *optional*):
+            Channel sizes of intermediate Conv1D layers.
+        ctc_loss_reduction (`str`, *optional*, defaults to `"sum"`):
+            Specifies the reduction to apply to the output of `torch.nn.CTCLoss`. Only relevant when training an
+            instance of [`MCTCTForCTC`].
+        ctc_zero_infinity (`bool`, *optional*, defaults to `False`):
+            Whether to zero infinite losses and the associated gradients of `torch.nn.CTCLoss`. Infinite losses mainly
+            occur when the inputs are too short to be aligned to the targets. Only relevant when training an instance
+            of [`MCTCTForCTC`].
+
+    Example:
+
+    ```python
+    >>> from transformers import MCTCTConfig, MCTCTModel
+
+    >>> # Initializing a M-CTC-T mctct-large style configuration
+    >>> configuration = MCTCTConfig()
+
+    >>> # Initializing a model (with random weights) from the mctct-large style configuration
+    >>> model = MCTCTModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## MCTCTFeatureExtractor
 
-[[autodoc]] MCTCTFeatureExtractor
-    - __call__
+
+    Constructs a M-CTC-T feature extractor.
+
+    This feature extractor inherits from [`~feature_extraction_sequence_utils.SequenceFeatureExtractor`] which contains
+    most of the main methods. Users should refer to this superclass for more information regarding those methods. This
+    code has been adapted from Flashlight's C++ code. For more information about the implementation, one can refer to
+    this [notebook](https://colab.research.google.com/drive/1GLtINkkhzms-IsdcGy_-tVCkv0qNF-Gt#scrollTo=pMCRGMmUC_an)
+    that takes the user step-by-step in the implementation.
+
+    Args:
+        feature_size (`int`, defaults to 80):
+            The feature dimension of the extracted features. This is the number of mel_frequency
+        sampling_rate (`int`, defaults to 16000):
+            The sampling rate at which the audio files should be digitalized expressed in hertz (Hz).
+        padding_value (`float`, defaults to 0.0):
+            The value that is used to fill the padding values.
+        hop_length (`int`, defaults to 10):
+            Number of audio samples between windows. Otherwise referred to as "shift" in many papers.
+        win_length (`int`, defaults to 25):
+            Number of ms per window
+        win_function (`str`, defaults to `"hamming_window"`):
+            Name for the window function used for windowing, must be accessible via `torch.{win_function}`
+        frame_signal_scale (`float`, defaults to 32768.0):
+            Constant multiplied in creating the frames before applying DFT.
+        preemphasis_coeff (`float`, defaults to 0.97):
+            Constant multiplied in applying Pre-emphasis before DFT.
+        mel_floor (`float` defaults to 1.0):
+            Minimum value of mel frequency banks.
+        normalize_means (`bool`, *optional*, defaults to `True`):
+            Whether or not to zero-mean normalize the extracted features.
+        normalize_vars (`bool`, *optional*, defaults to `True`):
+            Whether or not to unit-variance normalize the extracted features.
+    
+
+Methods: __call__
 
 ## MCTCTProcessor
 
-[[autodoc]] MCTCTProcessor
-    - __call__
+
+    Constructs a MCTCT processor which wraps a MCTCT feature extractor and a MCTCT tokenizer into a single processor.
+
+    [`MCTCTProcessor`] offers all the functionalities of [`MCTCTFeatureExtractor`] and [`AutoTokenizer`]. See the
+    [`~MCTCTProcessor.__call__`] and [`~MCTCTProcessor.decode`] for more information.
+
+    Args:
+        feature_extractor (`MCTCTFeatureExtractor`):
+            An instance of [`MCTCTFeatureExtractor`]. The feature extractor is a required input.
+        tokenizer (`AutoTokenizer`):
+            An instance of [`AutoTokenizer`]. The tokenizer is a required input.
+    
+
+Methods: __call__
     - from_pretrained
     - save_pretrained
     - batch_decode
@@ -70,10 +201,30 @@ The PyTorch version of this model is only available in torch 1.9 and higher.
 
 ## MCTCTModel
 
-[[autodoc]] MCTCTModel
-    - forward
+The bare M-CTC-T Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MCTCTConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MCTCTForCTC
 
-[[autodoc]] MCTCTForCTC
-    - forward
+MCTCT Model with a `language modeling` head on top for Connectionist Temporal Classification (CTC).
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MCTCTConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

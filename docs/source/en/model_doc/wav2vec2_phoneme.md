@@ -58,8 +58,38 @@ except for the tokenizer.
 
 ## Wav2Vec2PhonemeCTCTokenizer
 
-[[autodoc]] Wav2Vec2PhonemeCTCTokenizer
-	- __call__
+
+    Constructs a Wav2Vec2PhonemeCTC tokenizer.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains some of the main methods. Users should refer to
+    the superclass for more information regarding such methods.
+
+    Args:
+        vocab_file (`str`):
+            File containing the vocabulary.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sentence token.
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sentence token.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        do_phonemize (`bool`, *optional*, defaults to `True`):
+            Whether the tokenizer should phonetize the input or not. Only if a sequence of phonemes is passed to the
+            tokenizer, `do_phonemize` should be set to `False`.
+        phonemizer_lang (`str`, *optional*, defaults to `"en-us"`):
+            The language of the phoneme set to which the tokenizer should phonetize the input text to.
+        phonemizer_backend (`str`, *optional*. defaults to `"espeak"`):
+            The backend phonetization library that shall be used by the phonemizer library. Defaults to `espeak-ng`.
+            See the [phonemizer package](https://github.com/bootphon/phonemizer#readme). for more information.
+
+        **kwargs
+            Additional keyword arguments passed along to [`PreTrainedTokenizer`]
+    
+
+Methods: __call__
 	- batch_decode
 	- decode
 	- phonemize

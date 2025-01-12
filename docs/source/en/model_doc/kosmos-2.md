@@ -78,21 +78,99 @@ This model was contributed by [Yih-Dar SHIEH](https://huggingface.co/ydshieh). T
 
 ## Kosmos2Config
 
-[[autodoc]] Kosmos2Config
+
+    This is the configuration class to store the configuration of a [`Kosmos2Model`]. It is used to instantiate a
+    KOSMOS-2 model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the KOSMOS-2
+    [microsoft/kosmos-2-patch14-224](https://huggingface.co/microsoft/kosmos-2-patch14-224) architecture.
+
+    Args:
+        text_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`Kosmos2TextConfig`].
+        vision_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`Kosmos2VisionConfig`].
+        latent_query_num (`int`, *optional*, defaults to 64):
+            The number of latent query tokens that represent the image features used in the text decoder component.
+        kwargs (*optional*):
+            Dictionary of keyword arguments.
+
+    Example:
+
+    ```python
+    >>> from transformers import Kosmos2Config, Kosmos2Model
+
+    >>> # Initializing a Kosmos-2 kosmos-2-patch14-224 style configuration
+    >>> configuration = Kosmos2Config()
+
+    >>> # Initializing a model (with random weights) from the kosmos-2-patch14-224 style configuration
+    >>> model = Kosmos2Model(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## Kosmos2ImageProcessor
 
 ## Kosmos2Processor
 
-[[autodoc]] Kosmos2Processor
-    - __call__
+
+    Constructs an KOSMOS-2 processor which wraps a KOSMOS-2 image processor and a KOSMOS-2 tokenizer into a single
+    processor.
+
+    [`Kosmos2Processor`] offers all the functionalities of [`CLIPImageProcessor`] and some functionalities of
+    [`XLMRobertaTokenizerFast`]. See the docstring of [`~Kosmos2Processor.__call__`] and [`~Kosmos2Processor.decode`]
+    for more information.
+
+    Args:
+        image_processor (`CLIPImageProcessor`):
+            An instance of [`CLIPImageProcessor`]. The image processor is a required input.
+        tokenizer (`XLMRobertaTokenizerFast`):
+            An instance of ['XLMRobertaTokenizerFast`]. The tokenizer is a required input.
+        num_patch_index_tokens (`int`, *optional*, defaults to 1024):
+            The number of tokens that represent patch indices.
+    
+
+Methods: __call__
 
 ## Kosmos2Model
 
-[[autodoc]] Kosmos2Model
-    - forward
+
+    KOSMOS-2 Model for generating text and image features. The model consists of a vision encoder and a language model.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Kosmos2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## Kosmos2ForConditionalGeneration
 
-[[autodoc]] Kosmos2ForConditionalGeneration
-    - forward
+
+    KOSMOS-2 Model for generating text and bounding boxes given an image. The model consists of a vision encoder and a
+    language model.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Kosmos2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

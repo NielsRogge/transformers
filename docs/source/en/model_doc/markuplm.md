@@ -206,48 +206,299 @@ dict_keys(['input_ids', 'token_type_ids', 'attention_mask', 'xpath_tags_seq', 'x
 
 ## MarkupLMConfig
 
-[[autodoc]] MarkupLMConfig
-    - all
+
+    This is the configuration class to store the configuration of a [`MarkupLMModel`]. It is used to instantiate a
+    MarkupLM model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the MarkupLM
+    [microsoft/markuplm-base](https://huggingface.co/microsoft/markuplm-base) architecture.
+
+    Configuration objects inherit from [`BertConfig`] and can be used to control the model outputs. Read the
+    documentation from [`BertConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the MarkupLM model. Defines the different tokens that can be represented by the
+            *inputs_ids* passed to the forward method of [`MarkupLMModel`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        type_vocab_size (`int`, *optional*, defaults to 2):
+            The vocabulary size of the `token_type_ids` passed into [`MarkupLMModel`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        max_tree_id_unit_embeddings (`int`, *optional*, defaults to 1024):
+            The maximum value that the tree id unit embedding might ever use. Typically set this to something large
+            just in case (e.g., 1024).
+        max_xpath_tag_unit_embeddings (`int`, *optional*, defaults to 256):
+            The maximum value that the xpath tag unit embedding might ever use. Typically set this to something large
+            just in case (e.g., 256).
+        max_xpath_subs_unit_embeddings (`int`, *optional*, defaults to 1024):
+            The maximum value that the xpath subscript unit embedding might ever use. Typically set this to something
+            large just in case (e.g., 1024).
+        tag_pad_id (`int`, *optional*, defaults to 216):
+            The id of the padding token in the xpath tags.
+        subs_pad_id (`int`, *optional*, defaults to 1001):
+            The id of the padding token in the xpath subscripts.
+        xpath_tag_unit_hidden_size (`int`, *optional*, defaults to 32):
+            The hidden size of each tree id unit. One complete tree index will have
+            (50*xpath_tag_unit_hidden_size)-dim.
+        max_depth (`int`, *optional*, defaults to 50):
+            The maximum depth in xpath.
+
+    Examples:
+
+    ```python
+    >>> from transformers import MarkupLMModel, MarkupLMConfig
+
+    >>> # Initializing a MarkupLM microsoft/markuplm-base style configuration
+    >>> configuration = MarkupLMConfig()
+
+    >>> # Initializing a model from the microsoft/markuplm-base style configuration
+    >>> model = MarkupLMModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+
+Methods: all
 
 ## MarkupLMFeatureExtractor
 
-[[autodoc]] MarkupLMFeatureExtractor
-    - __call__
+
+    Constructs a MarkupLM feature extractor. This can be used to get a list of nodes and corresponding xpaths from HTML
+    strings.
+
+    This feature extractor inherits from [`~feature_extraction_utils.PreTrainedFeatureExtractor`] which contains most
+    of the main methods. Users should refer to this superclass for more information regarding those methods.
+
+    
+
+Methods: __call__
 
 ## MarkupLMTokenizer
 
-[[autodoc]] MarkupLMTokenizer
-    - build_inputs_with_special_tokens
+
+    Construct a MarkupLM tokenizer. Based on byte-level Byte-Pair-Encoding (BPE). [`MarkupLMTokenizer`] can be used to
+    turn HTML strings into to token-level `input_ids`, `attention_mask`, `token_type_ids`, `xpath_tags_seq` and
+    `xpath_tags_seq`. This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods.
+    Users should refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        merges_file (`str`):
+            Path to the merges file.
+        errors (`str`, *optional*, defaults to `"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See
+            [bytes.decode](https://docs.python.org/3/library/stdtypes.html#bytes.decode) for more information.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        sep_token (`str`, *optional*, defaults to `"</s>"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        cls_token (`str`, *optional*, defaults to `"<s>"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        mask_token (`str`, *optional*, defaults to `"<mask>"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial space to the input. This allows to treat the leading word just as any
+            other word. (RoBERTa tokenizer detect beginning of words by the preceding space).
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
     - save_vocabulary
 
 ## MarkupLMTokenizerFast
 
-[[autodoc]] MarkupLMTokenizerFast
-    - all
+
+    Construct a MarkupLM tokenizer. Based on byte-level Byte-Pair-Encoding (BPE).
+
+    [`MarkupLMTokenizerFast`] can be used to turn HTML strings into to token-level `input_ids`, `attention_mask`,
+    `token_type_ids`, `xpath_tags_seq` and `xpath_tags_seq`. This tokenizer inherits from [`PreTrainedTokenizer`] which
+    contains most of the main methods.
+
+    Users should refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        merges_file (`str`):
+            Path to the merges file.
+        errors (`str`, *optional*, defaults to `"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See
+            [bytes.decode](https://docs.python.org/3/library/stdtypes.html#bytes.decode) for more information.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        sep_token (`str`, *optional*, defaults to `"</s>"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        cls_token (`str`, *optional*, defaults to `"<s>"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        mask_token (`str`, *optional*, defaults to `"<mask>"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial space to the input. This allows to treat the leading word just as any
+            other word. (RoBERTa tokenizer detect beginning of words by the preceding space).
+    
+
+Methods: all
 
 ## MarkupLMProcessor
 
-[[autodoc]] MarkupLMProcessor
-    - __call__
+
+    Constructs a MarkupLM processor which combines a MarkupLM feature extractor and a MarkupLM tokenizer into a single
+    processor.
+
+    [`MarkupLMProcessor`] offers all the functionalities you need to prepare data for the model.
+
+    It first uses [`MarkupLMFeatureExtractor`] to extract nodes and corresponding xpaths from one or more HTML strings.
+    Next, these are provided to [`MarkupLMTokenizer`] or [`MarkupLMTokenizerFast`], which turns them into token-level
+    `input_ids`, `attention_mask`, `token_type_ids`, `xpath_tags_seq` and `xpath_subs_seq`.
+
+    Args:
+        feature_extractor (`MarkupLMFeatureExtractor`):
+            An instance of [`MarkupLMFeatureExtractor`]. The feature extractor is a required input.
+        tokenizer (`MarkupLMTokenizer` or `MarkupLMTokenizerFast`):
+            An instance of [`MarkupLMTokenizer`] or [`MarkupLMTokenizerFast`]. The tokenizer is a required input.
+        parse_html (`bool`, *optional*, defaults to `True`):
+            Whether or not to use `MarkupLMFeatureExtractor` to parse HTML strings into nodes and corresponding xpaths.
+    
+
+Methods: __call__
 
 ## MarkupLMModel
 
-[[autodoc]] MarkupLMModel
-    - forward
+The bare MarkupLM Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MarkupLMConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MarkupLMForSequenceClassification
 
-[[autodoc]] MarkupLMForSequenceClassification
-    - forward
+
+    MarkupLM Model transformer with a sequence classification/regression head on top (a linear layer on top of the
+    pooled output) e.g. for GLUE tasks.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MarkupLMConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MarkupLMForTokenClassification
 
-[[autodoc]] MarkupLMForTokenClassification
-    - forward
+MarkupLM Model with a `token_classification` head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MarkupLMConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MarkupLMForQuestionAnswering
 
-[[autodoc]] MarkupLMForQuestionAnswering
-    - forward
+
+    MarkupLM Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
+    layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`MarkupLMConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

@@ -163,24 +163,176 @@ Tips:
 
 ## TvpConfig
 
-[[autodoc]] TvpConfig
+
+    This is the configuration class to store the configuration of a [`TvpModel`]. It is used to instantiate an Tvp
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the Tvp
+    [Intel/tvp-base](https://huggingface.co/Intel/tvp-base) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        backbone_config (`PretrainedConfig` or `dict`, *optional*):
+            The configuration of the backbone model.
+        backbone (`str`, *optional*):
+            Name of backbone to use when `backbone_config` is `None`. If `use_pretrained_backbone` is `True`, this
+            will load the corresponding pretrained weights from the timm or transformers library. If `use_pretrained_backbone`
+            is `False`, this loads the backbone's config and uses that to initialize the backbone with random weights.
+        use_pretrained_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to use pretrained weights for the backbone.
+        use_timm_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to load `backbone` from the timm library. If `False`, the backbone is loaded from the transformers
+            library.
+        backbone_kwargs (`dict`, *optional*):
+            Keyword arguments to be passed to AutoBackbone when loading from a checkpoint
+            e.g. `{'out_indices': (0, 1, 2, 3)}`. Cannot be specified if `backbone_config` is set.
+        distance_loss_weight (`float`, *optional*, defaults to 1.0):
+            The weight of distance loss.
+        duration_loss_weight (`float`, *optional*, defaults to 0.1):
+            The weight of duration loss.
+        visual_prompter_type (`str`, *optional*, defaults to `"framepad"`):
+            Visual prompt type. The type of padding. Framepad means padding on each frame. Should be one of "framepad"
+            or "framedownpad"
+        visual_prompter_apply (`str`, *optional*, defaults to `"replace"`):
+            The way of applying visual prompt. Replace means use the value of prompt to change the original value in
+            visual inputs. Should be one of "replace", or "add", or "remove".
+        visual_prompt_size (`int`, *optional*, defaults to 96):
+            The size of visual prompt.
+        max_img_size (`int`, *optional*, defaults to 448):
+            The maximum size of frame.
+        num_frames (`int`, *optional*, defaults to 48):
+            The number of frames extracted from a video.
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the Tvp text model. Defines the number of different tokens that can be represented by
+            the `inputs_ids` passed when calling [`TvpModel`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        max_grid_col_position_embeddings (`int`, *optional*, defaults to 100):
+            The largest number of horizontal patches from a video frame.
+        max_grid_row_position_embeddings (`int`, *optional*, defaults to 100):
+            The largest number of vertical patches from a video frame.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability of hidden layers.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` `"quick_gelu"` are supported.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability of attention layers.
+    
 
 ## TvpImageProcessor
 
-[[autodoc]] TvpImageProcessor
-    - preprocess
+
+    Constructs a Tvp image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by the
+            `do_resize` parameter in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"longest_edge": 448}`):
+            Size of the output image after resizing. The longest edge of the image will be resized to
+            `size["longest_edge"]` while maintaining the aspect ratio of the original image. Can be overriden by
+            `size` in the `preprocess` method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by the `resample` parameter in the
+            `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image to the specified `crop_size`. Can be overridden by the `do_center_crop`
+            parameter in the `preprocess` method.
+        crop_size (`Dict[str, int]`, *optional*, defaults to `{"height": 448, "width": 448}`):
+            Size of the image after applying the center crop. Can be overridden by the `crop_size` parameter in the
+            `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Defines the scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter
+            in the `preprocess` method.
+        do_pad (`bool`, *optional*, defaults to `True`):
+            Whether to pad the image. Can be overridden by the `do_pad` parameter in the `preprocess` method.
+        pad_size (`Dict[str, int]`, *optional*, defaults to `{"height": 448, "width": 448}`):
+            Size of the image after applying the padding. Can be overridden by the `pad_size` parameter in the
+            `preprocess` method.
+        constant_values (`Union[float, Iterable[float]]`, *optional*, defaults to 0):
+            The fill value to use when padding the image.
+        pad_mode (`PaddingMode`, *optional*, defaults to `PaddingMode.CONSTANT`):
+            Use what kind of mode in padding.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        do_flip_channel_order (`bool`, *optional*, defaults to `True`):
+            Whether to flip the color channels from RGB to BGR. Can be overridden by the `do_flip_channel_order`
+            parameter in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+    
+
+Methods: preprocess
 
 ## TvpProcessor
 
-[[autodoc]] TvpProcessor
-    - __call__
+
+    Constructs an TVP processor which wraps a TVP image processor and a Bert tokenizer into a single processor.
+
+    [`TvpProcessor`] offers all the functionalities of [`TvpImageProcessor`] and [`BertTokenizerFast`]. See the
+    [`~TvpProcessor.__call__`] and [`~TvpProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`TvpImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`BertTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+    
+
+Methods: __call__
 
 ## TvpModel
 
-[[autodoc]] TvpModel
-    - forward
+The bare Tvp Model transformer outputting BaseModelOutputWithPooling object without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`TvpConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## TvpForVideoGrounding
 
-[[autodoc]] TvpForVideoGrounding
-    - forward
+
+    Tvp Model with a video grounding head on top computing IoU, distance, and duration loss.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`TvpConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

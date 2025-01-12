@@ -49,19 +49,62 @@ Helper class to enable loading timm models to be used with the transformers libr
 
 ## TimmWrapperConfig
 
-[[autodoc]] TimmWrapperConfig
+
+    This is the configuration class to store the configuration for a timm backbone [`TimmWrapper`].
+
+    It is used to instantiate a timm model according to the specified arguments, defining the model.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Config loads imagenet label descriptions and stores them in `id2label` attribute, `label2id` attribute for default
+    imagenet models is set to `None` due to occlusions in the label descriptions.
+
+    Args:
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        do_pooling (`bool`, *optional*, defaults to `True`):
+            Whether to do pooling for the last_hidden_state in `TimmWrapperModel` or not.
+
+    Example:
+    ```python
+    >>> from transformers import TimmWrapperModel
+
+    >>> # Initializing a timm model
+    >>> model = TimmWrapperModel.from_pretrained("timm/resnet18.a1_in1k")
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
+    
 
 ## TimmWrapperImageProcessor
 
-[[autodoc]] TimmWrapperImageProcessor
-    - preprocess
+
+    Wrapper class for timm models to be used within transformers.
+
+    Args:
+        pretrained_cfg (`Dict[str, Any]`):
+            The configuration of the pretrained model used to resolve evaluation and
+            training transforms.
+        architecture (`Optional[str]`, *optional*):
+            Name of the architecture of the model.
+    
+
+Methods: preprocess
 
 ## TimmWrapperModel
 
-[[autodoc]] TimmWrapperModel
-    - forward
+
+    Wrapper class for timm models to be used in transformers.
+    
+
+Methods: forward
 
 ## TimmWrapperForImageClassification
 
-[[autodoc]] TimmWrapperForImageClassification
-    - forward
+
+    Wrapper class for timm models to be used in transformers for image classification.
+    
+
+Methods: forward

@@ -254,27 +254,200 @@ Tips:
 
 ## MusicgenDecoderConfig
 
-[[autodoc]] MusicgenDecoderConfig
+
+    This is the configuration class to store the configuration of an [`MusicgenDecoder`]. It is used to instantiate a
+    MusicGen decoder according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the MusicGen
+    [facebook/musicgen-small](https://huggingface.co/facebook/musicgen-small) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 2048):
+            Vocabulary size of the MusicgenDecoder model. Defines the number of different tokens that can be
+            represented by the `inputs_ids` passed when calling [`MusicgenDecoder`].
+        hidden_size (`int`, *optional*, defaults to 1024):
+            Dimensionality of the layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 24):
+            Number of decoder layers.
+        num_attention_heads (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer block.
+        ffn_dim (`int`, *optional*, defaults to 4096):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer block.
+        activation_function (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the decoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        dropout (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, text_encoder, and pooler.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        activation_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for activations inside the fully connected layer.
+        max_position_embeddings (`int`, *optional*, defaults to 2048):
+            The maximum sequence length that this model might ever be used with. Typically, set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        initializer_factor (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layerdrop (`float`, *optional*, defaults to 0.0):
+            The LayerDrop probability for the decoder. See the [LayerDrop paper](see https://arxiv.org/abs/1909.11556)
+            for more details.
+        scale_embedding (`bool`, *optional*, defaults to `False`):
+            Scale embeddings by diving by sqrt(hidden_size).
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether the model should return the last key/values attentions (not used by all models)
+        num_codebooks (`int`, *optional*, defaults to 4):
+            The number of parallel codebooks forwarded to the model.
+        tie_word_embeddings(`bool`, *optional*, defaults to `False`):
+            Whether input and output word embeddings should be tied.
+        audio_channels (`int`, *optional*, defaults to 1
+            Number of channels in the audio data. Either 1 for mono or 2 for stereo. Stereo models generate a separate
+            audio stream for the left/right output channels. Mono models generate a single audio stream output.
+    
 
 ## MusicgenConfig
 
-[[autodoc]] MusicgenConfig
+
+    This is the configuration class to store the configuration of a [`MusicgenModel`]. It is used to instantiate a
+    MusicGen model according to the specified arguments, defining the text encoder, audio encoder and MusicGen decoder
+    configs.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        kwargs (*optional*):
+            Dictionary of keyword arguments. Notably:
+
+                - **text_encoder** ([`PretrainedConfig`], *optional*) -- An instance of a configuration object that
+                  defines the text encoder config.
+                - **audio_encoder** ([`PretrainedConfig`], *optional*) -- An instance of a configuration object that
+                  defines the audio encoder config.
+                - **decoder** ([`PretrainedConfig`], *optional*) -- An instance of a configuration object that defines
+                  the decoder config.
+
+    Example:
+
+    ```python
+    >>> from transformers import (
+    ...     MusicgenConfig,
+    ...     MusicgenDecoderConfig,
+    ...     T5Config,
+    ...     EncodecConfig,
+    ...     MusicgenForConditionalGeneration,
+    ... )
+
+    >>> # Initializing text encoder, audio encoder, and decoder model configurations
+    >>> text_encoder_config = T5Config()
+    >>> audio_encoder_config = EncodecConfig()
+    >>> decoder_config = MusicgenDecoderConfig()
+
+    >>> configuration = MusicgenConfig.from_sub_models_config(
+    ...     text_encoder_config, audio_encoder_config, decoder_config
+    ... )
+
+    >>> # Initializing a MusicgenForConditionalGeneration (with random weights) from the facebook/musicgen-small style configuration
+    >>> model = MusicgenForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    >>> config_text_encoder = model.config.text_encoder
+    >>> config_audio_encoder = model.config.audio_encoder
+    >>> config_decoder = model.config.decoder
+
+    >>> # Saving the model, including its configuration
+    >>> model.save_pretrained("musicgen-model")
+
+    >>> # loading model and config from pretrained folder
+    >>> musicgen_config = MusicgenConfig.from_pretrained("musicgen-model")
+    >>> model = MusicgenForConditionalGeneration.from_pretrained("musicgen-model", config=musicgen_config)
+    ```
 
 ## MusicgenProcessor
 
-[[autodoc]] MusicgenProcessor
+
+    Constructs a MusicGen processor which wraps an EnCodec feature extractor and a T5 tokenizer into a single processor
+    class.
+
+    [`MusicgenProcessor`] offers all the functionalities of [`EncodecFeatureExtractor`] and [`TTokenizer`]. See
+    [`~MusicgenProcessor.__call__`] and [`~MusicgenProcessor.decode`] for more information.
+
+    Args:
+        feature_extractor (`EncodecFeatureExtractor`):
+            An instance of [`EncodecFeatureExtractor`]. The feature extractor is a required input.
+        tokenizer (`T5Tokenizer`):
+            An instance of [`T5Tokenizer`]. The tokenizer is a required input.
+    
 
 ## MusicgenModel
 
-[[autodoc]] MusicgenModel
-    - forward
+The bare Musicgen decoder model outputting raw hidden-states without any specific head on top.
+
+    The Musicgen model was proposed in [Simple and Controllable Music Generation](https://arxiv.org/abs/2306.05284) by
+    Jade Copet, Felix Kreuk, Itai Gat, Tal Remez, David Kant, Gabriel Synnaeve, Yossi Adi, Alexandre Défossez. It is an
+    encoder decoder transformer trained on the task of conditional music generation
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MusicgenConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MusicgenForCausalLM
 
-[[autodoc]] MusicgenForCausalLM
-    - forward
+The MusicGen decoder model with a language modelling head on top.
+
+    The Musicgen model was proposed in [Simple and Controllable Music Generation](https://arxiv.org/abs/2306.05284) by
+    Jade Copet, Felix Kreuk, Itai Gat, Tal Remez, David Kant, Gabriel Synnaeve, Yossi Adi, Alexandre Défossez. It is an
+    encoder decoder transformer trained on the task of conditional music generation
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MusicgenConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MusicgenForConditionalGeneration
 
-[[autodoc]] MusicgenForConditionalGeneration
-    - forward
+The composite MusicGen model with a text encoder, audio encoder and Musicgen decoder, for music generation tasks with one or both of text and audio prompts.
+
+    The Musicgen model was proposed in [Simple and Controllable Music Generation](https://arxiv.org/abs/2306.05284) by
+    Jade Copet, Felix Kreuk, Itai Gat, Tal Remez, David Kant, Gabriel Synnaeve, Yossi Adi, Alexandre Défossez. It is an
+    encoder decoder transformer trained on the task of conditional music generation
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MusicgenConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

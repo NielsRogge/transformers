@@ -124,24 +124,160 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## BEiT specific outputs
 
-[[autodoc]] models.beit.modeling_beit.BeitModelOutputWithPooling
+Could not find docstring for models.beit.modeling_beit.BeitModelOutputWithPooling
 
-[[autodoc]] models.beit.modeling_flax_beit.FlaxBeitModelOutputWithPooling
+Could not find docstring for models.beit.modeling_flax_beit.FlaxBeitModelOutputWithPooling
 
 ## BeitConfig
 
-[[autodoc]] BeitConfig
+
+    This is the configuration class to store the configuration of a [`BeitModel`]. It is used to instantiate an BEiT
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the BEiT
+    [microsoft/beit-base-patch16-224-pt22k](https://huggingface.co/microsoft/beit-base-patch16-224-pt22k) architecture.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 8192):
+            Vocabulary size of the BEiT model. Defines the number of different image tokens that can be used during
+            pre-training.
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 16):
+            The size (resolution) of each patch.
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        use_mask_token (`bool`, *optional*, defaults to `False`):
+            Whether to use a mask token for masked image modeling.
+        use_absolute_position_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether to use BERT-style absolute position embeddings.
+        use_relative_position_bias (`bool`, *optional*, defaults to `False`):
+            Whether to use T5-style relative position embeddings in the self-attention layers.
+        use_shared_relative_position_bias (`bool`, *optional*, defaults to `False`):
+            Whether to use the same relative position embeddings across all self-attention layers of the Transformer.
+        layer_scale_init_value (`float`, *optional*, defaults to 0.1):
+            Scale to use in the self-attention layers. 0.1 for base, 1e-5 for large. Set 0 to disable layer scale.
+        drop_path_rate (`float`, *optional*, defaults to 0.1):
+            Stochastic depth rate per sample (when applied in the main path of residual layers).
+        use_mean_pooling (`bool`, *optional*, defaults to `True`):
+            Whether to mean pool the final hidden states of the patches instead of using the final hidden state of the
+            CLS token, before applying the classification head.
+        pool_scales (`Tuple[int]`, *optional*, defaults to `[1, 2, 3, 6]`):
+            Pooling scales used in Pooling Pyramid Module applied on the last feature map.
+        use_auxiliary_head (`bool`, *optional*, defaults to `True`):
+            Whether to use an auxiliary head during training.
+        auxiliary_loss_weight (`float`, *optional*, defaults to 0.4):
+            Weight of the cross-entropy loss of the auxiliary head.
+        auxiliary_channels (`int`, *optional*, defaults to 256):
+            Number of channels to use in the auxiliary head.
+        auxiliary_num_convs (`int`, *optional*, defaults to 1):
+            Number of convolutional layers to use in the auxiliary head.
+        auxiliary_concat_input (`bool`, *optional*, defaults to `False`):
+            Whether to concatenate the output of the auxiliary head with the input before the classification layer.
+        semantic_loss_ignore_index (`int`, *optional*, defaults to 255):
+            The index that is ignored by the loss function of the semantic segmentation model.
+        out_features (`List[str]`, *optional*):
+            If used as backbone, list of features to output. Can be any of `"stem"`, `"stage1"`, `"stage2"`, etc.
+            (depending on how many stages the model has). If unset and `out_indices` is set, will default to the
+            corresponding stages. If unset and `out_indices` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
+        out_indices (`List[int]`, *optional*):
+            If used as backbone, list of indices of features to output. Can be any of 0, 1, 2, etc. (depending on how
+            many stages the model has). If unset and `out_features` is set, will default to the corresponding stages.
+            If unset and `out_features` is unset, will default to the last stage. Must be in the
+            same order as defined in the `stage_names` attribute.
+        add_fpn (`bool`, *optional*, defaults to `False`):
+            Whether to add a FPN as part of the backbone. Only relevant for [`BeitBackbone`].
+        reshape_hidden_states (`bool`, *optional*, defaults to `True`):
+            Whether to reshape the feature maps to 4D tensors of shape `(batch_size, hidden_size, height, width)` in
+            case the model is used as backbone. If `False`, the feature maps will be 3D tensors of shape `(batch_size,
+            seq_len, hidden_size)`. Only relevant for [`BeitBackbone`].
+
+    Example:
+
+    ```python
+    >>> from transformers import BeitConfig, BeitModel
+
+    >>> # Initializing a BEiT beit-base-patch16-224-pt22k style configuration
+    >>> configuration = BeitConfig()
+
+    >>> # Initializing a model (with random weights) from the beit-base-patch16-224-pt22k style configuration
+    >>> model = BeitModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## BeitFeatureExtractor
 
-[[autodoc]] BeitFeatureExtractor
-    - __call__
+No docstring available for BeitFeatureExtractor
+
+Methods: __call__
     - post_process_semantic_segmentation
 
 ## BeitImageProcessor
 
-[[autodoc]] BeitImageProcessor
-    - preprocess
+
+    Constructs a BEiT image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by the
+            `do_resize` parameter in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 256, "width": 256}`):
+            Size of the output image after resizing. Can be overridden by the `size` parameter in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by the `resample` parameter in the
+            `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image. If the input size is smaller than `crop_size` along any edge, the image
+            is padded with 0's and then center cropped. Can be overridden by the `do_center_crop` parameter in the
+            `preprocess` method.
+        crop_size (`Dict[str, int]`, *optional*, defaults to `{"height": 224, "width": 224}`):
+            Desired output size when applying center-cropping. Only has an effect if `do_center_crop` is set to `True`.
+            Can be overridden by the `crop_size` parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter in the
+            `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            The mean to use if normalizing the image. This is a float or list of floats of length of the number of
+            channels of the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            The standard deviation to use if normalizing the image. This is a float or list of floats of length of the
+            number of channels of the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_reduce_labels (`bool`, *optional*, defaults to `False`):
+            Whether or not to reduce all label values of segmentation maps by 1. Usually used for datasets where 0 is
+            used for background, and background itself is not included in all classes of a dataset (e.g. ADE20k). The
+            background label will be replaced by 255. Can be overridden by the `do_reduce_labels` parameter in the
+            `preprocess` method.
+    
+
+Methods: preprocess
     - post_process_semantic_segmentation
 
 <frameworkcontent>
@@ -149,41 +285,92 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## BeitModel
 
-[[autodoc]] BeitModel
-    - forward
+The bare Beit Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`BeitConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BeitForMaskedImageModeling
 
-[[autodoc]] BeitForMaskedImageModeling
-    - forward
+Beit Model transformer with a 'language' modeling head on top. BEiT does masked image modeling by predicting
+    visual tokens of a Vector-Quantize Variational Autoencoder (VQ-VAE), whereas other vision models like ViT and DeiT
+    predict RGB pixel values. As a result, this class is incompatible with [`AutoModelForMaskedImageModeling`], so you
+    will need to use [`BeitForMaskedImageModeling`] directly if you wish to do masked image modeling with BEiT.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`BeitConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BeitForImageClassification
 
-[[autodoc]] BeitForImageClassification
-    - forward
+
+    Beit Model transformer with an image classification head on top (a linear layer on top of the average of the final
+    hidden states of the patch tokens) e.g. for ImageNet.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`BeitConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## BeitForSemanticSegmentation
 
-[[autodoc]] BeitForSemanticSegmentation
-    - forward
+
+    Beit Model transformer with a semantic segmentation head on top e.g. for ADE20k, CityScapes.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`BeitConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <jax>
 
 ## FlaxBeitModel
 
-[[autodoc]] FlaxBeitModel
-    - __call__
+No docstring available for FlaxBeitModel
+
+Methods: __call__
 
 ## FlaxBeitForMaskedImageModeling
 
-[[autodoc]] FlaxBeitForMaskedImageModeling
-    - __call__
+No docstring available for FlaxBeitForMaskedImageModeling
+
+Methods: __call__
 
 ## FlaxBeitForImageClassification
 
-[[autodoc]] FlaxBeitForImageClassification
-    - __call__
+No docstring available for FlaxBeitForImageClassification
+
+Methods: __call__
 
 </jax>
 </frameworkcontent>

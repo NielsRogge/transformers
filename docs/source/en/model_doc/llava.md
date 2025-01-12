@@ -178,13 +178,101 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## LlavaConfig
 
-[[autodoc]] LlavaConfig
+
+    This is the configuration class to store the configuration of a [`LlavaForConditionalGeneration`]. It is used to instantiate an
+    Llava model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the Llava-9B.
+
+    e.g. [llava-hf/llava-9b](https://huggingface.co/llava-hf/llava-9b)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`Union[AutoConfig, dict]`,  *optional*, defaults to `CLIPVisionConfig`):
+            The config object or dictionary of the vision backbone.
+        text_config (`Union[AutoConfig, dict]`, *optional*, defaults to `LlamaConfig`):
+            The config object or dictionary of the text backbone.
+        ignore_index (`int`, *optional*, defaults to -100):
+            The ignore index for the loss function.
+        image_token_index (`int`, *optional*, defaults to 32000):
+            The image token index to encode the image prompt.
+        projector_hidden_act (`str`, *optional*, defaults to `"gelu"`):
+            The activation function used by the multimodal projector.
+        vision_feature_select_strategy (`str`, *optional*, defaults to `"default"`):
+            The feature selection strategy used to select the vision feature from the vision backbone.
+            Can be one of `"default"` or `"full"`.
+        vision_feature_layer (`int`, *optional*, defaults to -2):
+            The index of the layer to select the vision feature.
+        image_seq_length (`int`, *optional*, defaults to 576):
+            Sequence length of one image embedding.
+        multimodal_projector_bias (`bool`, *optional*, defaults to `True`):
+            Whether to use bias in the multimodal projector.
+
+    Example:
+
+    ```python
+    >>> from transformers import LlavaForConditionalGeneration, LlavaConfig, CLIPVisionConfig, LlamaConfig
+
+    >>> # Initializing a CLIP-vision config
+    >>> vision_config = CLIPVisionConfig()
+
+    >>> # Initializing a Llama config
+    >>> text_config = LlamaConfig()
+
+    >>> # Initializing a Llava llava-1.5-7b style configuration
+    >>> configuration = LlavaConfig(vision_config, text_config)
+
+    >>> # Initializing a model from the llava-1.5-7b style configuration
+    >>> model = LlavaForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## LlavaProcessor
 
-[[autodoc]] LlavaProcessor
+
+    Constructs a Llava processor which wraps a Llava image processor and a Llava tokenizer into a single processor.
+
+    [`LlavaProcessor`] offers all the functionalities of [`CLIPImageProcessor`] and [`LlamaTokenizerFast`]. See the
+    [`~LlavaProcessor.__call__`] and [`~LlavaProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`CLIPImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`LlamaTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        patch_size (`int`, *optional*):
+            Patch size from the vision tower.
+        vision_feature_select_strategy (`str`, *optional*):
+            The feature selection strategy used to select the vision feature from the vision backbone.
+            Shoudl be same as in model's config
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+        image_token (`str`, *optional*, defaults to `"<image>"`):
+            Special token used to denote image location.
+        num_additional_image_tokens (`int`, *optional*, defaults to 0):
+            Number of additional tokens added to the image embeddings, such as CLS (+1). If the backbone has no CLS or other
+            extra tokens appended, no need to set this arg.
+    
 
 ## LlavaForConditionalGeneration
 
-[[autodoc]] LlavaForConditionalGeneration
-    - forward
+The LLAVA model which consists of a vision backbone and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LlavaConfig`] or [`LlavaVisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

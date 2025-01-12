@@ -61,58 +61,279 @@ This model was contributed by [eltoto1219](https://huggingface.co/eltoto1219). T
 
 ## LxmertConfig
 
-[[autodoc]] LxmertConfig
+
+    This is the configuration class to store the configuration of a [`LxmertModel`] or a [`TFLxmertModel`]. It is used
+    to instantiate a LXMERT model according to the specified arguments, defining the model architecture. Instantiating
+    a configuration with the defaults will yield a similar configuration to that of the Lxmert
+    [unc-nlp/lxmert-base-uncased](https://huggingface.co/unc-nlp/lxmert-base-uncased) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the LXMERT model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`LxmertModel`] or [`TFLxmertModel`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        num_qa_labels (`int`, *optional*, defaults to 9500):
+            This represents the total number of different question answering (QA) labels there are. If using more than
+            one dataset with QA, the user will need to account for the total number of labels that all of the datasets
+            have in total.
+        num_object_labels (`int`, *optional*, defaults to 1600):
+            This represents the total number of semantically unique objects that lxmert will be able to classify a
+            pooled-object feature as belonging too.
+        num_attr_labels (`int`, *optional*, defaults to 400):
+            This represents the total number of semantically unique attributes that lxmert will be able to classify a
+            pooled-object feature as possessing.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `Callable`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        type_vocab_size (`int`, *optional*, defaults to 2):
+            The vocabulary size of the *token_type_ids* passed into [`BertModel`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        l_layers (`int`, *optional*, defaults to 9):
+            Number of hidden layers in the Transformer language encoder.
+        x_layers (`int`, *optional*, defaults to 5):
+            Number of hidden layers in the Transformer cross modality encoder.
+        r_layers (`int`, *optional*, defaults to 5):
+            Number of hidden layers in the Transformer visual encoder.
+        visual_feat_dim (`int`, *optional*, defaults to 2048):
+            This represents the last dimension of the pooled-object features used as input for the model, representing
+            the size of each object feature itself.
+        visual_pos_dim (`int`, *optional*, defaults to 4):
+            This represents the number of spacial features that are mixed into the visual features. The default is set
+            to 4 because most commonly this will represent the location of a bounding box. i.e., (x, y, width, height)
+        visual_loss_normalizer (`float`, *optional*, defaults to 6.67):
+            This represents the scaling factor in which each visual loss is multiplied by if during pretraining, one
+            decided to train with multiple vision-based loss objectives.
+        task_matched (`bool`, *optional*, defaults to `True`):
+            This task is used for sentence-image matching. If the sentence correctly describes the image the label will
+            be 1. If the sentence does not correctly describe the image, the label will be 0.
+        task_mask_lm (`bool`, *optional*, defaults to `True`):
+            Whether or not to add masked language modeling (as used in pretraining models such as BERT) to the loss
+            objective.
+        task_obj_predict (`bool`, *optional*, defaults to `True`):
+            Whether or not to add object prediction, attribute prediction and feature regression to the loss objective.
+        task_qa (`bool`, *optional*, defaults to `True`):
+            Whether or not to add the question-answering loss to the objective
+        visual_obj_loss (`bool`, *optional*, defaults to `True`):
+            Whether or not to calculate the object-prediction loss objective
+        visual_attr_loss (`bool`, *optional*, defaults to `True`):
+            Whether or not to calculate the attribute-prediction loss objective
+        visual_feat_loss (`bool`, *optional*, defaults to `True`):
+            Whether or not to calculate the feature-regression loss objective
+    
 
 ## LxmertTokenizer
 
-[[autodoc]] LxmertTokenizer
+
+    Construct a Lxmert tokenizer. Based on WordPiece.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            File containing the vocabulary.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        do_basic_tokenize (`bool`, *optional*, defaults to `True`):
+            Whether or not to do basic tokenization before WordPiece.
+        never_split (`Iterable`, *optional*):
+            Collection of tokens which will never be split during tokenization. Only has an effect when
+            `do_basic_tokenize=True`
+        unk_token (`str`, *optional*, defaults to `"[UNK]"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"[PAD]"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        tokenize_chinese_chars (`bool`, *optional*, defaults to `True`):
+            Whether or not to tokenize Chinese characters.
+
+            This should likely be deactivated for Japanese (see this
+            [issue](https://github.com/huggingface/transformers/issues/328)).
+        strip_accents (`bool`, *optional*):
+            Whether or not to strip all accents. If this option is not specified, then it will be determined by the
+            value for `lowercase` (as in the original Lxmert).
+        clean_up_tokenization_spaces (`bool`, *optional*, defaults to `True`):
+            Whether or not to cleanup spaces after decoding, cleanup consists in removing potential artifacts like
+            extra spaces.
+    
 
 ## LxmertTokenizerFast
 
-[[autodoc]] LxmertTokenizerFast
+
+    Construct a "fast" Lxmert tokenizer (backed by HuggingFace's *tokenizers* library). Based on WordPiece.
+
+    This tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            File containing the vocabulary.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        unk_token (`str`, *optional*, defaults to `"[UNK]"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"[PAD]"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        clean_text (`bool`, *optional*, defaults to `True`):
+            Whether or not to clean the text before tokenization by removing any control characters and replacing all
+            whitespaces by the classic one.
+        tokenize_chinese_chars (`bool`, *optional*, defaults to `True`):
+            Whether or not to tokenize Chinese characters. This should likely be deactivated for Japanese (see [this
+            issue](https://github.com/huggingface/transformers/issues/328)).
+        strip_accents (`bool`, *optional*):
+            Whether or not to strip all accents. If this option is not specified, then it will be determined by the
+            value for `lowercase` (as in the original Lxmert).
+        wordpieces_prefix (`str`, *optional*, defaults to `"##"`):
+            The prefix for subwords.
+    
 
 ## Lxmert specific outputs
 
-[[autodoc]] models.lxmert.modeling_lxmert.LxmertModelOutput
+Could not find docstring for models.lxmert.modeling_lxmert.LxmertModelOutput
 
-[[autodoc]] models.lxmert.modeling_lxmert.LxmertForPreTrainingOutput
+Could not find docstring for models.lxmert.modeling_lxmert.LxmertForPreTrainingOutput
 
-[[autodoc]] models.lxmert.modeling_lxmert.LxmertForQuestionAnsweringOutput
+Could not find docstring for models.lxmert.modeling_lxmert.LxmertForQuestionAnsweringOutput
 
-[[autodoc]] models.lxmert.modeling_tf_lxmert.TFLxmertModelOutput
+Could not find docstring for models.lxmert.modeling_tf_lxmert.TFLxmertModelOutput
 
-[[autodoc]] models.lxmert.modeling_tf_lxmert.TFLxmertForPreTrainingOutput
+Could not find docstring for models.lxmert.modeling_tf_lxmert.TFLxmertForPreTrainingOutput
 
 <frameworkcontent>
 <pt>
 
 ## LxmertModel
 
-[[autodoc]] LxmertModel
-    - forward
+The bare Lxmert Model transformer outputting raw hidden-states without any specific head on top.
+
+    The LXMERT model was proposed in [LXMERT: Learning Cross-Modality Encoder Representations from
+    Transformers](https://arxiv.org/abs/1908.07490) by Hao Tan and Mohit Bansal. It's a vision and language transformer
+    model, pretrained on a variety of multi-modal datasets comprising of GQA, VQAv2.0, MSCOCO captions, and Visual
+    genome, using a combination of masked language modeling, region of interest feature regression, cross entropy loss
+    for question answering attribute prediction, and object tag prediction.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LxmertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## LxmertForPreTraining
 
-[[autodoc]] LxmertForPreTraining
-    - forward
+Lxmert Model with a specified pretraining head on top.
+
+    The LXMERT model was proposed in [LXMERT: Learning Cross-Modality Encoder Representations from
+    Transformers](https://arxiv.org/abs/1908.07490) by Hao Tan and Mohit Bansal. It's a vision and language transformer
+    model, pretrained on a variety of multi-modal datasets comprising of GQA, VQAv2.0, MSCOCO captions, and Visual
+    genome, using a combination of masked language modeling, region of interest feature regression, cross entropy loss
+    for question answering attribute prediction, and object tag prediction.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LxmertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## LxmertForQuestionAnswering
 
-[[autodoc]] LxmertForQuestionAnswering
-    - forward
+Lxmert Model with a visual-answering head on top for downstream QA tasks
+
+    The LXMERT model was proposed in [LXMERT: Learning Cross-Modality Encoder Representations from
+    Transformers](https://arxiv.org/abs/1908.07490) by Hao Tan and Mohit Bansal. It's a vision and language transformer
+    model, pretrained on a variety of multi-modal datasets comprising of GQA, VQAv2.0, MSCOCO captions, and Visual
+    genome, using a combination of masked language modeling, region of interest feature regression, cross entropy loss
+    for question answering attribute prediction, and object tag prediction.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LxmertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## TFLxmertModel
 
-[[autodoc]] TFLxmertModel
-    - call
+No docstring available for TFLxmertModel
+
+Methods: call
 
 ## TFLxmertForPreTraining
 
-[[autodoc]] TFLxmertForPreTraining
-    - call
+No docstring available for TFLxmertForPreTraining
+
+Methods: call
 
 </tf>
 </frameworkcontent>

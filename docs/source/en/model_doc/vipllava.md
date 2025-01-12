@@ -93,9 +93,71 @@ A chat between a curious human and an artificial intelligence assistant. The ass
 
 ## VipLlavaConfig
 
-[[autodoc]] VipLlavaConfig
+
+    This is the configuration class to store the configuration of a [`VipLlavaForConditionalGeneration`]. It is used to instantiate an
+    VipLlava model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the VipLlava-9B.
+
+    e.g. [ybelkada/vip-llava-7b-hf](https://huggingface.co/ybelkada/vip-llava-7b-hf)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`VipLlavaVisionConfig`,  *optional*):
+            Custom vision config or dict
+        text_config (`Union[AutoConfig, dict]`, *optional*):
+            The config object of the text backbone. Can be any of `LlamaConfig` or `MistralConfig`.
+        ignore_index (`int`, *optional*, defaults to -100):
+            The ignore index for the loss function.
+        image_token_index (`int`, *optional*, defaults to 32000):
+            The image token index to encode the image prompt.
+        projector_hidden_act (`str`, *optional*, defaults to `"gelu"`):
+            The activation function used by the multimodal projector.
+        projector_layernorm_eps (`float`, *optional*, defaults to 1e-05):
+            The layer norm epsilon of the projector layernorm
+        vision_feature_layers (`List[int]`, *optional*, defaults to `[-2, -5, -8, -11, 6]`):
+            The list of layers to select the vision features from.
+        image_seq_length (`int`, *optional*, defaults to 576):
+            Sequence length of one image embedding.
+
+    Example:
+
+    ```python
+    >>> from transformers import VipLlavaForConditionalGeneration, VipLlavaConfig, CLIPVisionConfig, LlamaConfig
+
+    >>> # Initializing a CLIP-vision config
+    >>> vision_config = CLIPVisionConfig()
+
+    >>> # Initializing a Llama config
+    >>> text_config = LlamaConfig()
+
+    >>> # Initializing a VipLlava vipllava-7b style configuration
+    >>> configuration = VipLlavaConfig(vision_config, text_config)
+
+    >>> # Initializing a model from the vipllava-7b style configuration
+    >>> model = VipLlavaForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## VipLlavaForConditionalGeneration
 
-[[autodoc]] VipLlavaForConditionalGeneration
-    - forward
+The VIPLLAVA model which consists of a vision backbone and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`VipLlavaConfig`] or [`VipLlavaVisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

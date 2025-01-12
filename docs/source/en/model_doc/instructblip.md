@@ -39,34 +39,238 @@ The attributes can be obtained from model config, as `model.config.num_query_tok
 
 ## InstructBlipConfig
 
-[[autodoc]] InstructBlipConfig
-    - from_vision_qformer_text_configs
+
+    [`InstructBlipConfig`] is the configuration class to store the configuration of a
+    [`InstructBlipForConditionalGeneration`]. It is used to instantiate a InstructBLIP model according to the specified
+    arguments, defining the vision model, Q-Former model and language model configs. Instantiating a configuration with
+    the defaults will yield a similar configuration to that of the InstructBLIP
+    [Salesforce/instruct-blip-flan-t5](https://huggingface.co/Salesforce/instruct-blip-flan-t5) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`InstructBlipVisionConfig`].
+        qformer_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize [`InstructBlipQFormerConfig`].
+        text_config (`dict`, *optional*):
+            Dictionary of configuration options used to initialize any [`PretrainedConfig`].
+        num_query_tokens (`int`, *optional*, defaults to 32):
+            The number of query tokens passed through the Transformer.
+
+        image_token_index (`int`, *optional*):
+            Token index of special image token.
+        kwargs (*optional*):
+            Dictionary of keyword arguments.
+
+    Example:
+
+    ```python
+    >>> from transformers import (
+    ...     InstructBlipVisionConfig,
+    ...     InstructBlipQFormerConfig,
+    ...     OPTConfig,
+    ...     InstructBlipConfig,
+    ...     InstructBlipForConditionalGeneration,
+    ... )
+
+    >>> # Initializing a InstructBlipConfig with Salesforce/instruct-blip-flan-t5 style configuration
+    >>> configuration = InstructBlipConfig()
+
+    >>> # Initializing a InstructBlipForConditionalGeneration (with random weights) from the Salesforce/instruct-blip-flan-t5 style configuration
+    >>> model = InstructBlipForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+
+    >>> # We can also initialize a InstructBlipConfig from a InstructBlipVisionConfig, InstructBlipQFormerConfig and any PretrainedConfig
+
+    >>> # Initializing InstructBLIP vision, InstructBLIP Q-Former and language model configurations
+    >>> vision_config = InstructBlipVisionConfig()
+    >>> qformer_config = InstructBlipQFormerConfig()
+    >>> text_config = OPTConfig()
+
+    >>> config = InstructBlipConfig.from_text_vision_configs(vision_config, qformer_config, text_config)
+    ```
+
+Methods: from_vision_qformer_text_configs
 
 ## InstructBlipVisionConfig
 
-[[autodoc]] InstructBlipVisionConfig
+
+    This is the configuration class to store the configuration of a [`InstructBlipVisionModel`]. It is used to
+    instantiate a InstructBLIP vision encoder according to the specified arguments, defining the model architecture.
+    Instantiating a configuration defaults will yield a similar configuration to that of the InstructBLIP
+    [Salesforce/instruct-blip-flan-t5](https://huggingface.co/Salesforce/instruct-blip-flan-t5) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 1408):
+            Dimensionality of the encoder layers and the pooler layer.
+        intermediate_size (`int`, *optional*, defaults to 6144):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        num_hidden_layers (`int`, *optional*, defaults to 39):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        image_size (`int`, *optional*, defaults to 224):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 14):
+            The size (resolution) of each patch.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` `"gelu"` are supported. to 1e-5): The epsilon used by the layer
+            normalization layers.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 1e-10):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        qkv_bias (`bool`, *optional*, defaults to `True`):
+            Whether to add a bias to the queries and values in the self-attention layers.
+
+    Example:
+
+    ```python
+    >>> from transformers import InstructBlipVisionConfig, InstructBlipVisionModel
+
+    >>> # Initializing a InstructBlipVisionConfig with Salesforce/instruct-blip-flan-t5 style configuration
+    >>> configuration = InstructBlipVisionConfig()
+
+    >>> # Initializing a InstructBlipVisionModel (with random weights) from the Salesforce/instruct-blip-flan-t5 style configuration
+    >>> model = InstructBlipVisionModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## InstructBlipQFormerConfig
 
-[[autodoc]] InstructBlipQFormerConfig
+
+    This is the configuration class to store the configuration of a [`InstructBlipQFormerModel`]. It is used to
+    instantiate a InstructBLIP Querying Transformer (Q-Former) model according to the specified arguments, defining the
+    model architecture. Instantiating a configuration with the defaults will yield a similar configuration to that of
+    the InstructBLIP [Salesforce/instruct-blip-flan-t5](https://huggingface.co/Salesforce/instruct-blip-flan-t5)
+    architecture. Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs.
+    Read the documentation from [`PretrainedConfig`] for more information.
+
+    Note that [`InstructBlipQFormerModel`] is very similar to [`BertLMHeadModel`] with interleaved cross-attention.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the Q-Former model. Defines the number of different tokens that can be represented by
+            the `inputs_ids` passed when calling the model.
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `Callable`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        pad_token_id (`int`, *optional*, defaults to 0):
+            Token id used for padding sequences.
+        position_embedding_type (`str`, *optional*, defaults to `"absolute"`):
+            Type of position embedding. Choose one of `"absolute"`, `"relative_key"`, `"relative_key_query"`. For
+            positional embeddings use `"absolute"`. For more information on `"relative_key"`, please refer to
+            [Self-Attention with Relative Position Representations (Shaw et al.)](https://arxiv.org/abs/1803.02155).
+            For more information on `"relative_key_query"`, please refer to *Method 4* in [Improve Transformer Models
+            with Better Relative Position Embeddings (Huang et al.)](https://arxiv.org/abs/2009.13658).
+        cross_attention_frequency (`int`, *optional*, defaults to 2):
+            The frequency of adding cross-attention to the Transformer layers.
+        encoder_hidden_size (`int`, *optional*, defaults to 1408):
+            The hidden size of the hidden states for cross-attention.
+
+    Examples:
+
+    ```python
+    >>> from transformers import InstructBlipQFormerConfig, InstructBlipQFormerModel
+
+    >>> # Initializing a InstructBLIP Salesforce/instruct-blip-flan-t5 style configuration
+    >>> configuration = InstructBlipQFormerConfig()
+
+    >>> # Initializing a model (with random weights) from the Salesforce/instruct-blip-flan-t5 style configuration
+    >>> model = InstructBlipQFormerModel(configuration)
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## InstructBlipProcessor
 
-[[autodoc]] InstructBlipProcessor
+
+    Constructs an InstructBLIP processor which wraps a BLIP image processor and a LLaMa/T5 tokenizer into a single
+    processor.
+
+    [`InstructBlipProcessor`] offers all the functionalities of [`BlipImageProcessor`] and [`AutoTokenizer`]. See the
+    docstring of [`~BlipProcessor.__call__`] and [`~BlipProcessor.decode`] for more information.
+
+    Args:
+        image_processor (`BlipImageProcessor`):
+            An instance of [`BlipImageProcessor`]. The image processor is a required input.
+        tokenizer (`AutoTokenizer`):
+            An instance of ['PreTrainedTokenizer`]. The tokenizer is a required input.
+        qformer_tokenizer (`AutoTokenizer`):
+            An instance of ['PreTrainedTokenizer`]. The Q-Former tokenizer is a required input.
+        num_query_tokens (`int`, *optional*):"
+            Number of tokens used by the Qformer as queries, should be same as in model's config.
+    
 
 
 ## InstructBlipVisionModel
 
-[[autodoc]] InstructBlipVisionModel
-    - forward
+No docstring available for InstructBlipVisionModel
+
+Methods: forward
 
 ## InstructBlipQFormerModel
 
-[[autodoc]] InstructBlipQFormerModel
-    - forward
+
+    Querying Transformer (Q-Former), used in InstructBLIP. Slightly modified from BLIP-2 as it also takes the
+    instruction as input.
+    
+
+Methods: forward
 
 ## InstructBlipForConditionalGeneration
 
-[[autodoc]] InstructBlipForConditionalGeneration
-    - forward
+
+    InstructBLIP Model for generating text given an image and an optional text prompt. The model consists of a vision
+    encoder, Querying Transformer (Q-Former) and a language model.
+
+    One can optionally pass `input_ids` to the model, which serve as a text prompt, to make the language model continue
+    the prompt. Otherwise, the language model starts generating text from the [BOS] (beginning-of-sequence) token.
+    
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`InstructBlipConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     - generate

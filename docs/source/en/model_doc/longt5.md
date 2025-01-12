@@ -98,40 +98,155 @@ The complexity of this mechanism is `O(l(r + l/k))`.
 
 ## LongT5Config
 
-[[autodoc]] LongT5Config
+
+    This is the configuration class to store the configuration of a [`LongT5Model`] or a [`FlaxLongT5Model`]. It is
+    used to instantiate a LongT5 model according to the specified arguments, defining the model architecture.
+    Instantiating a configuration with the defaults will yield a similar configuration to that of the LongT5
+    [google/long-t5-local-base](https://huggingface.co/google/long-t5-local-base) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Arguments:
+        vocab_size (`int`, *optional*, defaults to 32128):
+            Vocabulary size of the LongT5 model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`LongT5Model`].
+        d_model (`int`, *optional*, defaults to 512):
+            Size of the encoder layers and the pooler layer.
+        d_kv (`int`, *optional*, defaults to 64):
+            Size of the key, query, value projections per attention head. `d_kv` has to be equal to `d_model //
+            num_heads`.
+        d_ff (`int`, *optional*, defaults to 2048):
+            Size of the intermediate feed forward layer in each `LongT5Block`.
+        num_layers (`int`, *optional*, defaults to 6):
+            Number of hidden layers in the Transformer encoder.
+        num_decoder_layers (`int`, *optional*):
+            Number of hidden layers in the Transformer decoder. Will use the same value as `num_layers` if not set.
+        num_heads (`int`, *optional*, defaults to 8):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        local_radius (`int`, *optional*, defaults to 127)
+            Number of tokens to the left/right for each token to locally self-attend in a local attention mechanism.
+        global_block_size (`int`, *optional*, defaults to 16)
+            Lenght of blocks an input sequence is divided into for a global token representation. Used only for
+            `encoder_attention_type = "transient-global"`.
+        relative_attention_num_buckets (`int`, *optional*, defaults to 32):
+            The number of buckets to use for each attention layer.
+        relative_attention_max_distance (`int`, *optional*, defaults to 128):
+            The maximum distance of the longer sequences for the bucket separation.
+        dropout_rate (`float`, *optional*, defaults to 0.1):
+            The ratio for all dropout layers.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-6):
+            The epsilon used by the layer normalization layers.
+        initializer_factor (`float`, *optional*, defaults to 1):
+            A factor for initializing all weight matrices (should be kept to 1, used internally for initialization
+            testing).
+        feed_forward_proj (`string`, *optional*, defaults to `"relu"`):
+            Type of feed forward layer to be used. Should be one of `"relu"` or `"gated-gelu"`. LongT5v1.1 uses the
+            `"gated-gelu"` feed forward projection. Original LongT5 implementation uses `"gated-gelu"`.
+        encoder_attention_type (`string`, *optional*, defaults to `"local"`):
+            Type of encoder attention to be used. Should be one of `"local"` or `"transient-global"`, which are
+            supported by LongT5 implementation.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+    
 
 <frameworkcontent>
 <pt>
 
 ## LongT5Model
 
-[[autodoc]] LongT5Model
-    - forward
+The bare LONGT5 Model transformer outputting raw hidden-states without any specific head on top.
+
+    The LongT5 model was proposed in [LongT5: Efficient Text-To-Text Transformer for Long
+    Sequences](https://arxiv.org/abs/2112.07916) by Mandy Guo, Joshua Ainslie, David Uthus, Santiago Ontanon, Jianmo
+    Ni, Yun-Hsuan Sung and Yinfei Yang. It's an encoder-decoder transformer pre-trained in a text-to-text denoising
+    generative setting. LongT5 model is an extension of T5 model, and it enables using one of the two different
+    efficient attention mechanisms - (1) Local attention, or (2) Transient-Global attention.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LongT5Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## LongT5ForConditionalGeneration
 
-[[autodoc]] LongT5ForConditionalGeneration
-    - forward
+LONGT5 Model with a `language modeling` head on top.
+
+    The LongT5 model was proposed in [LongT5: Efficient Text-To-Text Transformer for Long
+    Sequences](https://arxiv.org/abs/2112.07916) by Mandy Guo, Joshua Ainslie, David Uthus, Santiago Ontanon, Jianmo
+    Ni, Yun-Hsuan Sung and Yinfei Yang. It's an encoder-decoder transformer pre-trained in a text-to-text denoising
+    generative setting. LongT5 model is an extension of T5 model, and it enables using one of the two different
+    efficient attention mechanisms - (1) Local attention, or (2) Transient-Global attention.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LongT5Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## LongT5EncoderModel
 
-[[autodoc]] LongT5EncoderModel
-    - forward
+The bare LONGT5 Model transformer outputting encoder's raw hidden-states without any specific head on top.
+
+    The LongT5 model was proposed in [LongT5: Efficient Text-To-Text Transformer for Long
+    Sequences](https://arxiv.org/abs/2112.07916) by Mandy Guo, Joshua Ainslie, David Uthus, Santiago Ontanon, Jianmo
+    Ni, Yun-Hsuan Sung and Yinfei Yang. It's an encoder-decoder transformer pre-trained in a text-to-text denoising
+    generative setting. LongT5 model is an extension of T5 model, and it enables using one of the two different
+    efficient attention mechanisms - (1) Local attention, or (2) Transient-Global attention.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`LongT5Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <jax>
 
 ## FlaxLongT5Model
 
-[[autodoc]] FlaxLongT5Model
-    - __call__
+No docstring available for FlaxLongT5Model
+
+Methods: __call__
     - encode
     - decode
 
 ## FlaxLongT5ForConditionalGeneration
 
-[[autodoc]] FlaxLongT5ForConditionalGeneration
-    - __call__
+No docstring available for FlaxLongT5ForConditionalGeneration
+
+Methods: __call__
     - encode
     - decode
 

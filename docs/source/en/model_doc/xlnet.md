@@ -68,118 +68,483 @@ This model was contributed by [thomwolf](https://huggingface.co/thomwolf). The o
 
 ## XLNetConfig
 
-[[autodoc]] XLNetConfig
+
+    This is the configuration class to store the configuration of a [`XLNetModel`] or a [`TFXLNetModel`]. It is used to
+    instantiate a XLNet model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the
+    [xlnet/xlnet-large-cased](https://huggingface.co/xlnet/xlnet-large-cased) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 32000):
+            Vocabulary size of the XLNet model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`XLNetModel`] or [`TFXLNetModel`].
+        d_model (`int`, *optional*, defaults to 1024):
+            Dimensionality of the encoder layers and the pooler layer.
+        n_layer (`int`, *optional*, defaults to 24):
+            Number of hidden layers in the Transformer encoder.
+        n_head (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        d_inner (`int`, *optional*, defaults to 4096):
+            Dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        ff_activation (`str` or `Callable`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the If string, `"gelu"`, `"relu"`, `"silu"` and
+            `"gelu_new"` are supported.
+        untie_r (`bool`, *optional*, defaults to `True`):
+            Whether or not to untie relative position biases
+        attn_type (`str`, *optional*, defaults to `"bi"`):
+            The attention type used by the model. Set `"bi"` for XLNet, `"uni"` for Transformer-XL.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        dropout (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        mem_len (`int` or `None`, *optional*):
+            The number of tokens to cache. The key/value pairs that have already been pre-computed in a previous
+            forward pass won't be re-computed. See the
+            [quickstart](https://huggingface.co/transformers/quickstart.html#using-the-past) for more information.
+        reuse_len (`int`, *optional*):
+            The number of tokens in the current batch to be cached and reused in the future.
+        bi_data (`bool`, *optional*, defaults to `False`):
+            Whether or not to use bidirectional input pipeline. Usually set to `True` during pretraining and `False`
+            during finetuning.
+        clamp_len (`int`, *optional*, defaults to -1):
+            Clamp all relative distances larger than clamp_len. Setting this attribute to -1 means no clamping.
+        same_length (`bool`, *optional*, defaults to `False`):
+            Whether or not to use the same attention length for each token.
+        summary_type (`str`, *optional*, defaults to "last"):
+            Argument used when doing sequence summary. Used in the sequence classification and multiple choice models.
+
+            Has to be one of the following options:
+
+                - `"last"`: Take the last token hidden state (like XLNet).
+                - `"first"`: Take the first token hidden state (like BERT).
+                - `"mean"`: Take the mean of all tokens hidden states.
+                - `"cls_index"`: Supply a Tensor of classification token position (like GPT/GPT-2).
+                - `"attn"`: Not implemented now, use multi-head attention.
+        summary_use_proj (`bool`, *optional*, defaults to `True`):
+            Argument used when doing sequence summary. Used in the sequence classification and multiple choice models.
+
+            Whether or not to add a projection after the vector extraction.
+        summary_activation (`str`, *optional*):
+            Argument used when doing sequence summary. Used in the sequence classification and multiple choice models.
+
+            Pass `"tanh"` for a tanh activation to the output, any other value will result in no activation.
+        summary_proj_to_labels (`boo`, *optional*, defaults to `True`):
+            Used in the sequence classification and multiple choice models.
+
+            Whether the projection outputs should have `config.num_labels` or `config.hidden_size` classes.
+        summary_last_dropout (`float`, *optional*, defaults to 0.1):
+            Used in the sequence classification and multiple choice models.
+
+            The dropout ratio to be used after the projection and activation.
+        start_n_top (`int`, *optional*, defaults to 5):
+            Used in the SQuAD evaluation script.
+        end_n_top (`int`, *optional*, defaults to 5):
+            Used in the SQuAD evaluation script.
+        use_mems_eval (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should make use of the recurrent memory mechanism in evaluation mode.
+        use_mems_train (`bool`, *optional*, defaults to `False`):
+            Whether or not the model should make use of the recurrent memory mechanism in train mode.
+
+            <Tip>
+
+            For pretraining, it is recommended to set `use_mems_train` to `True`. For fine-tuning, it is recommended to
+            set `use_mems_train` to `False` as discussed
+            [here](https://github.com/zihangdai/xlnet/issues/41#issuecomment-505102587). If `use_mems_train` is set to
+            `True`, one has to make sure that the train batches are correctly pre-processed, *e.g.* `batch_1 = [[This
+            line is], [This is the]]` and `batch_2 = [[ the first line], [ second line]]` and that all batches are of
+            equal size.
+
+            </Tip>
+
+    Examples:
+
+    ```python
+    >>> from transformers import XLNetConfig, XLNetModel
+
+    >>> # Initializing a XLNet configuration
+    >>> configuration = XLNetConfig()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = XLNetModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## XLNetTokenizer
 
-[[autodoc]] XLNetTokenizer
-    - build_inputs_with_special_tokens
+
+    Construct an XLNet tokenizer. Based on [SentencePiece](https://github.com/google/sentencepiece).
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a .spm extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        do_lower_case (`bool`, *optional*, defaults to `False`):
+            Whether to lowercase the input when tokenizing.
+        remove_space (`bool`, *optional*, defaults to `True`):
+            Whether to strip the text when tokenizing (removing excess spaces before and after the string).
+        keep_accents (`bool`, *optional*, defaults to `False`):
+            Whether to keep accents when tokenizing.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"<sep>"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"<cls>"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"<mask>"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        additional_special_tokens (`List[str]`, *optional*, defaults to `['<eop>', '<eod>']`):
+            Additional special tokens used by the tokenizer.
+        sp_model_kwargs (`dict`, *optional*):
+            Will be passed to the `SentencePieceProcessor.__init__()` method. The [Python wrapper for
+            SentencePiece](https://github.com/google/sentencepiece/tree/master/python) can be used, among other things,
+            to set:
+
+            - `enable_sampling`: Enable subword regularization.
+            - `nbest_size`: Sampling parameters for unigram. Invalid for BPE-Dropout.
+
+              - `nbest_size = {0,1}`: No sampling is performed.
+              - `nbest_size > 1`: samples from the nbest_size results.
+              - `nbest_size < 0`: assuming that nbest_size is infinite and samples from the all hypothesis (lattice)
+                using forward-filtering-and-backward-sampling algorithm.
+
+            - `alpha`: Smoothing parameter for unigram sampling, and dropout probability of merge operations for
+              BPE-dropout.
+
+    Attributes:
+        sp_model (`SentencePieceProcessor`):
+            The *SentencePiece* processor that is used for every conversion (string, tokens and IDs).
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
     - save_vocabulary
 
 ## XLNetTokenizerFast
 
-[[autodoc]] XLNetTokenizerFast
+
+    Construct a "fast" XLNet tokenizer (backed by HuggingFace's *tokenizers* library). Based on
+    [Unigram](https://huggingface.co/docs/tokenizers/python/latest/components.html?highlight=unigram#models).
+
+    This tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a .spm extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether to lowercase the input when tokenizing.
+        remove_space (`bool`, *optional*, defaults to `True`):
+            Whether to strip the text when tokenizing (removing excess spaces before and after the string).
+        keep_accents (`bool`, *optional*, defaults to `False`):
+            Whether to keep accents when tokenizing.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"<sep>"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"<cls>"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"<mask>"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        additional_special_tokens (`List[str]`, *optional*, defaults to `["<eop>", "<eod>"]`):
+            Additional special tokens used by the tokenizer.
+
+    Attributes:
+        sp_model (`SentencePieceProcessor`):
+            The *SentencePiece* processor that is used for every conversion (string, tokens and IDs).
+    
 
 ## XLNet specific outputs
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetModelOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetModelOutput
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetLMHeadModelOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetLMHeadModelOutput
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetForSequenceClassificationOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetForSequenceClassificationOutput
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetForMultipleChoiceOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetForMultipleChoiceOutput
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetForTokenClassificationOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetForTokenClassificationOutput
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringSimpleOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringSimpleOutput
 
-[[autodoc]] models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringOutput
+Could not find docstring for models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringOutput
 
-[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetModelOutput
+Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetModelOutput
 
-[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetLMHeadModelOutput
+Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetLMHeadModelOutput
 
-[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForSequenceClassificationOutput
+Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForSequenceClassificationOutput
 
-[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForMultipleChoiceOutput
+Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForMultipleChoiceOutput
 
-[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForTokenClassificationOutput
+Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForTokenClassificationOutput
 
-[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForQuestionAnsweringSimpleOutput
+Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForQuestionAnsweringSimpleOutput
 
 <frameworkcontent>
 <pt>
 
 ## XLNetModel
 
-[[autodoc]] XLNetModel
-    - forward
+The bare XLNet Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## XLNetLMHeadModel
 
-[[autodoc]] XLNetLMHeadModel
-    - forward
+
+    XLNet Model with a language modeling head on top (linear layer with weights tied to the input embeddings).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## XLNetForSequenceClassification
 
-[[autodoc]] XLNetForSequenceClassification
-    - forward
+
+    XLNet Model with a sequence classification/regression head on top (a linear layer on top of the pooled output) e.g.
+    for GLUE tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## XLNetForMultipleChoice
 
-[[autodoc]] XLNetForMultipleChoice
-    - forward
+
+    XLNet Model with a multiple choice classification head on top (a linear layer on top of the pooled output and a
+    softmax) e.g. for RACE/SWAG tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## XLNetForTokenClassification
 
-[[autodoc]] XLNetForTokenClassification
-    - forward
+
+    XLNet Model with a token classification head on top (a linear layer on top of the hidden-states output) e.g. for
+    Named-Entity-Recognition (NER) tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## XLNetForQuestionAnsweringSimple
 
-[[autodoc]] XLNetForQuestionAnsweringSimple
-    - forward
+
+    XLNet Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
+    layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## XLNetForQuestionAnswering
 
-[[autodoc]] XLNetForQuestionAnswering
-    - forward
+
+    XLNet Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
+    layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`XLNetConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## TFXLNetModel
 
-[[autodoc]] TFXLNetModel
-    - call
+No docstring available for TFXLNetModel
+
+Methods: call
 
 ## TFXLNetLMHeadModel
 
-[[autodoc]] TFXLNetLMHeadModel
-    - call
+No docstring available for TFXLNetLMHeadModel
+
+Methods: call
 
 ## TFXLNetForSequenceClassification
 
-[[autodoc]] TFXLNetForSequenceClassification
-    - call
+No docstring available for TFXLNetForSequenceClassification
+
+Methods: call
 
 ## TFXLNetForMultipleChoice
 
-[[autodoc]] TFXLNetForMultipleChoice
-    - call
+No docstring available for TFXLNetForMultipleChoice
+
+Methods: call
 
 ## TFXLNetForTokenClassification
 
-[[autodoc]] TFXLNetForTokenClassification
-    - call
+No docstring available for TFXLNetForTokenClassification
+
+Methods: call
 
 ## TFXLNetForQuestionAnsweringSimple
 
-[[autodoc]] TFXLNetForQuestionAnsweringSimple
-    - call
+No docstring available for TFXLNetForQuestionAnsweringSimple
+
+Methods: call
 
 </tf>
 </frameworkcontent>

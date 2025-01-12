@@ -106,40 +106,181 @@ sequences to the same length):
 
 ## CanineConfig
 
-[[autodoc]] CanineConfig
+
+    This is the configuration class to store the configuration of a [`CanineModel`]. It is used to instantiate an
+    CANINE model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the CANINE
+    [google/canine-s](https://huggingface.co/google/canine-s) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimension of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the deep Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoders.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimension of the "intermediate" (i.e., feed-forward) layer in the Transformer encoders.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoders, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 16384):
+            The maximum sequence length that this model might ever be used with.
+        type_vocab_size (`int`, *optional*, defaults to 16):
+            The vocabulary size of the `token_type_ids` passed when calling [`CanineModel`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        pad_token_id (`int`, *optional*, defaults to 0):
+            Padding token id.
+        bos_token_id (`int`, *optional*, defaults to 57344):
+            Beginning of stream token id.
+        eos_token_id (`int`, *optional*, defaults to 57345):
+            End of stream token id.
+        downsampling_rate (`int`, *optional*, defaults to 4):
+            The rate at which to downsample the original character sequence length before applying the deep Transformer
+            encoder.
+        upsampling_kernel_size (`int`, *optional*, defaults to 4):
+            The kernel size (i.e. the number of characters in each window) of the convolutional projection layer when
+            projecting back from `hidden_size`*2 to `hidden_size`.
+        num_hash_functions (`int`, *optional*, defaults to 8):
+            The number of hash functions to use. Each hash function has its own embedding matrix.
+        num_hash_buckets (`int`, *optional*, defaults to 16384):
+            The number of hash buckets to use.
+        local_transformer_stride (`int`, *optional*, defaults to 128):
+            The stride of the local attention of the first shallow Transformer encoder. Defaults to 128 for good
+            TPU/XLA memory alignment.
+
+    Example:
+
+    ```python
+    >>> from transformers import CanineConfig, CanineModel
+
+    >>> # Initializing a CANINE google/canine-s style configuration
+    >>> configuration = CanineConfig()
+
+    >>> # Initializing a model (with random weights) from the google/canine-s style configuration
+    >>> model = CanineModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## CanineTokenizer
 
-[[autodoc]] CanineTokenizer
-    - build_inputs_with_special_tokens
+
+    Construct a CANINE tokenizer (i.e. a character splitter). It turns text into a sequence of characters, and then
+    converts each character into its Unicode code point.
+
+    [`CanineTokenizer`] inherits from [`PreTrainedTokenizer`].
+
+    Refer to superclass [`PreTrainedTokenizer`] for usage examples and documentation concerning parameters.
+
+    Args:
+        model_max_length (`int`, *optional*, defaults to 2048):
+                The maximum sentence length the model accepts.
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
 
 ## CANINE specific outputs
 
-[[autodoc]] models.canine.modeling_canine.CanineModelOutputWithPooling
+Could not find docstring for models.canine.modeling_canine.CanineModelOutputWithPooling
 
 ## CanineModel
 
-[[autodoc]] CanineModel
-    - forward
+The bare CANINE Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`CanineConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## CanineForSequenceClassification
 
-[[autodoc]] CanineForSequenceClassification
-    - forward
+
+    CANINE Model transformer with a sequence classification/regression head on top (a linear layer on top of the pooled
+    output) e.g. for GLUE tasks.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`CanineConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## CanineForMultipleChoice
 
-[[autodoc]] CanineForMultipleChoice
-    - forward
+
+    CANINE Model with a multiple choice classification head on top (a linear layer on top of the pooled output and a
+    softmax) e.g. for RocStories/SWAG tasks.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`CanineConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## CanineForTokenClassification
 
-[[autodoc]] CanineForTokenClassification
-    - forward
+
+    CANINE Model with a token classification head on top (a linear layer on top of the hidden-states output) e.g. for
+    Named-Entity-Recognition (NER) tasks.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`CanineConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## CanineForQuestionAnswering
 
-[[autodoc]] CanineForQuestionAnswering
-    - forward
+
+    CANINE Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
+    layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`CanineConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

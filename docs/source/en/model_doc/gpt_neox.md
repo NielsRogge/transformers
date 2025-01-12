@@ -163,33 +163,248 @@ following speedups during training and inference.
 
 ## GPTNeoXConfig
 
-[[autodoc]] GPTNeoXConfig
+
+    This is the configuration class to store the configuration of a [`GPTNeoXModel`]. It is used to instantiate an
+    GPTNeoX model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the GPTNeoX
+    [EleutherAI/gpt-neox-20b](https://huggingface.co/EleutherAI/gpt-neox-20b) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 50432):
+            Vocabulary size of the GPTNeoX model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`GPTNeoXModel`].
+        hidden_size (`int`, *optional*, defaults to 6144):
+            Dimension of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 44):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 64):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 24576):
+            Dimension of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        rotary_pct (`float`, *optional*, defaults to 0.25):
+            percentage of hidden dimensions to allocate to rotary embeddings
+        rotary_emb_base (`int`, *optional*, defaults to 10000)
+            base for computing rotary embeddings frequency
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio probability of the attention score.
+        hidden_dropout (`float`, *optional*, defaults to 0.0):
+            The dropout ratio of (1) the word embeddings, (2) the post-attention hidden states, and (3) the post-mlp
+            hidden states.
+        classifier_dropout (`float`, *optional*, defaults to 0.1):
+            Argument used when doing token classification, used in the model [`GPTNeoXForTokenClassification`].
+
+            The dropout ratio for the hidden layer.
+        max_position_embeddings (`int`, *optional*, defaults to 2048):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        initializer_range (`float`, *optional*, defaults to 1e-5):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models). Only
+            relevant if `config.is_decoder=True`.
+        use_parallel_residual (`bool`, *optional*, defaults to `True`):
+            Whether to use a "parallel" formulation in each Transformer layer, which can provide a slight training
+            speedup at large scales (e.g. 20B).
+        rope_scaling (`Dict`, *optional*):
+            Dictionary containing the scaling configuration for the RoPE embeddings. NOTE: if you apply new rope type
+            and you expect the model to work on longer `max_position_embeddings`, we recommend you to update this value
+            accordingly.
+            Expected contents:
+                `rope_type` (`str`):
+                    The sub-variant of RoPE to use. Can be one of ['default', 'linear', 'dynamic', 'yarn', 'longrope',
+                    'llama3'], with 'default' being the original RoPE implementation.
+                `factor` (`float`, *optional*):
+                    Used with all rope types except 'default'. The scaling factor to apply to the RoPE embeddings. In
+                    most scaling types, a `factor` of x will enable the model to handle sequences of length x *
+                    original maximum pre-trained length.
+                `original_max_position_embeddings` (`int`, *optional*):
+                    Used with 'dynamic', 'longrope' and 'llama3'. The original max position embeddings used during
+                    pretraining.
+                `attention_factor` (`float`, *optional*):
+                    Used with 'yarn' and 'longrope'. The scaling factor to be applied on the attention
+                    computation. If unspecified, it defaults to value recommended by the implementation, using the
+                    `factor` field to infer the suggested value.
+                `beta_fast` (`float`, *optional*):
+                    Only used with 'yarn'. Parameter to set the boundary for extrapolation (only) in the linear
+                    ramp function. If unspecified, it defaults to 32.
+                `beta_slow` (`float`, *optional*):
+                    Only used with 'yarn'. Parameter to set the boundary for interpolation (only) in the linear
+                    ramp function. If unspecified, it defaults to 1.
+                `short_factor` (`List[float]`, *optional*):
+                    Only used with 'longrope'. The scaling factor to be applied to short contexts (<
+                    `original_max_position_embeddings`). Must be a list of numbers with the same length as the hidden
+                    size divided by the number of attention heads divided by 2
+                `long_factor` (`List[float]`, *optional*):
+                    Only used with 'longrope'. The scaling factor to be applied to long contexts (<
+                    `original_max_position_embeddings`). Must be a list of numbers with the same length as the hidden
+                    size divided by the number of attention heads divided by 2
+                `low_freq_factor` (`float`, *optional*):
+                    Only used with 'llama3'. Scaling factor applied to low frequency components of the RoPE
+                `high_freq_factor` (`float`, *optional*):
+                    Only used with 'llama3'. Scaling factor applied to high frequency components of the RoPE
+        attention_bias (`bool`, *optional*, defaults to `True`):
+            Whether to use a bias in the query, key, value and output projection layers during self-attention.
+
+        Example:
+
+    ```python
+    >>> from transformers import GPTNeoXConfig, GPTNeoXModel
+
+    >>> # Initializing a GPTNeoX gpt-neox-20b style configuration
+    >>> configuration = GPTNeoXConfig()
+
+    >>> # Initializing a model (with random weights) from the gpt-neox-20b style configuration
+    >>> model = GPTNeoXModel(configuration)  # doctest: +SKIP
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config  # doctest: +SKIP
+    ```
 
 ## GPTNeoXTokenizerFast
 
-[[autodoc]] GPTNeoXTokenizerFast
+
+    Construct a "fast" GPT-NeoX-20B tokenizer (backed by HuggingFace's *tokenizers* library). Based on byte-level
+    Byte-Pair-Encoding.
+
+    This tokenizer has been trained to treat spaces like parts of the tokens (a bit like sentencepiece) so a word will
+    be encoded differently whether it is at the beginning of the sentence (without space) or not:
+
+    ```python
+    >>> from transformers import GPTNeoXTokenizerFast
+
+    >>> tokenizer = GPTNeoXTokenizerFast.from_pretrained("openai-community/gpt2")
+    >>> tokenizer("Hello world")["input_ids"]
+    [15496, 995]
+
+    >>> tokenizer(" Hello world")["input_ids"]
+    [18435, 995]
+    ```
+
+    You can get around that behavior by passing `add_prefix_space=True` when instantiating this tokenizer, but since
+    the model was not pretrained this way, it might yield a decrease in performance.
+
+    <Tip>
+
+    When used with `is_split_into_words=True`, this tokenizer needs to be instantiated with `add_prefix_space=True`.
+
+    </Tip>
+
+    This tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        merges_file (`str`):
+            Path to the merges file.
+        errors (`str`, *optional*, defaults to `"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See
+            [bytes.decode](https://docs.python.org/3/library/stdtypes.html#bytes.decode) for more information.
+        unk_token (`str`, *optional*, defaults to `<|endoftext|>`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (`str`, *optional*, defaults to `<|endoftext|>`):
+            The beginning of sequence token.
+        eos_token (`str`, *optional*, defaults to `<|endoftext|>`):
+            The end of sequence token.
+        pad_token (`str`, *optional*):
+            Token for padding a sequence.
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial space to the input. This allows to treat the leading word just as any
+            other word. (GPTNeoX tokenizer detect beginning of words by the preceding space).
+        add_bos_token (`bool`, *optional*, defaults to `False`):
+            Whether or not to add a `bos_token` at the start of sequences.
+        add_eos_token (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an `eos_token` at the end of sequences.
+        trim_offsets (`bool`, *optional*, defaults to `True`):
+            Whether or not the post-processing step should trim offsets to avoid including whitespaces.
+    
 
 ## GPTNeoXModel
 
-[[autodoc]] GPTNeoXModel
-    - forward
+The bare GPTNeoX Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`~GPTNeoXConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTNeoXForCausalLM
 
-[[autodoc]] GPTNeoXForCausalLM
-    - forward
+GPTNeoX Model with a `language modeling` head on top for CLM fine-tuning.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`~GPTNeoXConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTNeoXForQuestionAnswering
 
-[[autodoc]] GPTNeoXForQuestionAnswering
-    - forward
+
+    The GPT-NeoX Model transformer with a span classification head on top for extractive question-answering tasks like
+    SQuAD (a linear layer on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`~GPTNeoXConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTNeoXForSequenceClassification
 
-[[autodoc]] GPTNeoXForSequenceClassification
-    - forward
+
+    The GPTNeoX Model transformer with a sequence classification head on top (linear layer).
+
+    [`GPTNeoXForSequenceClassification`] uses the last token in order to do the classification, as other causal models
+    (e.g. GPT-1) do.
+
+    Since it does classification on the last token, it requires to know the position of the last token. If a
+    `pad_token_id` is defined in the configuration, it finds the last token that is not a padding token in each row. If
+    no `pad_token_id` is defined, it simply takes the last value in each row of the batch. Since it cannot guess the
+    padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last value in
+    each row of the batch).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`~GPTNeoXConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## GPTNeoXForTokenClassification
 
-[[autodoc]] GPTNeoXForTokenClassification
-    - forward
+No docstring available for GPTNeoXForTokenClassification
+
+Methods: forward

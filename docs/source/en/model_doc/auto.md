@@ -60,23 +60,23 @@ Likewise, if your `NewModel` is a subclass of [`PreTrainedModel`], make sure its
 
 ## AutoConfig
 
-[[autodoc]] AutoConfig
+Could not find docstring for AutoConfig
 
 ## AutoTokenizer
 
-[[autodoc]] AutoTokenizer
+Could not find docstring for AutoTokenizer
 
 ## AutoFeatureExtractor
 
-[[autodoc]] AutoFeatureExtractor
+Could not find docstring for AutoFeatureExtractor
 
 ## AutoImageProcessor
 
-[[autodoc]] AutoImageProcessor
+Could not find docstring for AutoImageProcessor
 
 ## AutoProcessor
 
-[[autodoc]] AutoProcessor
+Could not find docstring for AutoProcessor
 
 ## Generic model classes
 
@@ -84,15 +84,15 @@ The following auto classes are available for instantiating a base model class wi
 
 ### AutoModel
 
-[[autodoc]] AutoModel
+Could not find docstring for AutoModel
 
 ### TFAutoModel
 
-[[autodoc]] TFAutoModel
+No docstring available for TFAutoModel
 
 ### FlaxAutoModel
 
-[[autodoc]] FlaxAutoModel
+No docstring available for FlaxAutoModel
 
 ## Generic pretraining classes
 
@@ -100,15 +100,15 @@ The following auto classes are available for instantiating a model with a pretra
 
 ### AutoModelForPreTraining
 
-[[autodoc]] AutoModelForPreTraining
+Could not find docstring for AutoModelForPreTraining
 
 ### TFAutoModelForPreTraining
 
-[[autodoc]] TFAutoModelForPreTraining
+No docstring available for TFAutoModelForPreTraining
 
 ### FlaxAutoModelForPreTraining
 
-[[autodoc]] FlaxAutoModelForPreTraining
+No docstring available for FlaxAutoModelForPreTraining
 
 ## Natural Language Processing
 
@@ -116,115 +116,115 @@ The following auto classes are available for the following natural language proc
 
 ### AutoModelForCausalLM
 
-[[autodoc]] AutoModelForCausalLM
+Could not find docstring for AutoModelForCausalLM
 
 ### TFAutoModelForCausalLM
 
-[[autodoc]] TFAutoModelForCausalLM
+No docstring available for TFAutoModelForCausalLM
 
 ### FlaxAutoModelForCausalLM
 
-[[autodoc]] FlaxAutoModelForCausalLM
+No docstring available for FlaxAutoModelForCausalLM
 
 ### AutoModelForMaskedLM
 
-[[autodoc]] AutoModelForMaskedLM
+Could not find docstring for AutoModelForMaskedLM
 
 ### TFAutoModelForMaskedLM
 
-[[autodoc]] TFAutoModelForMaskedLM
+No docstring available for TFAutoModelForMaskedLM
 
 ### FlaxAutoModelForMaskedLM
 
-[[autodoc]] FlaxAutoModelForMaskedLM
+No docstring available for FlaxAutoModelForMaskedLM
 
 ### AutoModelForMaskGeneration
 
-[[autodoc]] AutoModelForMaskGeneration
+Could not find docstring for AutoModelForMaskGeneration
 
 ### TFAutoModelForMaskGeneration
 
-[[autodoc]] TFAutoModelForMaskGeneration
+No docstring available for TFAutoModelForMaskGeneration
 
 ### AutoModelForSeq2SeqLM
 
-[[autodoc]] AutoModelForSeq2SeqLM
+Could not find docstring for AutoModelForSeq2SeqLM
 
 ### TFAutoModelForSeq2SeqLM
 
-[[autodoc]] TFAutoModelForSeq2SeqLM
+No docstring available for TFAutoModelForSeq2SeqLM
 
 ### FlaxAutoModelForSeq2SeqLM
 
-[[autodoc]] FlaxAutoModelForSeq2SeqLM
+No docstring available for FlaxAutoModelForSeq2SeqLM
 
 ### AutoModelForSequenceClassification
 
-[[autodoc]] AutoModelForSequenceClassification
+Could not find docstring for AutoModelForSequenceClassification
 
 ### TFAutoModelForSequenceClassification
 
-[[autodoc]] TFAutoModelForSequenceClassification
+No docstring available for TFAutoModelForSequenceClassification
 
 ### FlaxAutoModelForSequenceClassification
 
-[[autodoc]] FlaxAutoModelForSequenceClassification
+No docstring available for FlaxAutoModelForSequenceClassification
 
 ### AutoModelForMultipleChoice
 
-[[autodoc]] AutoModelForMultipleChoice
+Could not find docstring for AutoModelForMultipleChoice
 
 ### TFAutoModelForMultipleChoice
 
-[[autodoc]] TFAutoModelForMultipleChoice
+No docstring available for TFAutoModelForMultipleChoice
 
 ### FlaxAutoModelForMultipleChoice
 
-[[autodoc]] FlaxAutoModelForMultipleChoice
+No docstring available for FlaxAutoModelForMultipleChoice
 
 ### AutoModelForNextSentencePrediction
 
-[[autodoc]] AutoModelForNextSentencePrediction
+Could not find docstring for AutoModelForNextSentencePrediction
 
 ### TFAutoModelForNextSentencePrediction
 
-[[autodoc]] TFAutoModelForNextSentencePrediction
+No docstring available for TFAutoModelForNextSentencePrediction
 
 ### FlaxAutoModelForNextSentencePrediction
 
-[[autodoc]] FlaxAutoModelForNextSentencePrediction
+No docstring available for FlaxAutoModelForNextSentencePrediction
 
 ### AutoModelForTokenClassification
 
-[[autodoc]] AutoModelForTokenClassification
+Could not find docstring for AutoModelForTokenClassification
 
 ### TFAutoModelForTokenClassification
 
-[[autodoc]] TFAutoModelForTokenClassification
+No docstring available for TFAutoModelForTokenClassification
 
 ### FlaxAutoModelForTokenClassification
 
-[[autodoc]] FlaxAutoModelForTokenClassification
+No docstring available for FlaxAutoModelForTokenClassification
 
 ### AutoModelForQuestionAnswering
 
-[[autodoc]] AutoModelForQuestionAnswering
+Could not find docstring for AutoModelForQuestionAnswering
 
 ### TFAutoModelForQuestionAnswering
 
-[[autodoc]] TFAutoModelForQuestionAnswering
+No docstring available for TFAutoModelForQuestionAnswering
 
 ### FlaxAutoModelForQuestionAnswering
 
-[[autodoc]] FlaxAutoModelForQuestionAnswering
+No docstring available for FlaxAutoModelForQuestionAnswering
 
 ### AutoModelForTextEncoding
 
-[[autodoc]] AutoModelForTextEncoding
+Could not find docstring for AutoModelForTextEncoding
 
 ### TFAutoModelForTextEncoding
 
-[[autodoc]] TFAutoModelForTextEncoding
+No docstring available for TFAutoModelForTextEncoding
 
 ## Computer vision
 
@@ -232,75 +232,75 @@ The following auto classes are available for the following computer vision tasks
 
 ### AutoModelForDepthEstimation
 
-[[autodoc]] AutoModelForDepthEstimation
+Could not find docstring for AutoModelForDepthEstimation
 
 ### AutoModelForImageClassification
 
-[[autodoc]] AutoModelForImageClassification
+Could not find docstring for AutoModelForImageClassification
 
 ### TFAutoModelForImageClassification
 
-[[autodoc]] TFAutoModelForImageClassification
+No docstring available for TFAutoModelForImageClassification
 
 ### FlaxAutoModelForImageClassification
 
-[[autodoc]] FlaxAutoModelForImageClassification
+No docstring available for FlaxAutoModelForImageClassification
 
 ### AutoModelForVideoClassification
 
-[[autodoc]] AutoModelForVideoClassification
+Could not find docstring for AutoModelForVideoClassification
 
 ### AutoModelForKeypointDetection
 
-[[autodoc]] AutoModelForKeypointDetection
+Could not find docstring for AutoModelForKeypointDetection
 
 ### AutoModelForMaskedImageModeling
 
-[[autodoc]] AutoModelForMaskedImageModeling
+Could not find docstring for AutoModelForMaskedImageModeling
 
 ### TFAutoModelForMaskedImageModeling
 
-[[autodoc]] TFAutoModelForMaskedImageModeling
+No docstring available for TFAutoModelForMaskedImageModeling
 
 ### AutoModelForObjectDetection
 
-[[autodoc]] AutoModelForObjectDetection
+Could not find docstring for AutoModelForObjectDetection
 
 ### AutoModelForImageSegmentation
 
-[[autodoc]] AutoModelForImageSegmentation
+Could not find docstring for AutoModelForImageSegmentation
 
 ### AutoModelForImageToImage
 
-[[autodoc]] AutoModelForImageToImage
+Could not find docstring for AutoModelForImageToImage
 
 ### AutoModelForSemanticSegmentation
 
-[[autodoc]] AutoModelForSemanticSegmentation
+Could not find docstring for AutoModelForSemanticSegmentation
 
 ### TFAutoModelForSemanticSegmentation
 
-[[autodoc]] TFAutoModelForSemanticSegmentation
+No docstring available for TFAutoModelForSemanticSegmentation
 
 ### AutoModelForInstanceSegmentation
 
-[[autodoc]] AutoModelForInstanceSegmentation
+Could not find docstring for AutoModelForInstanceSegmentation
 
 ### AutoModelForUniversalSegmentation
 
-[[autodoc]] AutoModelForUniversalSegmentation
+Could not find docstring for AutoModelForUniversalSegmentation
 
 ### AutoModelForZeroShotImageClassification
 
-[[autodoc]] AutoModelForZeroShotImageClassification
+Could not find docstring for AutoModelForZeroShotImageClassification
 
 ### TFAutoModelForZeroShotImageClassification
 
-[[autodoc]] TFAutoModelForZeroShotImageClassification
+No docstring available for TFAutoModelForZeroShotImageClassification
 
 ### AutoModelForZeroShotObjectDetection
 
-[[autodoc]] AutoModelForZeroShotObjectDetection
+Could not find docstring for AutoModelForZeroShotObjectDetection
 
 ## Audio
 
@@ -308,43 +308,43 @@ The following auto classes are available for the following audio tasks.
 
 ### AutoModelForAudioClassification
 
-[[autodoc]] AutoModelForAudioClassification
+Could not find docstring for AutoModelForAudioClassification
 
 ### AutoModelForAudioFrameClassification
 
-[[autodoc]] TFAutoModelForAudioClassification
+No docstring available for TFAutoModelForAudioClassification
 
 ### TFAutoModelForAudioFrameClassification
 
-[[autodoc]] AutoModelForAudioFrameClassification
+Could not find docstring for AutoModelForAudioFrameClassification
 
 ### AutoModelForCTC
 
-[[autodoc]] AutoModelForCTC
+Could not find docstring for AutoModelForCTC
 
 ### AutoModelForSpeechSeq2Seq
 
-[[autodoc]] AutoModelForSpeechSeq2Seq
+Could not find docstring for AutoModelForSpeechSeq2Seq
 
 ### TFAutoModelForSpeechSeq2Seq
 
-[[autodoc]] TFAutoModelForSpeechSeq2Seq
+No docstring available for TFAutoModelForSpeechSeq2Seq
 
 ### FlaxAutoModelForSpeechSeq2Seq
 
-[[autodoc]] FlaxAutoModelForSpeechSeq2Seq
+No docstring available for FlaxAutoModelForSpeechSeq2Seq
 
 ### AutoModelForAudioXVector
 
-[[autodoc]] AutoModelForAudioXVector
+Could not find docstring for AutoModelForAudioXVector
 
 ### AutoModelForTextToSpectrogram
 
-[[autodoc]] AutoModelForTextToSpectrogram
+Could not find docstring for AutoModelForTextToSpectrogram
 
 ### AutoModelForTextToWaveform
 
-[[autodoc]] AutoModelForTextToWaveform
+Could not find docstring for AutoModelForTextToWaveform
 
 ## Multimodal
 
@@ -352,36 +352,36 @@ The following auto classes are available for the following multimodal tasks.
 
 ### AutoModelForTableQuestionAnswering
 
-[[autodoc]] AutoModelForTableQuestionAnswering
+Could not find docstring for AutoModelForTableQuestionAnswering
 
 ### TFAutoModelForTableQuestionAnswering
 
-[[autodoc]] TFAutoModelForTableQuestionAnswering
+No docstring available for TFAutoModelForTableQuestionAnswering
 
 ### AutoModelForDocumentQuestionAnswering
 
-[[autodoc]] AutoModelForDocumentQuestionAnswering
+Could not find docstring for AutoModelForDocumentQuestionAnswering
 
 ### TFAutoModelForDocumentQuestionAnswering
 
-[[autodoc]] TFAutoModelForDocumentQuestionAnswering
+No docstring available for TFAutoModelForDocumentQuestionAnswering
 
 ### AutoModelForVisualQuestionAnswering
 
-[[autodoc]] AutoModelForVisualQuestionAnswering
+Could not find docstring for AutoModelForVisualQuestionAnswering
 
 ### AutoModelForVision2Seq
 
-[[autodoc]] AutoModelForVision2Seq
+Could not find docstring for AutoModelForVision2Seq
 
 ### TFAutoModelForVision2Seq
 
-[[autodoc]] TFAutoModelForVision2Seq
+No docstring available for TFAutoModelForVision2Seq
 
 ### FlaxAutoModelForVision2Seq
 
-[[autodoc]] FlaxAutoModelForVision2Seq
+No docstring available for FlaxAutoModelForVision2Seq
 
 ### AutoModelForImageTextToText
 
-[[autodoc]] AutoModelForImageTextToText
+Could not find docstring for AutoModelForImageTextToText

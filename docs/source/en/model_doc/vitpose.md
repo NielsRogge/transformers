@@ -241,14 +241,90 @@ To enable MoE (Mixture of Experts) function in the backbone, user has to give ap
 
 ## VitPoseImageProcessor
 
-[[autodoc]] VitPoseImageProcessor
-    - preprocess
+
+    Constructs a VitPose image processor.
+
+    Args:
+        do_affine_transform (`bool`, *optional*, defaults to `True`):
+            Whether to apply an affine transformation to the input images.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 256, "width": 192}`):
+            Resolution of the image after `affine_transform` is applied. Only has an effect if `do_affine_transform` is set to `True`. Can
+            be overriden by `size` in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether or not to apply the scaling factor (to make pixel values floats between 0. and 1.).
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overriden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether or not to normalize the input with mean and standard deviation.
+        image_mean (`List[int]`, defaults to `[0.485, 0.456, 0.406]`, *optional*):
+            The sequence of means for each channel, to be used when normalizing images.
+        image_std (`List[int]`, defaults to `[0.229, 0.224, 0.225]`, *optional*):
+            The sequence of standard deviations for each channel, to be used when normalizing images.
+    
+
+Methods: preprocess
 
 ## VitPoseConfig
 
-[[autodoc]] VitPoseConfig
+
+    This is the configuration class to store the configuration of a [`VitPoseForPoseEstimation`]. It is used to instantiate a
+    VitPose model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the VitPose
+    [usyd-community/vitpose-base-simple](https://huggingface.co/usyd-community/vitpose-base-simple) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        backbone_config (`PretrainedConfig` or `dict`, *optional*, defaults to `VitPoseBackboneConfig()`):
+            The configuration of the backbone model. Currently, only `backbone_config` with `vitpose_backbone` as `model_type` is supported.
+        backbone (`str`, *optional*):
+            Name of backbone to use when `backbone_config` is `None`. If `use_pretrained_backbone` is `True`, this
+            will load the corresponding pretrained weights from the timm or transformers library. If `use_pretrained_backbone`
+            is `False`, this loads the backbone's config and uses that to initialize the backbone with random weights.
+        use_pretrained_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to use pretrained weights for the backbone.
+        use_timm_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to load `backbone` from the timm library. If `False`, the backbone is loaded from the transformers
+            library.
+        backbone_kwargs (`dict`, *optional*):
+            Keyword arguments to be passed to AutoBackbone when loading from a checkpoint
+            e.g. `{'out_indices': (0, 1, 2, 3)}`. Cannot be specified if `backbone_config` is set.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        scale_factor (`int`, *optional*, defaults to 4):
+            Factor to upscale the feature maps coming from the ViT backbone.
+        use_simple_decoder (`bool`, *optional*, defaults to `True`):
+            Whether to use a `VitPoseSimpleDecoder` to decode the feature maps from the backbone into heatmaps. Otherwise it uses `VitPoseClassicDecoder`.
+
+
+    Example:
+
+    ```python
+    >>> from transformers import VitPoseConfig, VitPoseForPoseEstimation
+
+    >>> # Initializing a VitPose configuration
+    >>> configuration = VitPoseConfig()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = VitPoseForPoseEstimation(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## VitPoseForPoseEstimation
 
-[[autodoc]] VitPoseForPoseEstimation
-    - forward
+The VitPose model with a pose estimation head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`VitPoseConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

@@ -76,23 +76,170 @@ output = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up
 
 ## PixtralVisionConfig
 
-[[autodoc]] PixtralVisionConfig
+
+    This is the configuration class to store the configuration of a [`PixtralVisionModel`]. It is used to instantiate an
+    Pixtral vision encoder according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to the vision encoder used by Pixtral-12B.
+
+    e.g. [pixtral-hf/pixtral-9b](https://huggingface.co/pixtral-hf/pixtral-9b)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 1024):
+            Dimension of the hidden representations.
+        intermediate_size (`int`, *optional*, defaults to 4096):
+            Dimension of the MLP representations.
+        num_hidden_layers (`int`, *optional*, defaults to 24):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 16):
+            Number of attention heads in the Transformer encoder.
+        num_channels (`int`, *optional*, defaults to 3):
+            Number of input channels in the input images.
+        image_size (`int`, *optional*, defaults to 1024):
+            Max dimension of the input images.
+        patch_size (`int`, *optional*, defaults to 16):
+            Size of the image patches.
+        hidden_act (`str`, *optional*, defaults to `"gelu"`):
+            Activation function used in the hidden layers.
+        attention_dropout (`float`, *optional*, defaults to 0.0):
+            Dropout probability for the attention layers.
+        rope_theta (`float`, *optional*, defaults to 10000.0):
+            The base period of the RoPE embeddings.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+
+    Example:
+
+    ```python
+    >>> from transformers import PixtralVisionModel, PixtralVisionConfig
+
+    >>> # Initializing a Pixtral-12B style configuration
+    >>> config = PixtralVisionConfig()
+
+    >>> # Initializing a model (with randomly initialized weights) from the configuration
+    >>> model = PixtralVisionModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## PixtralVisionModel
 
-[[autodoc]] PixtralVisionModel
-    - forward
+The bare Pixtral vision encoder outputting raw hidden-states without any specific head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`PixtralVisionConfig`]):
+            Model configuration class with all the parameters of the vision encoder. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PixtralImageProcessor
 
-[[autodoc]] PixtralImageProcessor
-    - preprocess
+
+    Constructs a Pixtral image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"longest_edge": 1024}`):
+            Size of the maximum dimension of either the height or width dimension of the image. Used to control how
+            images are resized. If either the height or width are greater than `size["longest_edge"]` then both the height and width are rescaled by `height / ratio`, `width /ratio` where `ratio = max(height / longest_edge, width / longest_edge)`
+        patch_size (`Dict[str, int]` *optional*, defaults to `{"height": 16, "width": 16}`):
+            Size of the patches in the model, used to calculate the output image size. Can be overridden by `patch_size` in the `preprocess` method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[0.48145466, 0.4578275, 0.40821073]`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `[0.26862954, 0.26130258, 0.27577711]`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB.
+    
+
+Methods: preprocess
 
 ## PixtralImageProcessorFast
 
-[[autodoc]] PixtralImageProcessorFast
-    - preprocess
+
+    Constructs a fast Pixtral image processor that leverages torchvision.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"longest_edge": 1024}`):
+            Size of the maximum dimension of either the height or width dimension of the image. Used to control how
+            images are resized. If either the height or width are greater than `size["longest_edge"]` then both the height and width are rescaled by `height / ratio`, `width /ratio` where `ratio = max(height / longest_edge, width / longest_edge)`
+        patch_size (`Dict[str, int]` *optional*, defaults to `{"height": 16, "width": 16}`):
+            Size of the patches in the model, used to calculate the output image size. Can be overridden by `patch_size` in the `preprocess` method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[0.48145466, 0.4578275, 0.40821073]`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `[0.26862954, 0.26130258, 0.27577711]`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB.
+    
+
+Methods: preprocess
 
 ## PixtralProcessor
 
-[[autodoc]] PixtralProcessor
+
+    Constructs a Pixtral processor which wraps a Pixtral image processor and a Pixtral tokenizer into a single processor.
+
+    [`PixtralProcessor`] offers all the functionalities of [`CLIPImageProcessor`] and [`LlamaTokenizerFast`]. See the
+    [`~PixtralProcessor.__call__`] and [`~PixtralProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`PixtralImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`LlamaTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        patch_size (`int`, *optional*, defaults to 16):
+            Patch size from the vision tower.
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+        image_token (`str`, *optional*, defaults to `"[IMG]"`):
+            Special token used to denote image location.
+        image_break_token (`str`, *optional*, defaults to `"[IMG_BREAK]"`):
+            Special token used to denote the end of a line of pixels in an image.
+        image_end_token (`str`, *optional*, defaults to `"[IMG_END]"`):
+            Special token used to denote the end of an image input.
+    

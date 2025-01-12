@@ -170,25 +170,87 @@ Please note that you may need to restart your runtime after installation.
 
 ## Pop2PianoConfig
 
-[[autodoc]] Pop2PianoConfig
+
+    This is the configuration class to store the configuration of a [`Pop2PianoForConditionalGeneration`]. It is used
+    to instantiate a Pop2PianoForConditionalGeneration model according to the specified arguments, defining the model
+    architecture. Instantiating a configuration with the defaults will yield a similar configuration to that of the
+    Pop2Piano [sweetcocoa/pop2piano](https://huggingface.co/sweetcocoa/pop2piano) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Arguments:
+        vocab_size (`int`, *optional*, defaults to 2400):
+            Vocabulary size of the `Pop2PianoForConditionalGeneration` model. Defines the number of different tokens
+            that can be represented by the `inputs_ids` passed when calling [`Pop2PianoForConditionalGeneration`].
+        composer_vocab_size (`int`, *optional*, defaults to 21):
+            Denotes the number of composers.
+        d_model (`int`, *optional*, defaults to 512):
+            Size of the encoder layers and the pooler layer.
+        d_kv (`int`, *optional*, defaults to 64):
+            Size of the key, query, value projections per attention head. The `inner_dim` of the projection layer will
+            be defined as `num_heads * d_kv`.
+        d_ff (`int`, *optional*, defaults to 2048):
+            Size of the intermediate feed forward layer in each `Pop2PianoBlock`.
+        num_layers (`int`, *optional*, defaults to 6):
+            Number of hidden layers in the Transformer encoder.
+        num_decoder_layers (`int`, *optional*):
+            Number of hidden layers in the Transformer decoder. Will use the same value as `num_layers` if not set.
+        num_heads (`int`, *optional*, defaults to 8):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        relative_attention_num_buckets (`int`, *optional*, defaults to 32):
+            The number of buckets to use for each attention layer.
+        relative_attention_max_distance (`int`, *optional*, defaults to 128):
+            The maximum distance of the longer sequences for the bucket separation.
+        dropout_rate (`float`, *optional*, defaults to 0.1):
+            The ratio for all dropout layers.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-6):
+            The epsilon used by the layer normalization layers.
+        initializer_factor (`float`, *optional*, defaults to 1.0):
+            A factor for initializing all weight matrices (should be kept to 1.0, used internally for initialization
+            testing).
+        feed_forward_proj (`string`, *optional*, defaults to `"gated-gelu"`):
+            Type of feed forward layer to be used. Should be one of `"relu"` or `"gated-gelu"`.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+        dense_act_fn (`string`, *optional*, defaults to `"relu"`):
+            Type of Activation Function to be used in `Pop2PianoDenseActDense` and in `Pop2PianoDenseGatedActDense`.
+    
 
 ## Pop2PianoFeatureExtractor
 
-[[autodoc]] Pop2PianoFeatureExtractor
-    - __call__
+No docstring available for Pop2PianoFeatureExtractor
+
+Methods: __call__
 
 ## Pop2PianoForConditionalGeneration
 
-[[autodoc]] Pop2PianoForConditionalGeneration
-    - forward
+Pop2Piano Model with a `language modeling` head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Pop2PianoConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
     - generate
 
 ## Pop2PianoTokenizer
 
-[[autodoc]] Pop2PianoTokenizer
-    - __call__
+No docstring available for Pop2PianoTokenizer
+
+Methods: __call__
 
 ## Pop2PianoProcessor
 
-[[autodoc]] Pop2PianoProcessor
-    - __call__
+No docstring available for Pop2PianoProcessor
+
+Methods: __call__

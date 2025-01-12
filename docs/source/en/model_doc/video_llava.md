@@ -199,17 +199,148 @@ model = VideoLlavaForConditionalGeneration.from_pretrained(
 
 ## VideoLlavaConfig
 
-[[autodoc]] VideoLlavaConfig
+
+    This is the configuration class to store the configuration of a [`VideoLlavaForConditionalGeneration`]. It is used to instantiate an
+    VideoLlava model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the like LanguageBind/Video-LLaVA-7B-hf.
+
+    e.g. [LanguageBind/Video-LLaVA-7B-hf](https://huggingface.co/LanguageBind/Video-LLaVA-7B-hf)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`VideoLlavaVisionConfig`, *optional*):
+            Custom vision config or dict. Defaults to `CLIPVisionConfig` if not indicated.
+        text_config (`Union[AutoConfig, dict]`, *optional*):
+            The config object of the text backbone. Can be any of `LlamaConfig` or `MistralConfig`.
+            Defaults to `LlamaConfig` if not indicated.
+        ignore_index (`int`, *optional*, defaults to -100):
+            The ignore index for the loss function.
+        image_token_index (`int`, *optional*, defaults to 32000):
+            The image token index to encode the image prompt.
+        video_token_index (`int`, *optional*, defaults to 32001):
+            The video token index to encode the image prompt.
+        projector_hidden_act (`str`, *optional*, defaults to `"gelu"`):
+            The activation function used by the multimodal projector.
+        vision_feature_select_strategy (`str`, *optional*, defaults to `"default"`):
+            The feature selection strategy used to select the vision feature from the CLIP backbone.
+            Can be either "full" to select all features or "default" to select features without `CLS`.
+        vision_feature_layer (`int`, *optional*, defaults to -2):
+            The index of the layer to select the vision feature.
+        image_seq_length (`int`, *optional*, defaults to 256):
+            Sequence length of one image embedding.
+        video_seq_length (`int`, *optional*, defaults to 2056):
+            Sequence length of one video embedding.
+        multimodal_projector_bias (`bool`, *optional*, defaults to `True`):
+            Whether to use bias in the multimodal projector.
+
+    Example:
+
+    ```python
+    >>> from transformers import VideoLlavaForConditionalGeneration, VideoLlavaConfig, CLIPVisionConfig, LlamaConfig
+
+    >>> # Initializing a CLIP-vision config
+    >>> vision_config = CLIPVisionConfig()
+
+    >>> # Initializing a Llama config
+    >>> text_config = LlamaConfig()
+
+    >>> # Initializing a VideoLlava video_llava-1.5-7b style configuration
+    >>> configuration = VideoLlavaConfig(vision_config, text_config)
+
+    >>> # Initializing a model from the video_llava-1.5-7b style configuration
+    >>> model = VideoLlavaForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## VideoLlavaImageProcessor
 
-[[autodoc]] VideoLlavaImageProcessor
+
+    Constructs a CLIP image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `size`. Can be overridden by
+            `do_resize` in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 224}`):
+            Size of the image after resizing. The shortest edge of the image is resized to size["shortest_edge"], with
+            the longest edge resized to keep the input aspect ratio. Can be overridden by `size` in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BICUBIC`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in the `preprocess` method.
+        do_center_crop (`bool`, *optional*, defaults to `True`):
+            Whether to center crop the image to the specified `crop_size`. Can be overridden by `do_center_crop` in the
+            `preprocess` method.
+        crop_size (`Dict[str, int]` *optional*, defaults to 224):
+            Size of the output image after applying `center_crop`. Can be overridden by `crop_size` in the `preprocess`
+            method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by `do_rescale` in
+            the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by `do_normalize` in the `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `[0.48145466, 0.4578275, 0.40821073]`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `[0.26862954, 0.26130258, 0.27577711]`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+            Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB.
+    
 
 ## VideoLlavaProcessor
 
-[[autodoc]] VideoLlavaProcessor
+
+    Constructs a VideoLlava processor which wraps a VideoLlava image processor and a Llava tokenizer into a single processor.
+
+    [`VideoLlavaProcessor`] offers all the functionalities of [`VideoLlavaImageProcessor`] and [`LlamaTokenizerFast`]. See the
+    [`~VideoLlavaProcessor.__call__`] and [`~VideoLlavaProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`VideoLlavaImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`LlamaTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        patch_size (`int`, *optional*, defaults to 14):
+            Patch size from the vision tower.
+        vision_feature_select_strategy (`str`, *optional*, defaults to `"default"`):
+            The feature selection strategy used to select the vision feature from the vision backbone.
+            Shoudl be same as in model's config
+        image_token (`str`, *optional*, defaults to `"<image>"`):
+            Special token used to denote image location.
+        video_token (`str`, *optional*, defaults to `"<video>"`):
+            Special token used to denote video location.
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+        num_additional_image_tokens (`int`, *optional*, defaults to 1):
+            Number of additional tokens added to the image embeddings, such as CLS (+1). If the backbone has no CLS or other
+            extra tokens appended, no need to set this arg.
+    
 
 ## VideoLlavaForConditionalGeneration
 
-[[autodoc]] VideoLlavaForConditionalGeneration
-    - forward
+The VideoLlava model which consists of a vision backbone and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`VideoLlavaConfig`] or [`VideoLlavaVisionConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

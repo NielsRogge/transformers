@@ -80,28 +80,167 @@ Use [`YolosImageProcessor`] for preparing images (and optional targets) for the 
 
 ## YolosConfig
 
-[[autodoc]] YolosConfig
+
+    This is the configuration class to store the configuration of a [`YolosModel`]. It is used to instantiate a YOLOS
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the YOLOS
+    [hustvl/yolos-base](https://huggingface.co/hustvl/yolos-base) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimensionality of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        image_size (`List[int]`, *optional*, defaults to `[512, 864]`):
+            The size (resolution) of each image.
+        patch_size (`int`, *optional*, defaults to 16):
+            The size (resolution) of each patch.
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        qkv_bias (`bool`, *optional*, defaults to `True`):
+            Whether to add a bias to the queries, keys and values.
+        num_detection_tokens (`int`, *optional*, defaults to 100):
+            The number of detection tokens.
+        use_mid_position_embeddings (`bool`, *optional*, defaults to `True`):
+            Whether to use the mid-layer position encodings.
+        auxiliary_loss (`bool`, *optional*, defaults to `False`):
+            Whether auxiliary decoding losses (loss at each decoder layer) are to be used.
+        class_cost (`float`, *optional*, defaults to 1):
+            Relative weight of the classification error in the Hungarian matching cost.
+        bbox_cost (`float`, *optional*, defaults to 5):
+            Relative weight of the L1 error of the bounding box coordinates in the Hungarian matching cost.
+        giou_cost (`float`, *optional*, defaults to 2):
+            Relative weight of the generalized IoU loss of the bounding box in the Hungarian matching cost.
+        bbox_loss_coefficient (`float`, *optional*, defaults to 5):
+            Relative weight of the L1 bounding box loss in the object detection loss.
+        giou_loss_coefficient (`float`, *optional*, defaults to 2):
+            Relative weight of the generalized IoU loss in the object detection loss.
+        eos_coefficient (`float`, *optional*, defaults to 0.1):
+            Relative classification weight of the 'no-object' class in the object detection loss.
+
+    Example:
+
+    ```python
+    >>> from transformers import YolosConfig, YolosModel
+
+    >>> # Initializing a YOLOS hustvl/yolos-base style configuration
+    >>> configuration = YolosConfig()
+
+    >>> # Initializing a model (with random weights) from the hustvl/yolos-base style configuration
+    >>> model = YolosModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## YolosImageProcessor
 
-[[autodoc]] YolosImageProcessor
-    - preprocess
+
+    Constructs a Detr image processor.
+
+    Args:
+        format (`str`, *optional*, defaults to `"coco_detection"`):
+            Data format of the annotations. One of "coco_detection" or "coco_panoptic".
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Controls whether to resize the image's (height, width) dimensions to the specified `size`. Can be
+            overridden by the `do_resize` parameter in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"shortest_edge": 800, "longest_edge": 1333}`):
+            Size of the image's `(height, width)` dimensions after resizing. Can be overridden by the `size` parameter
+            in the `preprocess` method. Available options are:
+                - `{"height": int, "width": int}`: The image will be resized to the exact size `(height, width)`.
+                    Do NOT keep the aspect ratio.
+                - `{"shortest_edge": int, "longest_edge": int}`: The image will be resized to a maximum size respecting
+                    the aspect ratio and keeping the shortest edge less or equal to `shortest_edge` and the longest edge
+                    less or equal to `longest_edge`.
+                - `{"max_height": int, "max_width": int}`: The image will be resized to the maximum size respecting the
+                    aspect ratio and keeping the height less or equal to `max_height` and the width less or equal to
+                    `max_width`.
+        resample (`PILImageResampling`, *optional*, defaults to `PILImageResampling.BILINEAR`):
+            Resampling filter to use if resizing the image.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Controls whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the
+            `do_rescale` parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter in the
+            `preprocess` method.
+        do_normalize:
+            Controls whether to normalize the image. Can be overridden by the `do_normalize` parameter in the
+            `preprocess` method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_DEFAULT_MEAN`):
+            Mean values to use when normalizing the image. Can be a single value or a list of values, one for each
+            channel. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_DEFAULT_STD`):
+            Standard deviation values to use when normalizing the image. Can be a single value or a list of values, one
+            for each channel. Can be overridden by the `image_std` parameter in the `preprocess` method.
+        do_pad (`bool`, *optional*, defaults to `True`):
+            Controls whether to pad the image. Can be overridden by the `do_pad` parameter in the `preprocess`
+            method. If `True`, padding will be applied to the bottom and right of the image with zeros.
+            If `pad_size` is provided, the image will be padded to the specified dimensions.
+            Otherwise, the image will be padded to the maximum height and width of the batch.
+        pad_size (`Dict[str, int]`, *optional*):
+            The size `{"height": int, "width" int}` to pad the images to. Must be larger than any image size
+            provided for preprocessing. If `pad_size` is not provided, images will be padded to the largest
+            height and width in the batch.
+    
+
+Methods: preprocess
     - pad
     - post_process_object_detection
 
 ## YolosFeatureExtractor
 
-[[autodoc]] YolosFeatureExtractor
-    - __call__
+No docstring available for YolosFeatureExtractor
+
+Methods: __call__
     - pad
     - post_process_object_detection
 
 ## YolosModel
 
-[[autodoc]] YolosModel
-    - forward
+The bare YOLOS Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`YolosConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## YolosForObjectDetection
 
-[[autodoc]] YolosForObjectDetection
-    - forward
+
+    YOLOS Model (consisting of a ViT encoder) with object detection heads on top, for tasks such as COCO detection.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`YolosConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

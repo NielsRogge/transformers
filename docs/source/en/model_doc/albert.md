@@ -168,62 +168,374 @@ The resources provided in the following sections consist of a list of official H
 
 ## AlbertConfig
 
-[[autodoc]] AlbertConfig
+
+    This is the configuration class to store the configuration of a [`AlbertModel`] or a [`TFAlbertModel`]. It is used
+    to instantiate an ALBERT model according to the specified arguments, defining the model architecture. Instantiating
+    a configuration with the defaults will yield a similar configuration to that of the ALBERT
+    [albert/albert-xxlarge-v2](https://huggingface.co/albert/albert-xxlarge-v2) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30000):
+            Vocabulary size of the ALBERT model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`AlbertModel`] or [`TFAlbertModel`].
+        embedding_size (`int`, *optional*, defaults to 128):
+            Dimensionality of vocabulary embeddings.
+        hidden_size (`int`, *optional*, defaults to 4096):
+            Dimensionality of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_hidden_groups (`int`, *optional*, defaults to 1):
+            Number of groups for the hidden layers, parameters in the same group are shared.
+        num_attention_heads (`int`, *optional*, defaults to 64):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 16384):
+            The dimensionality of the "intermediate" (often named feed-forward) layer in the Transformer encoder.
+        inner_group_num (`int`, *optional*, defaults to 1):
+            The number of inner repetition of attention and ffn.
+        hidden_act (`str` or `Callable`, *optional*, defaults to `"gelu_new"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            (e.g., 512 or 1024 or 2048).
+        type_vocab_size (`int`, *optional*, defaults to 2):
+            The vocabulary size of the `token_type_ids` passed when calling [`AlbertModel`] or [`TFAlbertModel`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        classifier_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for attached classifiers.
+        position_embedding_type (`str`, *optional*, defaults to `"absolute"`):
+            Type of position embedding. Choose one of `"absolute"`, `"relative_key"`, `"relative_key_query"`. For
+            positional embeddings use `"absolute"`. For more information on `"relative_key"`, please refer to
+            [Self-Attention with Relative Position Representations (Shaw et al.)](https://arxiv.org/abs/1803.02155).
+            For more information on `"relative_key_query"`, please refer to *Method 4* in [Improve Transformer Models
+            with Better Relative Position Embeddings (Huang et al.)](https://arxiv.org/abs/2009.13658).
+        pad_token_id (`int`, *optional*, defaults to 0):
+            Padding token id.
+        bos_token_id (`int`, *optional*, defaults to 2):
+            Beginning of stream token id.
+        eos_token_id (`int`, *optional*, defaults to 3):
+            End of stream token id.
+
+    Examples:
+
+    ```python
+    >>> from transformers import AlbertConfig, AlbertModel
+
+    >>> # Initializing an ALBERT-xxlarge style configuration
+    >>> albert_xxlarge_configuration = AlbertConfig()
+
+    >>> # Initializing an ALBERT-base style configuration
+    >>> albert_base_configuration = AlbertConfig(
+    ...     hidden_size=768,
+    ...     num_attention_heads=12,
+    ...     intermediate_size=3072,
+    ... )
+
+    >>> # Initializing a model (with random weights) from the ALBERT-base style configuration
+    >>> model = AlbertModel(albert_xxlarge_configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## AlbertTokenizer
 
-[[autodoc]] AlbertTokenizer
-    - build_inputs_with_special_tokens
+
+    Construct an ALBERT tokenizer. Based on [SentencePiece](https://github.com/google/sentencepiece).
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a *.spm* extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        remove_space (`bool`, *optional*, defaults to `True`):
+            Whether or not to strip the text when tokenizing (removing excess spaces before and after the string).
+        keep_accents (`bool`, *optional*, defaults to `False`):
+            Whether or not to keep accents when tokenizing.
+        bos_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        sp_model_kwargs (`dict`, *optional*):
+            Will be passed to the `SentencePieceProcessor.__init__()` method. The [Python wrapper for
+            SentencePiece](https://github.com/google/sentencepiece/tree/master/python) can be used, among other things,
+            to set:
+
+            - `enable_sampling`: Enable subword regularization.
+            - `nbest_size`: Sampling parameters for unigram. Invalid for BPE-Dropout.
+
+              - `nbest_size = {0,1}`: No sampling is performed.
+              - `nbest_size > 1`: samples from the nbest_size results.
+              - `nbest_size < 0`: assuming that nbest_size is infinite and samples from the all hypothesis (lattice)
+                using forward-filtering-and-backward-sampling algorithm.
+
+            - `alpha`: Smoothing parameter for unigram sampling, and dropout probability of merge operations for
+              BPE-dropout.
+
+    Attributes:
+        sp_model (`SentencePieceProcessor`):
+            The *SentencePiece* processor that is used for every conversion (string, tokens and IDs).
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
     - save_vocabulary
 
 ## AlbertTokenizerFast
 
-[[autodoc]] AlbertTokenizerFast
+
+    Construct a "fast" ALBERT tokenizer (backed by HuggingFace's *tokenizers* library). Based on
+    [Unigram](https://huggingface.co/docs/tokenizers/python/latest/components.html?highlight=unigram#models). This
+    tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods
+
+    Args:
+        vocab_file (`str`):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a *.spm* extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        remove_space (`bool`, *optional*, defaults to `True`):
+            Whether or not to strip the text when tokenizing (removing excess spaces before and after the string).
+        keep_accents (`bool`, *optional*, defaults to `False`):
+            Whether or not to keep accents when tokenizing.
+        bos_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The end of sequence token. .. note:: When building a sequence using special tokens, this is not the token
+            that is used for the end of sequence. The token used is the `sep_token`.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+    
 
 ## Albert specific outputs
 
-[[autodoc]] models.albert.modeling_albert.AlbertForPreTrainingOutput
+Could not find docstring for models.albert.modeling_albert.AlbertForPreTrainingOutput
 
-[[autodoc]] models.albert.modeling_tf_albert.TFAlbertForPreTrainingOutput
+Could not find docstring for models.albert.modeling_tf_albert.TFAlbertForPreTrainingOutput
 
 <frameworkcontent>
 <pt>
 
 ## AlbertModel
 
-[[autodoc]] AlbertModel
-    - forward
+The bare ALBERT Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## AlbertForPreTraining
 
-[[autodoc]] AlbertForPreTraining
-    - forward
+
+    Albert Model with two heads on top as done during the pretraining: a `masked language modeling` head and a
+    `sentence order prediction (classification)` head.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## AlbertForMaskedLM
 
-[[autodoc]] AlbertForMaskedLM
-    - forward
+Albert Model with a `language modeling` head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## AlbertForSequenceClassification
 
-[[autodoc]] AlbertForSequenceClassification
-    - forward
+
+    Albert Model transformer with a sequence classification/regression head on top (a linear layer on top of the pooled
+    output) e.g. for GLUE tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## AlbertForMultipleChoice
 
-[[autodoc]] AlbertForMultipleChoice
+
+    Albert Model with a multiple choice classification head on top (a linear layer on top of the pooled output and a
+    softmax) e.g. for RocStories/SWAG tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
 
 ## AlbertForTokenClassification
 
-[[autodoc]] AlbertForTokenClassification
-    - forward
+
+    Albert Model with a token classification head on top (a linear layer on top of the hidden-states output) e.g. for
+    Named-Entity-Recognition (NER) tasks.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## AlbertForQuestionAnswering
 
-[[autodoc]] AlbertForQuestionAnswering
-    - forward
+
+    Albert Model with a span classification head on top for extractive question-answering tasks like SQuAD (a linear
+    layers on top of the hidden-states output to compute `span start logits` and `span end logits`).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Args:
+        config ([`AlbertConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 
@@ -231,76 +543,90 @@ The resources provided in the following sections consist of a list of official H
 
 ## TFAlbertModel
 
-[[autodoc]] TFAlbertModel
-    - call
+No docstring available for TFAlbertModel
+
+Methods: call
 
 ## TFAlbertForPreTraining
 
-[[autodoc]] TFAlbertForPreTraining
-    - call
+No docstring available for TFAlbertForPreTraining
+
+Methods: call
 
 ## TFAlbertForMaskedLM
 
-[[autodoc]] TFAlbertForMaskedLM
-    - call
+No docstring available for TFAlbertForMaskedLM
+
+Methods: call
 
 ## TFAlbertForSequenceClassification
 
-[[autodoc]] TFAlbertForSequenceClassification
-    - call
+No docstring available for TFAlbertForSequenceClassification
+
+Methods: call
 
 ## TFAlbertForMultipleChoice
 
-[[autodoc]] TFAlbertForMultipleChoice
-    - call
+No docstring available for TFAlbertForMultipleChoice
+
+Methods: call
 
 ## TFAlbertForTokenClassification
 
-[[autodoc]] TFAlbertForTokenClassification
-    - call
+No docstring available for TFAlbertForTokenClassification
+
+Methods: call
 
 ## TFAlbertForQuestionAnswering
 
-[[autodoc]] TFAlbertForQuestionAnswering
-    - call
+No docstring available for TFAlbertForQuestionAnswering
+
+Methods: call
 
 </tf>
 <jax>
 
 ## FlaxAlbertModel
 
-[[autodoc]] FlaxAlbertModel
-    - __call__
+No docstring available for FlaxAlbertModel
+
+Methods: __call__
 
 ## FlaxAlbertForPreTraining
 
-[[autodoc]] FlaxAlbertForPreTraining
-    - __call__
+No docstring available for FlaxAlbertForPreTraining
+
+Methods: __call__
 
 ## FlaxAlbertForMaskedLM
 
-[[autodoc]] FlaxAlbertForMaskedLM
-    - __call__
+No docstring available for FlaxAlbertForMaskedLM
+
+Methods: __call__
 
 ## FlaxAlbertForSequenceClassification
 
-[[autodoc]] FlaxAlbertForSequenceClassification
-    - __call__
+No docstring available for FlaxAlbertForSequenceClassification
+
+Methods: __call__
 
 ## FlaxAlbertForMultipleChoice
 
-[[autodoc]] FlaxAlbertForMultipleChoice
-    - __call__
+No docstring available for FlaxAlbertForMultipleChoice
+
+Methods: __call__
 
 ## FlaxAlbertForTokenClassification
 
-[[autodoc]] FlaxAlbertForTokenClassification
-    - __call__
+No docstring available for FlaxAlbertForTokenClassification
+
+Methods: __call__
 
 ## FlaxAlbertForQuestionAnswering
 
-[[autodoc]] FlaxAlbertForQuestionAnswering
-    - __call__
+No docstring available for FlaxAlbertForQuestionAnswering
+
+Methods: __call__
 
 </jax>
 </frameworkcontent>

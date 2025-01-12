@@ -113,16 +113,140 @@ Find Code Llama tokenizer reference below.
 
 ## CodeLlamaTokenizer
 
-[[autodoc]] CodeLlamaTokenizer
-    - build_inputs_with_special_tokens
+
+    Construct a CodeLlama tokenizer. Based on byte-level Byte-Pair-Encoding. The default padding token is unset as
+    there is no padding token in the original model.
+
+    The default configuration match that of
+    [codellama/CodeLlama-7b-Instruct-hf](https://huggingface.co/meta-llama/CodeLlama-7b-Instruct-hf/blob/main/tokenizer_config.json)
+    which supports prompt infilling.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        prefix_token (`str`, *optional*, defaults to `"▁<PRE>"`):
+            Prefix token used for infilling.
+        middle_token (`str`, *optional*, defaults to `"▁<MID>"`):
+            Middle token used for infilling.
+        suffix_token (`str`, *optional*, defaults to `"▁<SUF>"`):
+            Suffix token used for infilling.
+        eot_token (`str`, *optional*, defaults to `"▁<EOT>"`):
+            End of text token used for infilling.
+        fill_token (`str`, *optional*, defaults to `"<FILL_ME>"`):
+            The token used to split the input between the prefix and suffix.
+        suffix_first (`bool`, *optional*, defaults to `False`):
+            Whether the input prompt and suffix should be formatted with the suffix first.
+        sp_model_kwargs (`dict`, *optional*):
+            Will be passed to the `SentencePieceProcessor.__init__()` method. The [Python wrapper for
+            SentencePiece](https://github.com/google/sentencepiece/tree/master/python) can be used, among other things,
+            to set:
+
+            - `enable_sampling`: Enable subword regularization.
+            - `nbest_size`: Sampling parameters for unigram. Invalid for BPE-Dropout.
+
+              - `nbest_size = {0,1}`: No sampling is performed.
+              - `nbest_size > 1`: samples from the nbest_size results.
+              - `nbest_size < 0`: assuming that nbest_size is infinite and samples from the all hypothesis (lattice)
+                using forward-filtering-and-backward-sampling algorithm.
+
+            - `alpha`: Smoothing parameter for unigram sampling, and dropout probability of merge operations for
+              BPE-dropout.
+        add_bos_token (`bool`, *optional*, defaults to `True`):
+            Whether to add a beginning of sequence token at the start of sequences.
+        add_eos_token (`bool`, *optional*, defaults to `False`):
+            Whether to add an end of sequence token at the end of sequences.
+        clean_up_tokenization_spaces (`bool`, *optional*, defaults to `False`):
+            Whether or not to clean up the tokenization spaces.
+        additional_special_tokens (`List[str]`, *optional*):
+            Additional special tokens used by the tokenizer.
+        use_default_system_prompt (`bool`, *optional*, defaults to `False`):
+            Whether or not the default system prompt for Llama should be used.
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
     - save_vocabulary
 
 ## CodeLlamaTokenizerFast
 
-[[autodoc]] CodeLlamaTokenizerFast
-    - build_inputs_with_special_tokens
+
+    Construct a Llama tokenizer. Based on byte-level Byte-Pair-Encoding.
+
+    This uses notably ByteFallback and no normalization.
+
+    ```python
+    >>> from transformers import CodeLlamaTokenizerFast
+
+    >>> tokenizer = CodeLlamaTokenizerFast.from_pretrained("hf-internal-testing/llama-tokenizer")
+    >>> tokenizer.encode("Hello this is a test")
+    [1, 15043, 445, 338, 263, 1243]
+    ```
+
+    If you want to change the `bos_token` or the `eos_token`, make sure to specify them when initializing the model, or
+    call `tokenizer.update_post_processor()` to make sure that the post-processing is correctly done (otherwise the
+    values of the first token and final token of an encoded sequence will not be correct). For more details, checkout
+    [post-processors] (https://huggingface.co/docs/tokenizers/api/post-processors) documentation.
+
+
+    This tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods. The default configuration match that of
+    [meta-llama/CodeLlama-7b-Instruct-hf](https://huggingface.co/meta-llama/CodeLlama-7b-Instruct-hf/blob/main/tokenizer_config.json)
+    which supports prompt infilling.
+
+    Args:
+        vocab_file (`str`, *optional*):
+            [SentencePiece](https://github.com/google/sentencepiece) file (generally has a .model extension) that
+            contains the vocabulary necessary to instantiate a tokenizer.
+        tokenizer_file (`str`, *optional*):
+            [tokenizers](https://github.com/huggingface/tokenizers) file (generally has a .json extension) that
+            contains everything needed to load the tokenizer.
+        clean_up_tokenization_spaces (`str`, *optional*, defaults to `False`):
+            Wether to cleanup spaces after decoding, cleanup consists in removing potential artifacts like extra
+            spaces.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+        prefix_token (`str`, *optional*, defaults to `"▁<PRE>"`):
+            Prefix token used for infilling.
+        middle_token (`str`, *optional*, defaults to `"▁<MID>"`):
+            Middle token used for infilling.
+        suffix_token (`str`, *optional*, defaults to `"▁<SUF>"`):
+            Suffix token used for infilling.
+        eot_token (`str`, *optional*, defaults to `"▁<EOT>"`):
+            End of text token used for infilling.
+        fill_token (`str`, *optional*, defaults to `"<FILL_ME>"`):
+            The token used to split the input between the prefix and suffix.
+        additional_special_tokens (`List[str]`, *optional*):
+            Additional special tokens used by the tokenizer.
+        add_bos_token (`bool`, *optional*, defaults to `True`):
+            Whether to add a beginning of sequence token at the start of sequences.
+        add_eos_token (`bool`, *optional*, defaults to `False`):
+            Whether to add an end of sequence token at the end of sequences.
+        use_default_system_prompt (`bool`, *optional*, defaults to `False`):
+            Whether or not the default system prompt for Llama should be used.
+    
+
+Methods: build_inputs_with_special_tokens
     - get_special_tokens_mask
     - create_token_type_ids_from_sequences
     - update_post_processor

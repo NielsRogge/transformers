@@ -53,19 +53,132 @@ This model was contributed by [Xrenya](https://huggingface.co/Xrenya). The origi
 
 ## PvtConfig
 
-[[autodoc]] PvtConfig
+
+    This is the configuration class to store the configuration of a [`PvtModel`]. It is used to instantiate an Pvt
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the Pvt
+    [Xrenya/pvt-tiny-224](https://huggingface.co/Xrenya/pvt-tiny-224) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        image_size (`int`, *optional*, defaults to 224):
+            The input image size
+        num_channels (`int`, *optional*, defaults to 3):
+            The number of input channels.
+        num_encoder_blocks (`int`, *optional*, defaults to 4):
+            The number of encoder blocks (i.e. stages in the Mix Transformer encoder).
+        depths (`List[int]`, *optional*, defaults to `[2, 2, 2, 2]`):
+            The number of layers in each encoder block.
+        sequence_reduction_ratios (`List[int]`, *optional*, defaults to `[8, 4, 2, 1]`):
+            Sequence reduction ratios in each encoder block.
+        hidden_sizes (`List[int]`, *optional*, defaults to `[64, 128, 320, 512]`):
+            Dimension of each of the encoder blocks.
+        patch_sizes (`List[int]`, *optional*, defaults to `[4, 2, 2, 2]`):
+            Patch size before each encoder block.
+        strides (`List[int]`, *optional*, defaults to `[4, 2, 2, 2]`):
+            Stride before each encoder block.
+        num_attention_heads (`List[int]`, *optional*, defaults to `[1, 2, 5, 8]`):
+            Number of attention heads for each attention layer in each block of the Transformer encoder.
+        mlp_ratios (`List[int]`, *optional*, defaults to `[8, 8, 4, 4]`):
+            Ratio of the size of the hidden layer compared to the size of the input layer of the Mix FFNs in the
+            encoder blocks.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        drop_path_rate (`float`, *optional*, defaults to 0.0):
+            The dropout probability for stochastic depth, used in the blocks of the Transformer encoder.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+            The epsilon used by the layer normalization layers.
+        qkv_bias (`bool`, *optional*, defaults to `True`):
+            Whether or not a learnable bias should be added to the queries, keys and values.
+        num_labels ('int', *optional*, defaults to 1000):
+            The number of classes.
+    Example:
+
+    ```python
+    >>> from transformers import PvtModel, PvtConfig
+
+    >>> # Initializing a PVT Xrenya/pvt-tiny-224 style configuration
+    >>> configuration = PvtConfig()
+
+    >>> # Initializing a model from the Xrenya/pvt-tiny-224 style configuration
+    >>> model = PvtModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## PvtImageProcessor
 
-[[autodoc]] PvtImageProcessor
-    - preprocess
+
+    Constructs a PVT image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to the specified `(size["height"],
+            size["width"])`. Can be overridden by the `do_resize` parameter in the `preprocess` method.
+        size (`dict`, *optional*, defaults to `{"height": 224, "width": 224}`):
+            Size of the output image after resizing. Can be overridden by the `size` parameter in the `preprocess`
+            method.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by the `resample` parameter in the
+            `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter in the
+            `preprocess` method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_DEFAULT_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_DEFAULT_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+    
+
+Methods: preprocess
 
 ## PvtForImageClassification
 
-[[autodoc]] PvtForImageClassification
-    - forward
+
+    Pvt Model transformer with an image classification head on top (a linear layer on top of the final hidden state of
+    the [CLS] token) e.g. for ImageNet.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`~PvtConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PvtModel
 
-[[autodoc]] PvtModel
-    - forward
+The bare Pvt encoder outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`~PvtConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

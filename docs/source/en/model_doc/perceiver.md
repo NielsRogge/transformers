@@ -101,129 +101,451 @@ audio classification, video classification, etc.
 
 ## Perceiver specific outputs
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverModelOutput
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverModelOutput
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverDecoderOutput
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverDecoderOutput
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMaskedLMOutput
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMaskedLMOutput
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassifierOutput
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverClassifierOutput
 
 ## PerceiverConfig
 
-[[autodoc]] PerceiverConfig
+
+    This is the configuration class to store the configuration of a [`PerceiverModel`]. It is used to instantiate an
+    Perceiver model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the Perceiver
+    [deepmind/language-perceiver](https://huggingface.co/deepmind/language-perceiver) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        num_latents (`int`, *optional*, defaults to 256):
+            The number of latents.
+        d_latents (`int`, *optional*, defaults to 1280):
+            Dimension of the latent embeddings.
+        d_model (`int`, *optional*, defaults to 768):
+            Dimension of the inputs. Should only be provided in case [*PerceiverTextPreprocessor*] is used or no
+            preprocessor is provided.
+        num_blocks (`int`, *optional*, defaults to 1):
+            Number of blocks in the Transformer encoder.
+        num_self_attends_per_block (`int`, *optional*, defaults to 26):
+            The number of self-attention layers per block.
+        num_self_attention_heads (`int`, *optional*, defaults to 8):
+            Number of attention heads for each self-attention layer in the Transformer encoder.
+        num_cross_attention_heads (`int`, *optional*, defaults to 8):
+            Number of attention heads for each cross-attention layer in the Transformer encoder.
+        qk_channels (`int`, *optional*):
+            Dimension to project the queries + keys before applying attention in the cross-attention and self-attention
+            layers of the encoder. Will default to preserving the dimension of the queries if not specified.
+        v_channels (`int`, *optional*):
+            Dimension to project the values before applying attention in the cross-attention and self-attention layers
+            of the encoder. Will default to preserving the dimension of the queries if not specified.
+        cross_attention_shape_for_attention (`str`, *optional*, defaults to `"kv"`):
+            Dimension to use when downsampling the queries and keys in the cross-attention layer of the encoder.
+        self_attention_widening_factor (`int`, *optional*, defaults to 1):
+            Dimension of the feed-forward layer in the cross-attention layer of the Transformer encoder.
+        cross_attention_widening_factor (`int`, *optional*, defaults to 1):
+            Dimension of the feed-forward layer in the self-attention layers of the Transformer encoder.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        use_query_residual (`float`, *optional*, defaults to `True`):
+            Whether to add a query residual in the cross-attention layer of the encoder.
+        vocab_size (`int`, *optional*, defaults to 262):
+            Vocabulary size for the masked language modeling model.
+        max_position_embeddings (`int`, *optional*, defaults to 2048):
+            The maximum sequence length that the masked language modeling model might ever be used with. Typically set
+            this to something large just in case (e.g., 512 or 1024 or 2048).
+        image_size (`int`, *optional*, defaults to 56):
+            Size of the images after preprocessing, for [`PerceiverForImageClassificationLearned`].
+        train_size (`List[int]`, *optional*, defaults to `[368, 496]`):
+            Training size of the images for the optical flow model.
+        num_frames (`int`, *optional*, defaults to 16):
+            Number of video frames used for the multimodal autoencoding model.
+        audio_samples_per_frame (`int`, *optional*, defaults to 1920):
+            Number of audio samples per frame for the multimodal autoencoding model.
+        samples_per_patch (`int`, *optional*, defaults to 16):
+            Number of audio samples per patch when preprocessing the audio for the multimodal autoencoding model.
+        output_shape (`List[int]`, *optional*, defaults to `[1, 16, 224, 224]`):
+            Shape of the output (batch_size, num_frames, height, width) for the video decoder queries of the multimodal
+            autoencoding model. This excludes the channel dimension.
+        output_num_channels (`int`, *optional*, defaults to 512):
+            Number of output channels for each modalitiy decoder.
+
+    Example:
+
+    ```python
+    >>> from transformers import PerceiverModel, PerceiverConfig
+
+    >>> # Initializing a Perceiver deepmind/language-perceiver style configuration
+    >>> configuration = PerceiverConfig()
+
+    >>> # Initializing a model from the deepmind/language-perceiver style configuration
+    >>> model = PerceiverModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## PerceiverTokenizer
 
-[[autodoc]] PerceiverTokenizer
-    - __call__
+
+    Construct a Perceiver tokenizer. The Perceiver simply uses raw bytes utf-8 encoding.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        pad_token (`str`, *optional*, defaults to `"[PAD]"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        bos_token (`str`, *optional*, defaults to `"[BOS]"`):
+            The BOS token (reserved in the vocab, but not actually used).
+        eos_token (`str`, *optional*, defaults to `"[EOS]"`):
+            The end of sequence token (reserved in the vocab, but not actually used).
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The MASK token, useful for masked language modeling.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The CLS token (reserved in the vocab, but not actually used).
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from two sequences.
+
+    
+
+Methods: __call__
 
 ## PerceiverFeatureExtractor
 
-[[autodoc]] PerceiverFeatureExtractor
-    - __call__
+No docstring available for PerceiverFeatureExtractor
+
+Methods: __call__
 
 ## PerceiverImageProcessor
 
-[[autodoc]] PerceiverImageProcessor
-    - preprocess
+
+    Constructs a Perceiver image processor.
+
+    Args:
+        do_center_crop (`bool`, `optional`, defaults to `True`):
+            Whether or not to center crop the image. If the input size if smaller than `crop_size` along any edge, the
+            image will be padded with zeros and then center cropped. Can be overridden by the `do_center_crop`
+            parameter in the `preprocess` method.
+        crop_size (`Dict[str, int]`, *optional*, defaults to `{"height": 256, "width": 256}`):
+            Desired output size when applying center-cropping. Can be overridden by the `crop_size` parameter in the
+            `preprocess` method.
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image to `(size["height"], size["width"])`. Can be overridden by the `do_resize`
+            parameter in the `preprocess` method.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 224, "width": 224}`):
+            Size of the image after resizing. Can be overridden by the `size` parameter in the `preprocess` method.
+        resample (`PILImageResampling`, *optional*, defaults to `PILImageResampling.BICUBIC`):
+            Defines the resampling filter to use if resizing the image. Can be overridden by the `resample` parameter
+            in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image by the specified scale `rescale_factor`. Can be overridden by the `do_rescale`
+            parameter in the `preprocess` method.
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Defines the scale factor to use if rescaling the image. Can be overridden by the `rescale_factor` parameter
+            in the `preprocess` method.
+        do_normalize:
+            Whether to normalize the image. Can be overridden by the `do_normalize` parameter in the `preprocess`
+            method.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_MEAN`):
+            Mean to use if normalizing the image. This is a float or list of floats the length of the number of
+            channels in the image. Can be overridden by the `image_mean` parameter in the `preprocess` method.
+        image_std (`float` or `List[float]`, *optional*, defaults to `IMAGENET_STANDARD_STD`):
+            Standard deviation to use if normalizing the image. This is a float or list of floats the length of the
+            number of channels in the image. Can be overridden by the `image_std` parameter in the `preprocess` method.
+    
+
+Methods: preprocess
 
 ## PerceiverTextPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverTextPreprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverTextPreprocessor
 
 ## PerceiverImagePreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverImagePreprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverImagePreprocessor
 
 ## PerceiverOneHotPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverOneHotPreprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverOneHotPreprocessor
 
 ## PerceiverAudioPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor
 
 ## PerceiverMultimodalPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor
 
 ## PerceiverProjectionDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverProjectionDecoder
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverProjectionDecoder
 
 ## PerceiverBasicDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverBasicDecoder
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverBasicDecoder
 
 ## PerceiverClassificationDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassificationDecoder
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverClassificationDecoder
 
 ## PerceiverOpticalFlowDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder
 
 ## PerceiverBasicVideoAutoencodingDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverBasicVideoAutoencodingDecoder
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverBasicVideoAutoencodingDecoder
 
 ## PerceiverMultimodalDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder
 
 ## PerceiverProjectionPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor
 
 ## PerceiverAudioPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor
 
 ## PerceiverClassificationPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor
 
 ## PerceiverMultimodalPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor
+Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor
 
 ## PerceiverModel
 
-[[autodoc]] PerceiverModel
-    - forward
+The Perceiver: a scalable, fully attentional architecture.
+
+    <Tip>
+
+        Note that it's possible to fine-tune Perceiver on higher resolution images than the ones it has been trained on, by
+        setting `interpolate_pos_encoding` to `True` in the forward of the model. This will interpolate the pre-trained
+        position embeddings to the higher resolution.
+
+    </Tip>
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+        decoder (*DecoderType*, *optional*):
+            Optional decoder to use to decode the latent representation of the encoder. Examples include
+            *transformers.models.perceiver.modeling_perceiver.PerceiverBasicDecoder*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverClassificationDecoder*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder*.
+        input_preprocessor (*PreprocessorType*, *optional*):
+            Optional input preprocessor to use. Examples include
+            *transformers.models.perceiver.modeling_perceiver.PerceiverImagePreprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverTextPreprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor*.
+        output_postprocessor (*PostprocessorType*, *optional*):
+            Optional output postprocessor to use. Examples include
+            *transformers.models.perceiver.modeling_perceiver.PerceiverImagePostprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor*,
+            *transformers.models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor*.
+
+        Note that you can define your own decoders, preprocessors and/or postprocessors to fit your use-case.
+
+
+Methods: forward
 
 ## PerceiverForMaskedLM
 
-[[autodoc]] PerceiverForMaskedLM
-    - forward
+Example use of Perceiver for masked language modeling.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PerceiverForSequenceClassification
 
-[[autodoc]] PerceiverForSequenceClassification
-    - forward
+Example use of Perceiver for text classification.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PerceiverForImageClassificationLearned
 
-[[autodoc]] PerceiverForImageClassificationLearned
-    - forward
+
+Example use of Perceiver for image classification, for tasks such as ImageNet.
+
+This model uses learned position embeddings. In other words, this model is not given any privileged information about
+the structure of images. As shown in the paper, this model can achieve a top-1 accuracy of 72.7 on ImageNet.
+
+[`PerceiverForImageClassificationLearned`] uses [`~models.perceiver.modeling_perceiver.PerceiverImagePreprocessor`]
+(with `prep_type="conv1x1"`) to preprocess the input images, and
+[`~models.perceiver.modeling_perceiver.PerceiverClassificationDecoder`] to decode the latent representation of
+[`PerceiverModel`] into classification logits.
+
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PerceiverForImageClassificationFourier
 
-[[autodoc]] PerceiverForImageClassificationFourier
-    - forward
+
+Example use of Perceiver for image classification, for tasks such as ImageNet.
+
+This model uses fixed 2D Fourier position embeddings. As shown in the paper, this model can achieve a top-1 accuracy of
+79.0 on ImageNet, and 84.5 when pre-trained on a large-scale dataset (i.e. JFT).
+
+[`PerceiverForImageClassificationLearned`] uses [`~models.perceiver.modeling_perceiver.PerceiverImagePreprocessor`]
+(with `prep_type="pixels"`) to preprocess the input images, and
+[`~models.perceiver.modeling_perceiver.PerceiverClassificationDecoder`] to decode the latent representation of
+[`PerceiverModel`] into classification logits.
+
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PerceiverForImageClassificationConvProcessing
 
-[[autodoc]] PerceiverForImageClassificationConvProcessing
-    - forward
+
+Example use of Perceiver for image classification, for tasks such as ImageNet.
+
+This model uses a 2D conv+maxpool preprocessing network. As shown in the paper, this model can achieve a top-1 accuracy
+of 82.1 on ImageNet.
+
+[`PerceiverForImageClassificationLearned`] uses [`~models.perceiver.modeling_perceiver.PerceiverImagePreprocessor`]
+(with `prep_type="conv"`) to preprocess the input images, and
+[`~models.perceiver.modeling_perceiver.PerceiverClassificationDecoder`] to decode the latent representation of
+[`PerceiverModel`] into classification logits.
+
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PerceiverForOpticalFlow
 
-[[autodoc]] PerceiverForOpticalFlow
-    - forward
+
+Example use of Perceiver for optical flow, for tasks such as Sintel and KITTI. [`PerceiverForOpticalFlow`] uses
+[`~models.perceiver.modeling_perceiver.PerceiverImagePreprocessor`] (with *prep_type="patches"*) to preprocess the
+input images, and [`~models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder`] to decode the latent
+representation of [`PerceiverModel`].
+
+As input, one concatenates 2 subsequent frames along the channel dimension and extract a 3 x 3 patch around each pixel
+(leading to 3 x 3 x 3 x 2 = 54 values for each pixel). Fixed Fourier position encodings are used to encode the position
+of each pixel in the patch. Next, one applies the Perceiver encoder. To decode, one queries the latent representation
+using the same encoding used for the input.
+
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## PerceiverForMultimodalAutoencoding
 
-[[autodoc]] PerceiverForMultimodalAutoencoding
-    - forward
+
+Example use of Perceiver for multimodal (video) autoencoding, for tasks such as Kinetics-700.
+
+[`PerceiverForMultimodalAutoencoding`] uses [`~models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor`] to
+preprocess the 3 modalities: images, audio and class labels. This preprocessor uses modality-specific preprocessors to
+preprocess every modality separately, after which they are concatenated. Trainable position embeddings are used to pad
+each modality to the same number of channels to make concatenation along the time dimension possible. Next, one applies
+the Perceiver encoder.
+
+[`~models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder`] is used to decode the latent representation of
+[`PerceiverModel`]. This decoder uses each modality-specific decoder to construct queries. The decoder queries are
+created based on the inputs after preprocessing. However, autoencoding an entire video in a single forward pass is
+computationally infeasible, hence one only uses parts of the decoder queries to do cross-attention with the latent
+representation. This is determined by the subsampled indices for each modality, which can be provided as additional
+input to the forward pass of [`PerceiverForMultimodalAutoencoding`].
+
+[`~models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder`] also pads the decoder queries of the different
+modalities to the same number of channels, in order to concatenate them along the time dimension. Next, cross-attention
+is performed with the latent representation of [`PerceiverModel`].
+
+Finally, [`~models.perceiver.modeling_perceiver.PerceiverMultiModalPostprocessor`] is used to turn this tensor into an
+actual video. It first splits up the output into the different modalities, and then applies the respective
+postprocessor for each modality.
+
+Note that, by masking the classification label during evaluation (i.e. simply providing a tensor of zeros for the
+"label" modality), this auto-encoding model becomes a Kinetics 700 video classifier.
+
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`PerceiverConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

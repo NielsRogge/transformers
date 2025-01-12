@@ -294,47 +294,276 @@ print(encoding.keys())
 
 ## LayoutLMv2Config
 
-[[autodoc]] LayoutLMv2Config
+
+    This is the configuration class to store the configuration of a [`LayoutLMv2Model`]. It is used to instantiate an
+    LayoutLMv2 model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the LayoutLMv2
+    [microsoft/layoutlmv2-base-uncased](https://huggingface.co/microsoft/layoutlmv2-base-uncased) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 30522):
+            Vocabulary size of the LayoutLMv2 model. Defines the number of different tokens that can be represented by
+            the `inputs_ids` passed when calling [`LayoutLMv2Model`] or [`TFLayoutLMv2Model`].
+        hidden_size (`int`, *optional*, defaults to 768):
+            Dimension of the encoder layers and the pooler layer.
+        num_hidden_layers (`int`, *optional*, defaults to 12):
+            Number of hidden layers in the Transformer encoder.
+        num_attention_heads (`int`, *optional*, defaults to 12):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        intermediate_size (`int`, *optional*, defaults to 3072):
+            Dimension of the "intermediate" (i.e., feed-forward) layer in the Transformer encoder.
+        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+            `"relu"`, `"selu"` and `"gelu_new"` are supported.
+        hidden_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention probabilities.
+        max_position_embeddings (`int`, *optional*, defaults to 512):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        type_vocab_size (`int`, *optional*, defaults to 2):
+            The vocabulary size of the `token_type_ids` passed when calling [`LayoutLMv2Model`] or
+            [`TFLayoutLMv2Model`].
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        layer_norm_eps (`float`, *optional*, defaults to 1e-12):
+            The epsilon used by the layer normalization layers.
+        max_2d_position_embeddings (`int`, *optional*, defaults to 1024):
+            The maximum value that the 2D position embedding might ever be used with. Typically set this to something
+            large just in case (e.g., 1024).
+        max_rel_pos (`int`, *optional*, defaults to 128):
+            The maximum number of relative positions to be used in the self-attention mechanism.
+        rel_pos_bins (`int`, *optional*, defaults to 32):
+            The number of relative position bins to be used in the self-attention mechanism.
+        fast_qkv (`bool`, *optional*, defaults to `True`):
+            Whether or not to use a single matrix for the queries, keys, values in the self-attention layers.
+        max_rel_2d_pos (`int`, *optional*, defaults to 256):
+            The maximum number of relative 2D positions in the self-attention mechanism.
+        rel_2d_pos_bins (`int`, *optional*, defaults to 64):
+            The number of 2D relative position bins in the self-attention mechanism.
+        image_feature_pool_shape (`List[int]`, *optional*, defaults to [7, 7, 256]):
+            The shape of the average-pooled feature map.
+        coordinate_size (`int`, *optional*, defaults to 128):
+            Dimension of the coordinate embeddings.
+        shape_size (`int`, *optional*, defaults to 128):
+            Dimension of the width and height embeddings.
+        has_relative_attention_bias (`bool`, *optional*, defaults to `True`):
+            Whether or not to use a relative attention bias in the self-attention mechanism.
+        has_spatial_attention_bias (`bool`, *optional*, defaults to `True`):
+            Whether or not to use a spatial attention bias in the self-attention mechanism.
+        has_visual_segment_embedding (`bool`, *optional*, defaults to `False`):
+            Whether or not to add visual segment embeddings.
+        detectron2_config_args (`dict`, *optional*):
+            Dictionary containing the configuration arguments of the Detectron2 visual backbone. Refer to [this
+            file](https://github.com/microsoft/unilm/blob/master/layoutlmft/layoutlmft/models/layoutlmv2/detectron2_config.py)
+            for details regarding default values.
+
+    Example:
+
+    ```python
+    >>> from transformers import LayoutLMv2Config, LayoutLMv2Model
+
+    >>> # Initializing a LayoutLMv2 microsoft/layoutlmv2-base-uncased style configuration
+    >>> configuration = LayoutLMv2Config()
+
+    >>> # Initializing a model (with random weights) from the microsoft/layoutlmv2-base-uncased style configuration
+    >>> model = LayoutLMv2Model(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## LayoutLMv2FeatureExtractor
 
-[[autodoc]] LayoutLMv2FeatureExtractor
-    - __call__
+No docstring available for LayoutLMv2FeatureExtractor
+
+Methods: __call__
 
 ## LayoutLMv2ImageProcessor
 
-[[autodoc]] LayoutLMv2ImageProcessor
-    - preprocess
+
+    Constructs a LayoutLMv2 image processor.
+
+    Args:
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's (height, width) dimensions to `(size["height"], size["width"])`. Can be
+            overridden by `do_resize` in `preprocess`.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 224, "width": 224}`):
+            Size of the image after resizing. Can be overridden by `size` in `preprocess`.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by the `resample` parameter in the
+            `preprocess` method.
+        apply_ocr (`bool`, *optional*, defaults to `True`):
+            Whether to apply the Tesseract OCR engine to get words + normalized bounding boxes. Can be overridden by
+            `apply_ocr` in `preprocess`.
+        ocr_lang (`str`, *optional*):
+            The language, specified by its ISO code, to be used by the Tesseract OCR engine. By default, English is
+            used. Can be overridden by `ocr_lang` in `preprocess`.
+        tesseract_config (`str`, *optional*, defaults to `""`):
+            Any additional custom configuration flags that are forwarded to the `config` parameter when calling
+            Tesseract. For example: '--psm 6'. Can be overridden by `tesseract_config` in `preprocess`.
+    
+
+Methods: preprocess
 
 ## LayoutLMv2Tokenizer
 
-[[autodoc]] LayoutLMv2Tokenizer
-    - __call__
+
+    Construct a LayoutLMv2 tokenizer. Based on WordPiece. [`LayoutLMv2Tokenizer`] can be used to turn words, word-level
+    bounding boxes and optional word labels to token-level `input_ids`, `attention_mask`, `token_type_ids`, `bbox`, and
+    optional `labels` (for token classification).
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    [`LayoutLMv2Tokenizer`] runs end-to-end tokenization: punctuation splitting and wordpiece. It also turns the
+    word-level bounding boxes into token-level bounding boxes.
+
+    
+
+Methods: __call__
     - save_vocabulary
 
 ## LayoutLMv2TokenizerFast
 
-[[autodoc]] LayoutLMv2TokenizerFast
-    - __call__
+
+    Construct a "fast" LayoutLMv2 tokenizer (backed by HuggingFace's *tokenizers* library). Based on WordPiece.
+
+    This tokenizer inherits from [`PreTrainedTokenizerFast`] which contains most of the main methods. Users should
+    refer to this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            File containing the vocabulary.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        unk_token (`str`, *optional*, defaults to `"[UNK]"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        sep_token (`str`, *optional*, defaults to `"[SEP]"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        pad_token (`str`, *optional*, defaults to `"[PAD]"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        cls_token (`str`, *optional*, defaults to `"[CLS]"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        mask_token (`str`, *optional*, defaults to `"[MASK]"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        cls_token_box (`List[int]`, *optional*, defaults to `[0, 0, 0, 0]`):
+            The bounding box to use for the special [CLS] token.
+        sep_token_box (`List[int]`, *optional*, defaults to `[1000, 1000, 1000, 1000]`):
+            The bounding box to use for the special [SEP] token.
+        pad_token_box (`List[int]`, *optional*, defaults to `[0, 0, 0, 0]`):
+            The bounding box to use for the special [PAD] token.
+        pad_token_label (`int`, *optional*, defaults to -100):
+            The label to use for padding tokens. Defaults to -100, which is the `ignore_index` of PyTorch's
+            CrossEntropyLoss.
+        only_label_first_subword (`bool`, *optional*, defaults to `True`):
+            Whether or not to only label the first subword, in case word labels are provided.
+        tokenize_chinese_chars (`bool`, *optional*, defaults to `True`):
+            Whether or not to tokenize Chinese characters. This should likely be deactivated for Japanese (see [this
+            issue](https://github.com/huggingface/transformers/issues/328)).
+        strip_accents (`bool`, *optional*):
+            Whether or not to strip all accents. If this option is not specified, then it will be determined by the
+            value for `lowercase` (as in the original LayoutLMv2).
+    
+
+Methods: __call__
 
 ## LayoutLMv2Processor
 
-[[autodoc]] LayoutLMv2Processor
-    - __call__
+
+    Constructs a LayoutLMv2 processor which combines a LayoutLMv2 image processor and a LayoutLMv2 tokenizer into a
+    single processor.
+
+    [`LayoutLMv2Processor`] offers all the functionalities you need to prepare data for the model.
+
+    It first uses [`LayoutLMv2ImageProcessor`] to resize document images to a fixed size, and optionally applies OCR to
+    get words and normalized bounding boxes. These are then provided to [`LayoutLMv2Tokenizer`] or
+    [`LayoutLMv2TokenizerFast`], which turns the words and bounding boxes into token-level `input_ids`,
+    `attention_mask`, `token_type_ids`, `bbox`. Optionally, one can provide integer `word_labels`, which are turned
+    into token-level `labels` for token classification tasks (such as FUNSD, CORD).
+
+    Args:
+        image_processor (`LayoutLMv2ImageProcessor`, *optional*):
+            An instance of [`LayoutLMv2ImageProcessor`]. The image processor is a required input.
+        tokenizer (`LayoutLMv2Tokenizer` or `LayoutLMv2TokenizerFast`, *optional*):
+            An instance of [`LayoutLMv2Tokenizer`] or [`LayoutLMv2TokenizerFast`]. The tokenizer is a required input.
+    
+
+Methods: __call__
 
 ## LayoutLMv2Model
 
-[[autodoc]] LayoutLMv2Model
-    - forward
+The bare LayoutLMv2 Model transformer outputting raw hidden-states without any specific head on top.
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`LayoutLMv2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## LayoutLMv2ForSequenceClassification
 
-[[autodoc]] LayoutLMv2ForSequenceClassification
+
+    LayoutLMv2 Model with a sequence classification head on top (a linear layer on top of the concatenation of the
+    final hidden state of the [CLS] token, average-pooled initial visual embeddings and average-pooled final visual
+    embeddings, e.g. for document image classification tasks such as the
+    [RVL-CDIP](https://www.cs.cmu.edu/~aharley/rvl-cdip/) dataset.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`LayoutLMv2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
 
 ## LayoutLMv2ForTokenClassification
 
-[[autodoc]] LayoutLMv2ForTokenClassification
+
+    LayoutLMv2 Model with a token classification head on top (a linear layer on top of the text part of the hidden
+    states) e.g. for sequence labeling (information extraction) tasks such as
+    [FUNSD](https://guillaumejaume.github.io/FUNSD/), [SROIE](https://rrc.cvc.uab.es/?ch=13),
+    [CORD](https://github.com/clovaai/cord) and [Kleister-NDA](https://github.com/applicaai/kleister-nda).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`LayoutLMv2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
 
 ## LayoutLMv2ForQuestionAnswering
 
-[[autodoc]] LayoutLMv2ForQuestionAnswering
+
+    LayoutLMv2 Model with a span classification head on top for extractive question-answering tasks such as
+    [DocVQA](https://rrc.cvc.uab.es/?ch=17) (a linear layer on top of the text part of the hidden-states output to
+    compute `span start logits` and `span end logits`).
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) sub-class. Use
+    it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`LayoutLMv2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+

@@ -106,38 +106,207 @@ print(processor.decode(output[0], skip_special_tokens=True))
 
 ## MllamaConfig
 
-[[autodoc]] MllamaConfig
+
+    This is the configuration class to store the configuration of a [`MllamaForConditionalGeneration`]. It is used to instantiate an
+    Mllama model according to the specified arguments, defining the model architecture. Instantiating a configuration
+    with the defaults will yield a similar configuration to that of the Mllama-9B.
+
+    e.g. [meta-llama/Llama-3.2-11B-Vision](https://huggingface.co/meta-llama/Llama-3.2-11B-Vision)
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vision_config (`Union[AutoConfig, dict]`, *optional*, defaults to `MllamaVisionConfig`):
+            The config object or dictionary of the vision backbone.
+        text_config (`Union[AutoConfig, dict]`, *optional*, defaults to `MllamaTextConfig`):
+            The config object or dictionary of the text backbone.
+        image_token_index (`int`, *optional*, defaults to 128256):
+            The image token index to encode the image prompt.
+
+    Example:
+
+    ```python
+    >>> from transformers import MllamaForConditionalGeneration, MllamaConfig, MllamaVisionConfig, MllamaTextConfig
+
+    >>> # Initializing a CLIP-vision config
+    >>> vision_config = MllamaVisionConfig()
+
+    >>> # Initializing a Llama config
+    >>> text_config = MllamaTextConfig()
+
+    >>> # Initializing a mllama-11b style configuration
+    >>> configuration = MllamaConfig(vision_config, text_config)
+
+    >>> # Initializing a model from the mllama-11b style configuration
+    >>> model = MllamaForConditionalGeneration(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## MllamaProcessor
 
-[[autodoc]] MllamaProcessor
+
+    Constructs a Mllama processor which wraps [`MllamaImageProcessor`] and
+    [`PretrainedTokenizerFast`] into a single processor that inherits both the image processor and
+    tokenizer functionalities. See the [`~MllamaProcessor.__call__`] and [`~OwlViTProcessor.decode`] for more
+    information.
+    The preferred way of passing kwargs is as a dictionary per modality, see usage example below.
+        ```python
+        from transformers import MllamaProcessor
+        from PIL import Image
+
+        processor = MllamaProcessor.from_pretrained("meta-llama/Llama-3.2-11B-Vision")
+
+        processor(
+            images=your_pil_image,
+            text=["<|image|>If I had to write a haiku for this one"],
+            images_kwargs = {"size": {"height": 448, "width": 448}},
+            text_kwargs = {"padding": "right"},
+            common_kwargs = {"return_tensors": "pt"},
+        )
+        ```
+
+    Args:
+        image_processor ([`MllamaImageProcessor`]):
+            The image processor is a required input.
+        tokenizer ([`PreTrainedTokenizer`, `PreTrainedTokenizerFast`]):
+            The tokenizer is a required input.
+
+    
 
 
 ## MllamaImageProcessor
 
-[[autodoc]] MllamaImageProcessor
+
+    Constructs a Mllama image processor.
+
+    Args:
+        do_convert_rgb (`bool`, *optional*, defaults to `True`):
+            Whether to convert the image to RGB. This is useful if the input image is of a different format e.g. RGBA.
+            Only has an effect if the input image is in the PIL format.
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image.
+        size (`Dict[str, int]`, *optional*, defaults to `self.size`):
+            Size of the image tile. Should be a dictionary containing 'height' and 'width' keys, both with integer values.
+            The height and width values should be equal.
+        resample (`int`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. This can be one of the enum `PILImageResampling`. Only
+            has an effect if `do_resize` is set to `True`.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether to rescale the image.
+        rescale_factor (`float`, *optional*, defaults to 0.0):
+            Rescale factor to rescale the image by if `do_rescale` is set to `True`.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image.
+        image_mean (`float` or `List[float]`, *optional*, defaults to `self.image_mean`):
+            Image mean to use for normalization. Only has an effect if `do_normalize` is set to `True`.
+        image_std (`float` or `List[float]`, *optional*, defaults to `self.image_std`):
+            Image standard deviation to use for normalization. Only has an effect if `do_normalize` is set to
+            `True`.
+        do_pad (`bool`, *optional*, defaults to `True`):
+            Whether or not to pad the images to the largest height and width in the batch.
+        max_image_tiles (`int`, *optional*, defaults to 4):
+            The maximum number of tiles to split the image into.
+    
 
 ## MllamaForConditionalGeneration
 
-[[autodoc]] MllamaForConditionalGeneration
-    - forward
+The Mllama model which consists of a vision encoder and a language model.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MllamaConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MllamaForCausalLM
 
-[[autodoc]] MllamaForCausalLM
-    - forward
+The Mllama Text Model with a language modeling head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MllamaConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MllamaTextModel
 
-[[autodoc]] MllamaTextModel
-    - forward
+The Mllama Text Model which consists of transformer with self and cross attention layers.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MllamaConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MllamaForCausalLM
 
-[[autodoc]] MllamaForCausalLM
-    - forward
+The Mllama Text Model with a language modeling head on top.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MllamaConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## MllamaVisionModel
 
-[[autodoc]] MllamaVisionModel
-    - forward
+The Mllama Vision Model which consists of two vision encoders.
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`MllamaConfig`]):
+            Model configuration class with all the parameters of the model. Initializing with a config file does not
+            load the weights associated with the model, only the configuration. Check out the
+            [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

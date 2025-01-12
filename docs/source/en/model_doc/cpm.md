@@ -48,8 +48,8 @@ API reference information.
 
 ## CpmTokenizer
 
-[[autodoc]] CpmTokenizer
+Runs pre-tokenization with Jieba segmentation tool. It is used in CPM models.
 
 ## CpmTokenizerFast
 
-[[autodoc]] CpmTokenizerFast
+Runs pre-tokenization with Jieba segmentation tool. It is used in CPM models.

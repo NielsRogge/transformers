@@ -78,13 +78,68 @@ scores = processor.score_retrieval(query_embeddings, image_embeddings)
 
 ## ColPaliConfig
 
-[[autodoc]] ColPaliConfig
+
+    Configuration class to store the configuration of a [`ColPaliForRetrieval`]. It is used to instantiate an instance
+    of `ColPaliForRetrieval` according to the specified arguments, defining the model architecture following the methodology
+    from the "ColPali: Efficient Document Retrieval with Vision Language Models" paper.
+
+    Creating a configuration with the default settings will result in a configuration where the VLM backbone is set to the
+    default PaliGemma configuration, i.e the one from [vidore/colpali-v1.2](https://huggingface.co/vidore/colpali-v1.2).
+
+    The ColPali config is very similar to [`PaligemmaConfig`], but with an extra attribute defining the embedding dimension.
+
+    Note that contrarily to what the class name suggests (actually the name refers to the ColPali **methodology**), you can
+    use a different VLM backbone model than PaliGemma by passing the corresponding VLM configuration to the class constructor.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vlm_config (`PretrainedConfig`, *optional*):
+            Configuration of the VLM backbone model.
+        text_config (`PretrainedConfig`, *optional*):
+            Configuration of the text backbone model. Overrides the `text_config` attribute of the `vlm_config` if provided.
+        embedding_dim (`int`, *optional*, defaults to 128):
+            Dimension of the multi-vector embeddings produced by the model.
+
+    Example:
+
+    ```python
+    from transformers.models.colpali import ColPaliConfig, ColPaliForRetrieval
+
+    config = ColPaliConfig()
+    model = ColPaliForRetrieval(config)
+    ```
+    
 
 ## ColPaliProcessor
 
-[[autodoc]] ColPaliProcessor
+
+    Constructs a ColPali processor which wraps a PaliGemmaProcessor and special methods to process images and queries, as
+    well as to compute the late-interaction retrieval score.
+
+    [`ColPaliProcessor`] offers all the functionalities of [`PaliGemmaProcessor`]. See the [`~PaliGemmaProcessor.__call__`]
+    for more information.
+
+    Args:
+        image_processor ([`SiglipImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`LlamaTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+        chat_template (`str`, *optional*): A Jinja template which will be used to convert lists of messages
+            in a chat into a tokenizable string.
+    
 
 ## ColPaliForRetrieval
 
-[[autodoc]] ColPaliForRetrieval
-    - forward
+
+    In our proposed ColPali approach, we leverage VLMs to construct efficient multi-vector embeddings directly
+    from document images (“screenshots”) for document retrieval. We train the model to maximize the similarity
+    between these document embeddings and the corresponding query embeddings, using the late interaction method
+    introduced in ColBERT.
+
+    Using ColPali removes the need for potentially complex and brittle layout recognition and OCR pipelines with a
+    single model that can take into account both the textual and visual content (layout, charts, etc.) of a document.
+    
+
+Methods: forward

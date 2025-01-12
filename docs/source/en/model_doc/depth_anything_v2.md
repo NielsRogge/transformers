@@ -104,9 +104,81 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## DepthAnythingConfig
 
-[[autodoc]] DepthAnythingConfig
+
+    This is the configuration class to store the configuration of a [`DepthAnythingModel`]. It is used to instantiate a DepthAnything
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the DepthAnything
+    [LiheYoung/depth-anything-small-hf](https://huggingface.co/LiheYoung/depth-anything-small-hf) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        backbone_config (`Union[Dict[str, Any], PretrainedConfig]`, *optional*):
+            The configuration of the backbone model. Only used in case `is_hybrid` is `True` or in case you want to
+            leverage the [`AutoBackbone`] API.
+        backbone (`str`, *optional*):
+            Name of backbone to use when `backbone_config` is `None`. If `use_pretrained_backbone` is `True`, this
+            will load the corresponding pretrained weights from the timm or transformers library. If `use_pretrained_backbone`
+            is `False`, this loads the backbone's config and uses that to initialize the backbone with random weights.
+        use_pretrained_backbone (`bool`, *optional*, defaults to `False`):
+            Whether to use pretrained weights for the backbone.
+        use_timm_backbone (`bool`, *optional*, defaults to `False`):
+            Whether or not to use the `timm` library for the backbone. If set to `False`, will use the [`AutoBackbone`]
+            API.
+        backbone_kwargs (`dict`, *optional*):
+            Keyword arguments to be passed to AutoBackbone when loading from a checkpoint
+            e.g. `{'out_indices': (0, 1, 2, 3)}`. Cannot be specified if `backbone_config` is set.
+        patch_size (`int`, *optional*, defaults to 14):
+            The size of the patches to extract from the backbone features.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        reassemble_hidden_size (`int`, *optional*, defaults to 384):
+            The number of input channels of the reassemble layers.
+        reassemble_factors (`List[int]`, *optional*, defaults to `[4, 2, 1, 0.5]`):
+            The up/downsampling factors of the reassemble layers.
+        neck_hidden_sizes (`List[str]`, *optional*, defaults to `[48, 96, 192, 384]`):
+            The hidden sizes to project to for the feature maps of the backbone.
+        fusion_hidden_size (`int`, *optional*, defaults to 64):
+            The number of channels before fusion.
+        head_in_index (`int`, *optional*, defaults to -1):
+            The index of the features to use in the depth estimation head.
+        head_hidden_size (`int`, *optional*, defaults to 32):
+            The number of output channels in the second convolution of the depth estimation head.
+        depth_estimation_type (`str`, *optional*, defaults to `"relative"`):
+            The type of depth estimation to use. Can be one of `["relative", "metric"]`.
+        max_depth (`float`, *optional*):
+            The maximum depth to use for the "metric" depth estimation head. 20 should be used for indoor models
+            and 80 for outdoor models. For "relative" depth estimation, this value is ignored.
+
+    Example:
+
+    ```python
+    >>> from transformers import DepthAnythingConfig, DepthAnythingForDepthEstimation
+
+    >>> # Initializing a DepthAnything small style configuration
+    >>> configuration = DepthAnythingConfig()
+
+    >>> # Initializing a model from the DepthAnything small style configuration
+    >>> model = DepthAnythingForDepthEstimation(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## DepthAnythingForDepthEstimation
 
-[[autodoc]] DepthAnythingForDepthEstimation
-    - forward
+
+    Depth Anything Model with a depth estimation head on top (consisting of 3 convolutional layers) e.g. for KITTI, NYUv2.
+    
+    This model is a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass. Use it
+    as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage and
+    behavior.
+
+    Parameters:
+        config ([`DepthAnythingConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

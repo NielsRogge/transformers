@@ -87,29 +87,164 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## ImageGPTConfig
 
-[[autodoc]] ImageGPTConfig
+
+    This is the configuration class to store the configuration of a [`ImageGPTModel`] or a [`TFImageGPTModel`]. It is
+    used to instantiate a GPT-2 model according to the specified arguments, defining the model architecture.
+    Instantiating a configuration with the defaults will yield a similar configuration to that of the ImageGPT
+    [openai/imagegpt-small](https://huggingface.co/openai/imagegpt-small) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 512):
+            Vocabulary size of the GPT-2 model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`ImageGPTModel`] or [`TFImageGPTModel`].
+        n_positions (`int`, *optional*, defaults to 32*32):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        n_embd (`int`, *optional*, defaults to 512):
+            Dimensionality of the embeddings and hidden states.
+        n_layer (`int`, *optional*, defaults to 24):
+            Number of hidden layers in the Transformer encoder.
+        n_head (`int`, *optional*, defaults to 8):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        n_inner (`int`, *optional*, defaults to None):
+            Dimensionality of the inner feed-forward layers. `None` will set it to 4 times n_embd
+        activation_function (`str`, *optional*, defaults to `"quick_gelu"`):
+            Activation function (can be one of the activation functions defined in src/transformers/activations.py).
+            Defaults to "quick_gelu".
+        resid_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        embd_pdrop (`int`, *optional*, defaults to 0.1):
+            The dropout ratio for the embeddings.
+        attn_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout ratio for the attention.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-5):
+            The epsilon to use in the layer normalization layers.
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        scale_attn_weights (`bool`, *optional*, defaults to `True`):
+            Scale attention weights by dividing by sqrt(hidden_size)..
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+        scale_attn_by_inverse_layer_idx (`bool`, *optional*, defaults to `False`):
+            Whether to additionally scale attention weights by `1 / layer_idx + 1`.
+        reorder_and_upcast_attn (`bool`, *optional*, defaults to `False`):
+            Whether to scale keys (K) prior to computing attention (dot-product) and upcast attention
+            dot-product/softmax to float() when training with mixed precision.
+
+    Example:
+
+    ```python
+    >>> from transformers import ImageGPTConfig, ImageGPTModel
+
+    >>> # Initializing a ImageGPT configuration
+    >>> configuration = ImageGPTConfig()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = ImageGPTModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## ImageGPTFeatureExtractor
 
-[[autodoc]] ImageGPTFeatureExtractor
-    - __call__
+No docstring available for ImageGPTFeatureExtractor
+
+Methods: __call__
 
 ## ImageGPTImageProcessor
 
-[[autodoc]] ImageGPTImageProcessor
-    - preprocess
+
+    Constructs a ImageGPT image processor. This image processor can be used to resize images to a smaller resolution
+    (such as 32x32 or 64x64), normalize them and finally color quantize them to obtain sequences of "pixel values"
+    (color clusters).
+
+    Args:
+        clusters (`np.ndarray` or `List[List[int]]`, *optional*):
+            The color clusters to use, of shape `(n_clusters, 3)` when color quantizing. Can be overriden by `clusters`
+            in `preprocess`.
+        do_resize (`bool`, *optional*, defaults to `True`):
+            Whether to resize the image's dimensions to `(size["height"], size["width"])`. Can be overridden by
+            `do_resize` in `preprocess`.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 256, "width": 256}`):
+            Size of the image after resizing. Can be overridden by `size` in `preprocess`.
+        resample (`PILImageResampling`, *optional*, defaults to `Resampling.BILINEAR`):
+            Resampling filter to use if resizing the image. Can be overridden by `resample` in `preprocess`.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether to normalize the image pixel value to between [-1, 1]. Can be overridden by `do_normalize` in
+            `preprocess`.
+        do_color_quantize (`bool`, *optional*, defaults to `True`):
+            Whether to color quantize the image. Can be overridden by `do_color_quantize` in `preprocess`.
+    
+
+Methods: preprocess
 
 ## ImageGPTModel
 
-[[autodoc]] ImageGPTModel
-    - forward
+The bare ImageGPT Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`ImageGPTConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## ImageGPTForCausalImageModeling
 
-[[autodoc]] ImageGPTForCausalImageModeling
-    - forward
+
+    The ImageGPT Model transformer with a language modeling head on top (linear layer with weights tied to the input
+    embeddings).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`ImageGPTConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## ImageGPTForImageClassification
 
-[[autodoc]] ImageGPTForImageClassification
-    - forward
+
+    The ImageGPT Model transformer with an image classification head on top (linear layer).
+    [`ImageGPTForImageClassification`] average-pools the hidden states in order to do the classification.
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`ImageGPTConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

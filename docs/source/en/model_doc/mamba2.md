@@ -93,14 +93,127 @@ trainer.train()
 
 ## Mamba2Config
 
-[[autodoc]] Mamba2Config
+
+    This is the configuration class to store the configuration of a [`Mamba2Model`]. It is used to instantiate a MAMBA2
+    model according to the specified arguments, defining the model architecture. Instantiating a configuration with the
+    defaults will yield a similar configuration to that of the MAMBA2
+    [state-spaces/mamba2-2.8b](https://huggingface.co/state-spaces/mamba2-2.8b) architecture.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+
+    Args:
+        num_heads (`int`, *optional*, defaults to 128):
+            Number of heads for the evolution matrices of mamba 2.
+        head_dim (`int`, *optional*, defaults to 64):
+            Dimension of each head.
+        vocab_size (`int`, *optional*, defaults to 32768):
+            Vocabulary size of the MAMBA2 model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`Mamba2Model`].
+        hidden_size (`int`, *optional*, defaults to 4096):
+            Dimensionality of the embeddings and hidden states.
+        state_size (`int`, *optional*, defaults to 128): shape of the state space latents.
+        num_hidden_layers (`int`, *optional*, defaults to 64):
+            Number of hidden layers in the model.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-05):
+            The epsilon to use in the layer normalization layers.
+        pad_token_id (`int`, *optional*, defaults to 1):
+            Padding token id.
+        bos_token_id (`int`, *optional*, defaults to 0):
+            The id of the beginning of sentence token in the vocabulary.
+        eos_token_id (`int`, *optional*, defaults to 2):
+            The id of the end of sentence token in the vocabulary.
+        expand (`int`, *optional*, defaults to 2): Expanding factor used to determine the intermediate size.
+        conv_kernel (`int`, *optional*, defaults to 4): Size of the convolution kernel.
+        n_groups (`int`, *optional*, defaults to 8):
+            Number of groups for the evolution matrices of mamba 2.
+        use_bias (`bool`, *optional*, defaults to `False`):
+            Whether or not to use bias in ["in_proj", "out_proj"] of the mixer block
+        use_conv_bias (`bool`, *optional*, defaults to `True`):
+            Whether or not to use bias in the convolution layer of the mixer block.
+        hidden_act (`str`, *optional*, defaults to `"silu"`):
+            The non-linear activation function (function or string) in the decoder.
+        initializer_range (`float`, *optional*, defaults to 0.1):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        residual_in_fp32 (`bool`, *optional*, defaults to `True`):
+            Whether or not residuals should be in `float32`. If set to `False` residuals will keep the same `dtype` as the rest of the model
+        time_step_rank (`Union[int,str]`, *optional*, defaults to `"auto"`):
+            Rank of the discretization projection matrix. `"auto"` means that it will default to `math.ceil(self.hidden_size / 16)`
+        time_step_min (`float`, *optional*, defaults to 0.001):
+            Minimum `time_step` used to bound `dt_proj.bias`.
+        time_step_max (`float`, *optional*, defaults to 0.1):
+            Maximum `time_step` used to bound `dt_proj.bias`.
+        time_step_floor (`float`, *optional*, defaults to 0.0001):
+            Minimum clamping value of the `dt_proj.bias` layer initialization.
+        time_step_limit (`tuple`, *optional*, defaults to `(0.0, inf)`):
+            Accepted range of time step values.
+        rescale_prenorm_residual (`bool`, *optional*, defaults to `False`):
+            Whether or not to rescale `out_proj` weights when initializing.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the cache should be used.
+        rms_norm (`bool`, *optional*, defaults to `True`):
+            Whether to use RMS norm or not.
+        chunk_size (`int`, *optional*, defaults to 256):
+            Size of the chunks that will comprise the sequence.
+        tie_word_embeddings (`bool`, *optional*, defaults to `False`):
+            Whether to tie word embeddings or not.
+
+
+    Example:
+
+    ```python
+    >>> from transformers import Mamba2Config, Mamba2Model
+
+    >>> # Initializing a Mamba2 configuration
+    >>> configuration = Mamba2Config()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = Mamba2Model(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## Mamba2Model
 
-[[autodoc]] Mamba2Model
-    - forward
+The bare MAMBA2 Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Mamba2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## Mamba2LMHeadModel
 
-[[autodoc]] Mamba2ForCausalLM
-    - forward
+
+    The MAMBA2 Model transformer with a language modeling head on top (linear layer with weights not tied to the input
+    embeddings).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`Mamba2Config`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward

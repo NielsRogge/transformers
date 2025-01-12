@@ -144,6 +144,76 @@ configuration classes and their parameters. TAPEX-specific tokenizer is document
 
 ## TapexTokenizer
 
-[[autodoc]] TapexTokenizer
-    - __call__
+
+    Construct a TAPEX tokenizer. Based on byte-level Byte-Pair-Encoding (BPE).
+
+    This tokenizer can be used to flatten one or more table(s) and concatenate them with one or more related sentences
+    to be used by TAPEX models. The format that the TAPEX tokenizer creates is the following:
+
+    sentence col: col1 | col2 | col 3 row 1 : val1 | val2 | val3 row 2 : ...
+
+    The tokenizer supports a single table + single query, a single table and multiple queries (in which case the table
+    will be duplicated for every query), a single query and multiple tables (in which case the query will be duplicated
+    for every table), and multiple tables and queries. In other words, you can provide a batch of tables + questions to
+    the tokenizer for instance to prepare them for the model.
+
+    Tokenization itself is based on the BPE algorithm. It is identical to the one used by BART, RoBERTa and GPT-2.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        merges_file (`str`):
+            Path to the merges file.
+        do_lower_case (`bool`, *optional*, defaults to `True`):
+            Whether or not to lowercase the input when tokenizing.
+        errors (`str`, *optional*, defaults to `"replace"`):
+            Paradigm to follow when decoding bytes to UTF-8. See
+            [bytes.decode](https://docs.python.org/3/library/stdtypes.html#bytes.decode) for more information.
+        bos_token (`str`, *optional*, defaults to `"<s>"`):
+            The beginning of sequence token that was used during pretraining. Can be used a sequence classifier token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the beginning of
+            sequence. The token used is the `cls_token`.
+
+            </Tip>
+
+        eos_token (`str`, *optional*, defaults to `"</s>"`):
+            The end of sequence token.
+
+            <Tip>
+
+            When building a sequence using special tokens, this is not the token that is used for the end of sequence.
+            The token used is the `sep_token`.
+
+            </Tip>
+
+        sep_token (`str`, *optional*, defaults to `"</s>"`):
+            The separator token, which is used when building a sequence from multiple sequences, e.g. two sequences for
+            sequence classification or for a text and a question for question answering. It is also used as the last
+            token of a sequence built with special tokens.
+        cls_token (`str`, *optional*, defaults to `"<s>"`):
+            The classifier token which is used when doing sequence classification (classification of the whole sequence
+            instead of per-token classification). It is the first token of the sequence when built with special tokens.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+        pad_token (`str`, *optional*, defaults to `"<pad>"`):
+            The token used for padding, for example when batching sequences of different lengths.
+        mask_token (`str`, *optional*, defaults to `"<mask>"`):
+            The token used for masking values. This is the token used when training this model with masked language
+            modeling. This is the token which the model will try to predict.
+        add_prefix_space (`bool`, *optional*, defaults to `False`):
+            Whether or not to add an initial space to the input. This allows to treat the leading word just as any
+            other word. (BART tokenizer detect beginning of words by the preceding space).
+        max_cell_length (`int`, *optional*, defaults to 15):
+            Maximum number of characters per cell when linearizing a table. If this number is exceeded, truncation
+            takes place.
+    
+
+Methods: __call__
     - save_vocabulary

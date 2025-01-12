@@ -67,48 +67,171 @@ This model was contributed by [keskarnitishr](https://huggingface.co/keskarnitis
 
 ## CTRLConfig
 
-[[autodoc]] CTRLConfig
+
+    This is the configuration class to store the configuration of a [`CTRLModel`] or a [`TFCTRLModel`]. It is used to
+    instantiate a CTRL model according to the specified arguments, defining the model architecture. Instantiating a
+    configuration with the defaults will yield a similar configuration to that of the
+    [Salesforce/ctrl](https://huggingface.co/Salesforce/ctrl) architecture from SalesForce.
+
+    Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
+    documentation from [`PretrainedConfig`] for more information.
+
+    Args:
+        vocab_size (`int`, *optional*, defaults to 246534):
+            Vocabulary size of the CTRL model. Defines the number of different tokens that can be represented by the
+            `inputs_ids` passed when calling [`CTRLModel`] or [`TFCTRLModel`].
+        n_positions (`int`, *optional*, defaults to 256):
+            The maximum sequence length that this model might ever be used with. Typically set this to something large
+            just in case (e.g., 512 or 1024 or 2048).
+        n_embd (`int`, *optional*, defaults to 1280):
+            Dimensionality of the embeddings and hidden states.
+        dff (`int`, *optional*, defaults to 8192):
+            Dimensionality of the inner dimension of the feed forward networks (FFN).
+        n_layer (`int`, *optional*, defaults to 48):
+            Number of hidden layers in the Transformer encoder.
+        n_head (`int`, *optional*, defaults to 16):
+            Number of attention heads for each attention layer in the Transformer encoder.
+        resid_pdrop (`float`, *optional*, defaults to 0.1):
+            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+        embd_pdrop (`int`, *optional*, defaults to 0.1):
+            The dropout ratio for the embeddings.
+        layer_norm_epsilon (`float`, *optional*, defaults to 1e-06):
+            The epsilon to use in the layer normalization layers
+        initializer_range (`float`, *optional*, defaults to 0.02):
+            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+        use_cache (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should return the last key/values attentions (not used by all models).
+
+
+    Examples:
+
+    ```python
+    >>> from transformers import CTRLConfig, CTRLModel
+
+    >>> # Initializing a CTRL configuration
+    >>> configuration = CTRLConfig()
+
+    >>> # Initializing a model (with random weights) from the configuration
+    >>> model = CTRLModel(configuration)
+
+    >>> # Accessing the model configuration
+    >>> configuration = model.config
+    ```
 
 ## CTRLTokenizer
 
-[[autodoc]] CTRLTokenizer
-    - save_vocabulary
+
+    Construct a CTRL tokenizer. Based on Byte-Pair-Encoding.
+
+    This tokenizer inherits from [`PreTrainedTokenizer`] which contains most of the main methods. Users should refer to
+    this superclass for more information regarding those methods.
+
+    Args:
+        vocab_file (`str`):
+            Path to the vocabulary file.
+        merges_file (`str`):
+            Path to the merges file.
+        unk_token (`str`, *optional*, defaults to `"<unk>"`):
+            The unknown token. A token that is not in the vocabulary cannot be converted to an ID and is set to be this
+            token instead.
+    
+
+Methods: save_vocabulary
 
 <frameworkcontent>
 <pt>
 
 ## CTRLModel
 
-[[autodoc]] CTRLModel
-    - forward
+The bare CTRL Model transformer outputting raw hidden-states without any specific head on top.
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`CTRLConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## CTRLLMHeadModel
 
-[[autodoc]] CTRLLMHeadModel
-    - forward
+
+    The CTRL Model transformer with a language modeling head on top (linear layer with weights tied to the input
+    embeddings).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`CTRLConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 ## CTRLForSequenceClassification
 
-[[autodoc]] CTRLForSequenceClassification
-    - forward
+
+    The CTRL Model transformer with a sequence classification head on top (linear layer).
+    [`CTRLForSequenceClassification`] uses the last token in order to do the classification, as other causal models
+    (e.g. GPT-2) do. Since it does classification on the last token, it requires to know the position of the last
+    token. If a `pad_token_id` is defined in the configuration, it finds the last token that is not a padding token in
+    each row. If no `pad_token_id` is defined, it simply takes the last value in each row of the batch. Since it cannot
+    guess the padding tokens when `inputs_embeds` are passed instead of `input_ids`, it does the same (take the last
+    value in each row of the batch).
+    
+
+    This model inherits from [`PreTrainedModel`]. Check the superclass documentation for the generic methods the
+    library implements for all its model (such as downloading or saving, resizing the input embeddings, pruning heads
+    etc.)
+
+    This model is also a PyTorch [torch.nn.Module](https://pytorch.org/docs/stable/nn.html#torch.nn.Module) subclass.
+    Use it as a regular PyTorch Module and refer to the PyTorch documentation for all matter related to general usage
+    and behavior.
+
+    Parameters:
+        config ([`CTRLConfig`]): Model configuration class with all the parameters of the model.
+            Initializing with a config file does not load the weights associated with the model, only the
+            configuration. Check out the [`~PreTrainedModel.from_pretrained`] method to load the model weights.
+
+
+Methods: forward
 
 </pt>
 <tf>
 
 ## TFCTRLModel
 
-[[autodoc]] TFCTRLModel
-    - call
+No docstring available for TFCTRLModel
+
+Methods: call
 
 ## TFCTRLLMHeadModel
 
-[[autodoc]] TFCTRLLMHeadModel
-    - call
+No docstring available for TFCTRLLMHeadModel
+
+Methods: call
 
 ## TFCTRLForSequenceClassification
 
-[[autodoc]] TFCTRLForSequenceClassification
-    - call
+No docstring available for TFCTRLForSequenceClassification
+
+Methods: call
 
 </tf>
 </frameworkcontent>
