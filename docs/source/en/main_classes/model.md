@@ -71,28 +71,56 @@ set this to `False`.
 
 ## ModuleUtilsMixin
 
-[[autodoc]] modeling_utils.ModuleUtilsMixin
+modeling_utils.ModuleUtilsMixin
+
+    A few utilities for `torch.nn.Modules`, to be used as a mixin.
+    
 
 ## TFPreTrainedModel
 
-[[autodoc]] TFPreTrainedModel
+TFPreTrainedModel
     - push_to_hub
     - all
 
 ## TFModelUtilsMixin
 
-[[autodoc]] modeling_tf_utils.TFModelUtilsMixin
+[[autodoc]] modeling_tf_utils.TFModelUtilsMixin: No module named 'h5py'
 
 ## FlaxPreTrainedModel
 
-[[autodoc]] FlaxPreTrainedModel
+FlaxPreTrainedModel
     - push_to_hub
     - all
 
 ## Pushing to the Hub
 
-[[autodoc]] utils.PushToHubMixin
+utils.PushToHubMixin
+
+    A Mixin containing the functionality to push a model or tokenizer to the hub.
+    
 
 ## Sharded checkpoints
 
-[[autodoc]] modeling_utils.load_sharded_checkpoint
+modeling_utils.load_sharded_checkpoint
+
+    This is the same as
+    [`torch.nn.Module.load_state_dict`](https://pytorch.org/docs/stable/generated/torch.nn.Module.html?highlight=load_state_dict#torch.nn.Module.load_state_dict)
+    but for a sharded checkpoint.
+
+    This load is performed efficiently: each checkpoint shard is loaded one by one in RAM and deleted after being
+    loaded in the model.
+
+    Args:
+        model (`torch.nn.Module`): The model in which to load the checkpoint.
+        folder (`str` or `os.PathLike`): A path to a folder containing the sharded checkpoint.
+        strict (`bool`, *optional`, defaults to `True`):
+            Whether to strictly enforce that the keys in the model state dict match the keys in the sharded checkpoint.
+        prefer_safe (`bool`, *optional*, defaults to `False`)
+            If both safetensors and PyTorch save files are present in checkpoint and `prefer_safe` is True, the
+            safetensors files will be loaded. Otherwise, PyTorch files are always loaded when possible.
+
+    Returns:
+        `NamedTuple`: A named tuple with `missing_keys` and `unexpected_keys` fields
+            - `missing_keys` is a list of str containing the missing keys
+            - `unexpected_keys` is a list of str containing the unexpected keys
+    

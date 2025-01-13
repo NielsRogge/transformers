@@ -36,7 +36,7 @@ We provide two types of agents, based on the main [`Agent`] class:
 
 ### Agent
 
-[[autodoc]] Agent
+Agent
 
 ### CodeAgent
 
@@ -66,7 +66,7 @@ We provide two types of agents, based on the main [`Agent`] class:
 
 ### ManagedAgent
 
-[[autodoc]] ManagedAgent
+ManagedAgent
 
 ## Tools
 

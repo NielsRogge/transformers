@@ -20,16 +20,16 @@ def get_docstring_from_class(class_name):
             
             docstring = obj.__doc__
             if docstring:
-                return docstring
+                return f"{class_name}\n{docstring}"
         else:
             # Try importing directly from transformers as fallback
             module = importlib.import_module('transformers')
             cls = getattr(module, class_name)
             docstring = cls.__doc__
             if docstring:
-                return docstring
+                return f"{class_name}\n{docstring}"
 
-        return f"[[autodoc]] {class_name}"
+        return f"{class_name}"
     except Exception as e:
         return f"[[autodoc]] {class_name}: {str(e)}"
 

@@ -154,7 +154,7 @@ The `.optimization` module provides:
             A flag used to disable the deprecation warning (set to `True` to disable the warning).
     eightDecay
 
-[[autodoc]] create_optimizer
+create_optimizer
 
 ## Schedules
 
@@ -366,10 +366,10 @@ The `.optimization` module provides:
 
 ### Warmup (TensorFlow)
 
-[[autodoc]] WarmUp
+WarmUp
 
 ## Gradient Strategies
 
 ### GradientAccumulator (TensorFlow)
 
-[[autodoc]] GradientAccumulator
+GradientAccumulator

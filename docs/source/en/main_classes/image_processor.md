@@ -61,7 +61,11 @@ These benchmarks were run on an [AWS EC2 g5.2xlarge instance](https://aws.amazon
 
 ## ImageProcessingMixin
 
-[[autodoc]] image_processing_utils.ImageProcessingMixin
+image_processing_utils.ImageProcessingMixin
+
+    This is an image processor mixin used to provide saving/loading functionality for sequential and image feature
+    extractors.
+    
     - from_pretrained
     - save_pretrained
 
@@ -83,9 +87,9 @@ These benchmarks were run on an [AWS EC2 g5.2xlarge instance](https://aws.amazon
 
 ## BaseImageProcessor
 
-[[autodoc]] image_processing_utils.BaseImageProcessor
+image_processing_utils.BaseImageProcessor
 
 
 ## BaseImageProcessorFast
 
-[[autodoc]] image_processing_utils_fast.BaseImageProcessorFast
+image_processing_utils_fast.BaseImageProcessorFast

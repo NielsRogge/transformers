@@ -101,13 +101,88 @@ audio classification, video classification, etc.
 
 ## Perceiver specific outputs
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverModelOutput
+models.perceiver.modeling_perceiver.PerceiverModelOutput
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverDecoderOutput
+    Base class for Perceiver base model's outputs, with potential hidden states, attentions and cross-attentions.
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMaskedLMOutput
+    Args:
+        logits (`torch.FloatTensor` of shape `(batch_size, num_labels)`):
+            Classification (or regression if config.num_labels==1) scores (before SoftMax).
+        last_hidden_state (`torch.FloatTensor` of shape `(batch_size, sequence_length, hidden_size)`):
+            Sequence of hidden-states at the output of the last layer of the model.
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer) of
+            shape `(batch_size, sequence_length, hidden_size)`. Hidden-states of the model at the output of each layer
+            plus the initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`. Attentions weights after the attention softmax, used to compute the weighted average in
+            the self-attention heads.
+        cross_attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`. Attentions weights of the decoder's cross-attention layer, after the attention softmax,
+            used to compute the weighted average in the cross-attention heads.
+    
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassifierOutput
+models.perceiver.modeling_perceiver.PerceiverDecoderOutput
+
+    Base class for Perceiver decoder outputs, with potential cross-attentions.
+
+    Args:
+        logits (`torch.FloatTensor` of shape `(batch_size, num_labels)`):
+            Output of the basic decoder.
+        cross_attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`. Attentions weights of the decoder's cross-attention layer, after the attention softmax,
+            used to compute the weighted average in the cross-attention heads.
+    
+
+models.perceiver.modeling_perceiver.PerceiverMaskedLMOutput
+
+    Base class for Perceiver's masked language model outputs.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
+            Masked language modeling (MLM) loss.
+        logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.vocab_size)`):
+            Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer) of
+            shape `(batch_size, sequence_length, hidden_size)`. Hidden-states of the model at the output of each layer
+            plus the initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, num_latents,
+            num_latents)`. Attentions weights after the attention softmax, used to compute the weighted average in the
+            self-attention heads.
+        cross_attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`. Attentions weights of the decoder's cross-attention layer, after the attention softmax,
+            used to compute the weighted average in the cross-attention heads.
+    
+
+models.perceiver.modeling_perceiver.PerceiverClassifierOutput
+
+    Base class for Perceiver's outputs of sequence/image classification models, optical flow and multimodal
+    autoencoding.
+
+    Args:
+        loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` is provided):
+            Classification (or regression if config.num_labels==1) loss.
+        logits (`torch.FloatTensor` of shape `(batch_size, config.num_labels)`):
+            Classification (or regression if config.num_labels==1) scores (before SoftMax).
+        hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer) of
+            shape `(batch_size, sequence_length, hidden_size)`. Hidden-states of the model at the output of each layer
+            plus the initial embedding outputs.
+        attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`. Attentions weights after the attention softmax, used to compute the weighted average in
+            the self-attention heads.
+        cross_attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+            sequence_length)`. Attentions weights of the decoder's cross-attention layer, after the attention softmax,
+            used to compute the weighted average in the cross-attention heads.
+    
 
 ## PerceiverConfig
 
@@ -277,63 +352,278 @@ Methods: preprocess
 
 ## PerceiverTextPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverTextPreprocessor
+models.perceiver.modeling_perceiver.PerceiverTextPreprocessor
+
+    Text preprocessing for Perceiver Encoder. Can be used to embed `inputs` and add positional encodings.
+
+    The dimensionality of the embeddings is determined by the `d_model` attribute of the configuration.
+
+    Args:
+        config ([`PerceiverConfig`]):
+            Model configuration.
+    
 
 ## PerceiverImagePreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverImagePreprocessor
+models.perceiver.modeling_perceiver.PerceiverImagePreprocessor
+
+    Image preprocessing for Perceiver Encoder.
+
+    Note: the *out_channels* argument refers to the output channels of a convolutional layer, if *prep_type* is set to
+    "conv1x1" or "conv". If one adds absolute position embeddings, one must make sure the *num_channels* of the
+    position encoding kwargs are set equal to the *out_channels*.
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        prep_type (`str`, *optional*, defaults to `"conv"`):
+            Preprocessing type. Can be "conv1x1", "conv", "patches", "pixels".
+        spatial_downsample (`int`, *optional*, defaults to 4):
+            Spatial downsampling factor.
+        temporal_downsample (`int`, *optional*, defaults to 1):
+            Temporal downsampling factor (only relevant in case a time dimension is present).
+        position_encoding_type (`str`, *optional*, defaults to `"fourier"`):
+            Position encoding type. Can be "fourier" or "trainable".
+        in_channels (`int`, *optional*, defaults to 3):
+            Number of channels in the input.
+        out_channels (`int`, *optional*, defaults to 64):
+            Number of channels in the output.
+        conv_after_patching (`bool`, *optional*, defaults to `False`):
+            Whether to apply a convolutional layer after patching.
+        conv_after_patching_in_channels (`int`, *optional*, defaults to 54):
+            Number of channels in the input of the convolutional layer after patching.
+        conv2d_use_batchnorm (`bool`, *optional*, defaults to `True`):
+            Whether to use batch normalization in the convolutional layer.
+        concat_or_add_pos (`str`, *optional*, defaults to `"concat"`):
+            How to concatenate the position encoding to the input. Can be "concat" or "add".
+        project_pos_dim (`int`, *optional*, defaults to -1):
+            Dimension of the position encoding to project to. If -1, no projection is applied.
+        **position_encoding_kwargs (`Dict`, *optional*):
+            Keyword arguments for the position encoding.
+    
 
 ## PerceiverOneHotPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverOneHotPreprocessor
+models.perceiver.modeling_perceiver.PerceiverOneHotPreprocessor
+
+    One-hot preprocessor for Perceiver Encoder. Can be used to add a dummy index dimension to the input.
+
+    Args:
+        config ([`PerceiverConfig`]):
+            Model configuration.
+    
 
 ## PerceiverAudioPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor
+models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor
+
+    Audio preprocessing for Perceiver Encoder.
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        prep_type (`str`, *optional*, defaults to `"patches"`):
+            Preprocessor type to use. Only "patches" is supported.
+        samples_per_patch (`int`, *optional*, defaults to 96):
+            Number of samples per patch.
+        position_encoding_type (`str`, *optional*, defaults to `"fourier"`):
+            Type of position encoding to use. Can be "trainable" or "fourier".
+        concat_or_add_pos (`str`, *optional*, defaults to `"concat"`):
+            How to concatenate the position encoding to the input. Can be "concat" or "add".
+        out_channels (`int`, *optional*, defaults to 64):
+            Number of channels in the output.
+        project_pos_dim (`int`, *optional*, defaults to -1):
+            Dimension of the position encoding to project to. If -1, no projection is applied.
+        **position_encoding_kwargs (`Dict`, *optional*):
+            Keyword arguments for the position encoding.
+    
 
 ## PerceiverMultimodalPreprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor
+models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor
+
+    Multimodal preprocessing for Perceiver Encoder.
+
+    Inputs for each modality are preprocessed, then padded with trainable position embeddings to have the same number
+    of channels.
+
+    Args:
+        modalities (`Mapping[str, PreprocessorType]`):
+            Dict mapping modality name to preprocessor.
+        mask_probs (`Dict[str, float]`):
+            Dict mapping modality name to masking probability of that modality.
+        min_padding_size (`int`, *optional*, defaults to 2):
+            The minimum padding size for all modalities. The final output will have num_channels equal to the maximum
+            channels across all modalities plus min_padding_size.
+    
 
 ## PerceiverProjectionDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverProjectionDecoder
+models.perceiver.modeling_perceiver.PerceiverProjectionDecoder
+
+    Baseline projection decoder (no cross-attention).
+
+    Args:
+        config ([`PerceiverConfig`]):
+            Model configuration.
+    
 
 ## PerceiverBasicDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverBasicDecoder
+models.perceiver.modeling_perceiver.PerceiverBasicDecoder
+
+    Cross-attention-based decoder. This class can be used to decode the final hidden states of the latents using a
+    cross-attention operation, in which the latents produce keys and values.
+
+    The shape of the output of this class depends on how one defines the output queries (also called decoder queries).
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        output_num_channels (`int`, *optional*):
+            The number of channels in the output. Will only be used in case *final_project* is set to `True`.
+        position_encoding_type (`str`, *optional*, defaults to "trainable"):
+            The type of position encoding to use. Can be either "trainable", "fourier", or "none".
+        output_index_dims (`int`, *optional*):
+            The number of dimensions of the output queries. Ignored if 'position_encoding_type' == 'none'.
+        num_channels (`int`, *optional*, defaults to 128):
+            The number of channels of the decoder queries. Ignored if 'position_encoding_type' == 'none'.
+        qk_channels (`int`, *optional*):
+            The number of channels of the queries and keys in the cross-attention layer.
+        v_channels (`int`, *optional*):
+            The number of channels of the values in the cross-attention layer.
+        num_heads (`int`, *optional*, defaults to 1):
+            The number of attention heads in the cross-attention layer.
+        widening_factor (`int`, *optional*, defaults to 1):
+            The widening factor of the cross-attention layer.
+        use_query_residual (`bool`, *optional*, defaults to `False`):
+            Whether to use a residual connection between the query and the output of the cross-attention layer.
+        concat_preprocessed_input (`bool`, *optional*, defaults to `False`):
+            Whether to concatenate the preprocessed input to the query.
+        final_project (`bool`, *optional*, defaults to `True`):
+            Whether to project the output of the cross-attention layer to a target dimension.
+        position_encoding_only (`bool`, *optional*, defaults to `False`):
+            Whether to only use this class to define output queries.
+    
 
 ## PerceiverClassificationDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassificationDecoder
+models.perceiver.modeling_perceiver.PerceiverClassificationDecoder
+
+    Cross-attention based classification decoder. Light-weight wrapper of [`PerceiverBasicDecoder`] for logit output.
+    Will turn the output of the Perceiver encoder which is of shape (batch_size, num_latents, d_latents) to a tensor of
+    shape (batch_size, num_labels). The queries are of shape (batch_size, 1, num_labels).
+
+    Args:
+        config ([`PerceiverConfig`]):
+            Model configuration.
+    
 
 ## PerceiverOpticalFlowDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder
+models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder
+Cross-attention based optical flow decoder.
 
 ## PerceiverBasicVideoAutoencodingDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverBasicVideoAutoencodingDecoder
+models.perceiver.modeling_perceiver.PerceiverBasicVideoAutoencodingDecoder
+
+    Cross-attention based video-autoencoding decoder. Light-weight wrapper of [*PerceiverBasicDecoder*] with video
+    reshaping logic.
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        output_shape (`List[int]`):
+            Shape of the output as (batch_size, num_frames, height, width), excluding the channel dimension.
+        position_encoding_type (`str`):
+            The type of position encoding to use. Can be either "trainable", "fourier", or "none".
+    
 
 ## PerceiverMultimodalDecoder
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder
+models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder
+
+    Multimodal decoding by composing uni-modal decoders. The *modalities* argument of the constructor is a dictionary
+    mapping modality name to the decoder of that modality. That decoder will be used to construct queries for that
+    modality. Modality-specific queries are padded with trainable modality-specific parameters, after which they are
+    concatenated along the time dimension.
+
+    Next, there is a shared cross attention operation across all modalities.
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        modalities (`Dict[str, PerceiverAbstractDecoder]`):
+            Dictionary mapping modality name to the decoder of that modality.
+        num_outputs (`int`):
+            The number of outputs of the decoder.
+        output_num_channels (`int`):
+            The number of channels in the output.
+        min_padding_size (`int`, *optional*, defaults to 2):
+            The minimum padding size for all modalities. The final output will have num_channels equal to the maximum
+            channels across all modalities plus min_padding_size.
+        subsampled_index_dims (`Dict[str, PerceiverAbstractDecoder]`, *optional*):
+            Dictionary mapping modality name to the subsampled index dimensions to use for the decoder query of that
+            modality.
+    
 
 ## PerceiverProjectionPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor
+models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor
+
+    Projection postprocessing for Perceiver. Can be used to project the channels of the decoder output to a lower
+    dimension.
+
+    Args:
+        in_channels (`int`):
+            Number of channels in the input.
+        out_channels (`int`):
+            Number of channels in the output.
+    
 
 ## PerceiverAudioPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor
+models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor
+
+    Audio postprocessing for Perceiver. Can be used to convert the decoder output to audio features.
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        in_channels (`int`):
+            Number of channels in the input.
+        postproc_type (`str`, *optional*, defaults to `"patches"`):
+            Postprocessor type to use. Currently, only "patches" is supported.
+    
 
 ## PerceiverClassificationPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor
+models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor
+
+    Classification postprocessing for Perceiver. Can be used to convert the decoder output to classification logits.
+
+    Args:
+        config ([*PerceiverConfig*]):
+            Model configuration.
+        in_channels (`int`):
+            Number of channels in the input.
+    
 
 ## PerceiverMultimodalPostprocessor
 
-[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor
+models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor
+
+    Multimodal postprocessing for Perceiver. Can be used to combine modality-specific postprocessors into a single
+    postprocessor.
+
+    Args:
+          modalities (`Mapping[str, PostprocessorType]`):
+            Dictionary mapping modality name to postprocessor class for that modality.
+          input_is_dict (`bool`, *optional*, defaults to `False`):
+            If True, input is assumed to be dictionary structured, and outputs keep the same dictionary shape. If
+            False, input is a tensor which is sliced up during postprocessing by *modality_sizes*.
+    
 
 ## PerceiverModel
 

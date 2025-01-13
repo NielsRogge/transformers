@@ -231,7 +231,29 @@ model.add_adapter(lora_config)
 
 ## API docs
 
-[[autodoc]] integrations.PeftAdapterMixin
+integrations.PeftAdapterMixin
+
+    A class containing all functions for loading and using adapters weights that are supported in PEFT library. For
+    more details about adapters and injecting them on a transformer-based model, check out the documentation of PEFT
+    library: https://huggingface.co/docs/peft/index
+
+    Currently supported PEFT methods are all non-prefix tuning methods. Below is the list of supported PEFT methods
+    that anyone can load, train and run with this mixin class:
+    - Low Rank Adapters (LoRA): https://huggingface.co/docs/peft/conceptual_guides/lora
+    - IA3: https://huggingface.co/docs/peft/conceptual_guides/ia3
+    - AdaLora: https://arxiv.org/abs/2303.10512
+
+    Other PEFT models such as prompt tuning, prompt learning are out of scope as these adapters are not "injectable"
+    into a torch module. For using these methods, please refer to the usage guide of PEFT library.
+
+    With this mixin, if the correct PEFT version is installed, it is possible to:
+
+    - Load an adapter stored on a local path or in a remote Hub repository, and inject it in the model
+    - Attach new adapters in the model and train them with Trainer or by your own.
+    - Attach multiple adapters and iteratively activate / deactivate them
+    - Activate / deactivate all adapters from the model.
+    - Get the `state_dict` of the active adapter.
+    
     - load_adapter
     - add_adapter
     - set_adapter

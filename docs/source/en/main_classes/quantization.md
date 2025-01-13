@@ -243,7 +243,25 @@ Learn how to quantize models in the [Quantization](../quantization) guide.
 
 ## HfQuantizer
 
-[[autodoc]] quantizers.base.HfQuantizer
+quantizers.base.HfQuantizer
+
+    Abstract class of the HuggingFace quantizer. Supports for now quantizing HF transformers models for inference and/or quantization.
+    This class is used only for transformers.PreTrainedModel.from_pretrained and cannot be easily used outside the scope of that method
+    yet.
+
+    Attributes
+        quantization_config (`transformers.utils.quantization_config.QuantizationConfigMixin`):
+            The quantization config that defines the quantization parameters of your model that you want to quantize.
+        modules_to_not_convert (`List[str]`, *optional*):
+            The list of module names to not convert when quantizing the model.
+        required_packages (`List[str]`, *optional*):
+            The list of required pip packages to install prior to using the quantizer
+        requires_calibration (`bool`):
+            Whether the quantization method requires to calibrate the model before using it.
+        requires_parameters_quantization (`bool`):
+            Whether the quantization method requires to create a new Parameter. For example, for bitsandbytes, it is
+            required to create a new xxxParameter in order to properly quantize the model.
+    
 
 ## HiggsConfig
 

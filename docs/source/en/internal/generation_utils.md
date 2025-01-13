@@ -68,43 +68,174 @@ We document here all output types.
 
 ### PyTorch
 
-[[autodoc]] generation.GenerateDecoderOnlyOutput
+generation.GenerateDecoderOnlyOutput
 
-[[autodoc]] generation.GenerateEncoderDecoderOutput
+    Outputs of decoder-only generation models, when using non-beam methods.
 
-[[autodoc]] generation.GenerateBeamDecoderOnlyOutput
+    Args:
+        sequences (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+            The generated sequences. The second dimension (sequence_length) is either equal to `max_length` or shorter
+            if all batches finished early due to the `eos_token_id`.
+        scores (`tuple(torch.FloatTensor)` *optional*, returned when `output_scores=True`):
+            Processed prediction scores of the language modeling head (scores for each vocabulary token before SoftMax)
+            at each generation step. Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for
+            each generated token), with each tensor of shape `(batch_size, config.vocab_size)`.
+        logits (`tuple(torch.FloatTensor)` *optional*, returned when `output_logits=True`):
+            Unprocessed prediction scores of the language modeling head (scores for each vocabulary token before SoftMax)
+            at each generation step. Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for
+            each generated token), with each tensor of shape `(batch_size, config.vocab_size)`.
+        attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size, num_heads, generated_length, sequence_length)`.
+        hidden_states (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_hidden_states=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size, generated_length, hidden_size)`.
+        past_key_values (`tuple(tuple(torch.FloatTensor)))`, *optional*, returned when `use_cache=True`):
+            Returns the model cache, used to speed up decoding. Different models have a different cache format, check
+            the model's documentation. Usually, a [`~cache_utils.Cache`] instance.
+    
 
-[[autodoc]] generation.GenerateBeamEncoderDecoderOutput
+generation.GenerateEncoderDecoderOutput
+
+    Outputs of encoder-decoder generation models, when using non-beam methods.
+
+    Args:
+        sequences (`torch.LongTensor` of shape `(batch_size*num_return_sequences, sequence_length)`):
+            The generated sequences. The second dimension (sequence_length) is either equal to `max_length` or shorter
+            if all batches finished early due to the `eos_token_id`.
+        scores (`tuple(torch.FloatTensor)` *optional*, returned when `output_scores=True`):
+            Processed prediction scores of the language modeling head (scores for each vocabulary token before SoftMax)
+            at each generation step. Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for
+            each generated token), with each tensor of shape `(batch_size, config.vocab_size)`.
+        logits (`tuple(torch.FloatTensor)` *optional*, returned when `output_logits=True`):
+            Unprocessed prediction scores of the language modeling head (scores for each vocabulary token before SoftMax)
+            at each generation step. Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for
+            each generated token), with each tensor of shape `(batch_size, config.vocab_size)`.
+        encoder_attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer of the decoder) of shape `(batch_size, num_heads,
+            sequence_length, sequence_length)`.
+        encoder_hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer) of
+            shape `(batch_size, sequence_length, hidden_size)`.
+        decoder_attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size, num_heads, generated_length, sequence_length)`.
+        cross_attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size, num_heads, generated_length, sequence_length)`.
+        decoder_hidden_states (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_hidden_states=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size, generated_length, hidden_size)`.
+        past_key_values (`tuple(tuple(torch.FloatTensor)))`, *optional*, returned when `use_cache=True` is passed or when `config.use_cache=True`):
+            Returns the model cache, used to speed up decoding. Different models have a different cache format, check
+            the model's documentation. Usually, a [`~cache_utils.Cache`] instance.
+    
+
+generation.GenerateBeamDecoderOnlyOutput
+
+    Outputs of decoder-only generation models, when using beam methods.
+
+    Args:
+        sequences (`torch.LongTensor` of shape `(batch_size*num_return_sequences, sequence_length)`):
+            The generated sequences. The second dimension (sequence_length) is either equal to `max_length` or shorter
+            if all batches finished early due to the `eos_token_id`.
+        sequences_scores (`torch.FloatTensor` of shape `(batch_size*num_return_sequences)`, *optional*, returned when `output_scores=True`):
+            Final beam scores of the generated `sequences`.
+        scores (`tuple(torch.FloatTensor)` *optional*, returned when `output_scores=True`):
+            Beam transition scores for each vocabulary token at each generation step. Beam transition scores consisting
+            of log probabilities of tokens conditioned on log softmax of previously generated tokens in this beam.
+            Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for each generated token),
+            with each tensor of shape `(batch_size*num_beams, config.vocab_size)`.
+        logits (`tuple(torch.FloatTensor)` *optional*, returned when `output_logits=True`):
+            Unprocessed prediction scores of the language modeling head (scores for each vocabulary token before SoftMax)
+            at each generation step. Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for
+            each generated token), with each tensor of shape `(batch_size, config.vocab_size)`.
+        beam_indices (`torch.LongTensor`, *optional*, returned when `output_scores=True`):
+            Beam indices of generated token id at each generation step. `torch.LongTensor` of shape
+            `(batch_size*num_return_sequences, sequence_length)`.
+        attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size*num_beams, num_heads, generated_length, sequence_length)`.
+        hidden_states (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_hidden_states=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size*num_beams*num_return_sequences, generated_length, hidden_size)`.
+        past_key_values (`tuple(tuple(torch.FloatTensor)))`, *optional*, returned when `use_cache=True`):
+            Returns the model cache, used to speed up decoding. Different models have a different cache format, check
+            the model's documentation. Usually, a [`~cache_utils.Cache`] instance.
+    
+
+generation.GenerateBeamEncoderDecoderOutput
+
+    Outputs of encoder-decoder generation models, when using beam methods.
+
+    Args:
+        sequences (`torch.LongTensor` of shape `(batch_size*num_return_sequences, sequence_length)`):
+            The generated sequences. The second dimension (sequence_length) is either equal to `max_length` or shorter
+            if all batches finished early due to the `eos_token_id`.
+        sequences_scores (`torch.FloatTensor` of shape `(batch_size*num_return_sequences)`, *optional*, returned when `output_scores=True`):
+            Final beam scores of the generated `sequences`.
+        scores (`tuple(torch.FloatTensor)` *optional*, returned when `output_scores=True`):
+            Beam transition scores for each vocabulary token at each generation step. Beam transition scores consisting
+            of log probabilities of tokens conditioned on log softmax of previously generated tokens in this beam.
+            Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for each generated token),
+            with each tensor of shape `(batch_size*num_beams, config.vocab_size)`.
+        logits (`tuple(torch.FloatTensor)` *optional*, returned when `output_logits=True`):
+            Unprocessed prediction scores of the language modeling head (scores for each vocabulary token before SoftMax)
+            at each generation step. Tuple of `torch.FloatTensor` with up to `max_new_tokens` elements (one element for
+            each generated token), with each tensor of shape `(batch_size, config.vocab_size)`.
+        beam_indices (`torch.LongTensor`, *optional*, returned when `output_scores=True`):
+            Beam indices of generated token id at each generation step. `torch.LongTensor` of shape
+            `(batch_size*num_return_sequences, sequence_length)`.
+        encoder_attentions (`tuple(torch.FloatTensor)`, *optional*, returned when `output_attentions=True`):
+            Tuple of `torch.FloatTensor` (one for each layer of the decoder) of shape `(batch_size, num_heads,
+            sequence_length, sequence_length)`.
+        encoder_hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True`):
+            Tuple of `torch.FloatTensor` (one for the output of the embeddings + one for the output of each layer) of
+            shape `(batch_size*num_beams*num_return_sequences, sequence_length, hidden_size)`.
+        decoder_attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size*num_beams*num_return_sequences, num_heads, generated_length,
+            sequence_length)`.
+        cross_attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size, num_heads, generated_length, sequence_length)`.
+        decoder_hidden_states (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_hidden_states=True`):
+            Tuple (one element for each generated token) of tuples (one element for each layer of the decoder) of
+            `torch.FloatTensor` of shape `(batch_size*num_beams*num_return_sequences, generated_length, hidden_size)`.
+        past_key_values (`tuple(tuple(torch.FloatTensor)))`, *optional*, returned when `use_cache=True`):
+            Returns the model cache, used to speed up decoding. Different models have a different cache format, check
+            the model's documentation. Usually, a [`~cache_utils.Cache`] instance.
+    
 
 ### TensorFlow
 
-[[autodoc]] generation.TFGreedySearchEncoderDecoderOutput
+[[autodoc]] generation.TFGreedySearchEncoderDecoderOutput: module transformers.generation has no attribute TFGreedySearchEncoderDecoderOutput
 
-[[autodoc]] generation.TFGreedySearchDecoderOnlyOutput
+[[autodoc]] generation.TFGreedySearchDecoderOnlyOutput: module transformers.generation has no attribute TFGreedySearchDecoderOnlyOutput
 
-[[autodoc]] generation.TFSampleEncoderDecoderOutput
+[[autodoc]] generation.TFSampleEncoderDecoderOutput: module transformers.generation has no attribute TFSampleEncoderDecoderOutput
 
-[[autodoc]] generation.TFSampleDecoderOnlyOutput
+[[autodoc]] generation.TFSampleDecoderOnlyOutput: module transformers.generation has no attribute TFSampleDecoderOnlyOutput
 
-[[autodoc]] generation.TFBeamSearchEncoderDecoderOutput
+[[autodoc]] generation.TFBeamSearchEncoderDecoderOutput: module transformers.generation has no attribute TFBeamSearchEncoderDecoderOutput
 
-[[autodoc]] generation.TFBeamSearchDecoderOnlyOutput
+[[autodoc]] generation.TFBeamSearchDecoderOnlyOutput: module transformers.generation has no attribute TFBeamSearchDecoderOnlyOutput
 
-[[autodoc]] generation.TFBeamSampleEncoderDecoderOutput
+[[autodoc]] generation.TFBeamSampleEncoderDecoderOutput: module transformers.generation has no attribute TFBeamSampleEncoderDecoderOutput
 
-[[autodoc]] generation.TFBeamSampleDecoderOnlyOutput
+[[autodoc]] generation.TFBeamSampleDecoderOnlyOutput: module transformers.generation has no attribute TFBeamSampleDecoderOnlyOutput
 
-[[autodoc]] generation.TFContrastiveSearchEncoderDecoderOutput
+[[autodoc]] generation.TFContrastiveSearchEncoderDecoderOutput: module transformers.generation has no attribute TFContrastiveSearchEncoderDecoderOutput
 
-[[autodoc]] generation.TFContrastiveSearchDecoderOnlyOutput
+[[autodoc]] generation.TFContrastiveSearchDecoderOnlyOutput: module transformers.generation has no attribute TFContrastiveSearchDecoderOnlyOutput
 
 ### FLAX
 
-[[autodoc]] generation.FlaxSampleOutput
+[[autodoc]] generation.FlaxSampleOutput: module transformers.generation has no attribute FlaxSampleOutput
 
-[[autodoc]] generation.FlaxGreedySearchOutput
+[[autodoc]] generation.FlaxGreedySearchOutput: module transformers.generation has no attribute FlaxGreedySearchOutput
 
-[[autodoc]] generation.FlaxBeamSearchOutput
+[[autodoc]] generation.FlaxBeamSearchOutput: module transformers.generation has no attribute FlaxBeamSearchOutput
 
 ## LogitsProcessor
 
@@ -1448,90 +1579,90 @@ Abstract base class for all logit processors that can be applied during generati
 
 ### TensorFlow
 
-[[autodoc]] TFForcedBOSTokenLogitsProcessor
+TFForcedBOSTokenLogitsProcessor
     - __call__
 
-[[autodoc]] TFForcedEOSTokenLogitsProcessor
+TFForcedEOSTokenLogitsProcessor
     - __call__
 
-[[autodoc]] TFForceTokensLogitsProcessor
+TFForceTokensLogitsProcessor
     - __call__
 
-[[autodoc]] TFLogitsProcessor
+TFLogitsProcessor
     - __call__
 
-[[autodoc]] TFLogitsProcessorList
+TFLogitsProcessorList
     - __call__
 
-[[autodoc]] TFLogitsWarper
+TFLogitsWarper
     - __call__
 
-[[autodoc]] TFMinLengthLogitsProcessor
+TFMinLengthLogitsProcessor
     - __call__
 
-[[autodoc]] TFNoBadWordsLogitsProcessor
+TFNoBadWordsLogitsProcessor
     - __call__
 
-[[autodoc]] TFNoRepeatNGramLogitsProcessor
+TFNoRepeatNGramLogitsProcessor
     - __call__
 
-[[autodoc]] TFRepetitionPenaltyLogitsProcessor
+TFRepetitionPenaltyLogitsProcessor
     - __call__
 
-[[autodoc]] TFSuppressTokensAtBeginLogitsProcessor
+TFSuppressTokensAtBeginLogitsProcessor
     - __call__
 
-[[autodoc]] TFSuppressTokensLogitsProcessor
+TFSuppressTokensLogitsProcessor
     - __call__
 
-[[autodoc]] TFTemperatureLogitsWarper
+TFTemperatureLogitsWarper
     - __call__
 
-[[autodoc]] TFTopKLogitsWarper
+TFTopKLogitsWarper
     - __call__
 
-[[autodoc]] TFTopPLogitsWarper
+TFTopPLogitsWarper
     - __call__
 
 ### FLAX
 
-[[autodoc]] FlaxForcedBOSTokenLogitsProcessor
+FlaxForcedBOSTokenLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxForcedEOSTokenLogitsProcessor
+FlaxForcedEOSTokenLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxForceTokensLogitsProcessor
+FlaxForceTokensLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxLogitsProcessor
+FlaxLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxLogitsProcessorList
+FlaxLogitsProcessorList
     - __call__
 
-[[autodoc]] FlaxLogitsWarper
+FlaxLogitsWarper
     - __call__
 
-[[autodoc]] FlaxMinLengthLogitsProcessor
+FlaxMinLengthLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxSuppressTokensAtBeginLogitsProcessor
+FlaxSuppressTokensAtBeginLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxSuppressTokensLogitsProcessor
+FlaxSuppressTokensLogitsProcessor
     - __call__
 
-[[autodoc]] FlaxTemperatureLogitsWarper
+FlaxTemperatureLogitsWarper
     - __call__
 
-[[autodoc]] FlaxTopKLogitsWarper
+FlaxTopKLogitsWarper
     - __call__
 
-[[autodoc]] FlaxTopPLogitsWarper
+FlaxTopPLogitsWarper
     - __call__
 
-[[autodoc]] FlaxWhisperTimeStampLogitsProcessor
+FlaxWhisperTimeStampLogitsProcessor
     - __call__
 
 ## StoppingCriteria

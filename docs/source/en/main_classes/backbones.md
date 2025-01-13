@@ -41,20 +41,31 @@ Backbones are supported for the following models:
 
 ## AutoBackbone
 
-[[autodoc]] AutoBackbone
+AutoBackbone
 
 ## BackboneMixin
 
-[[autodoc]] utils.BackboneMixin
+utils.BackboneMixin
 
 ## BackboneConfigMixin
 
-[[autodoc]] utils.BackboneConfigMixin
+utils.BackboneConfigMixin
+
+    A Mixin to support handling the `out_features` and `out_indices` attributes for the backbone configurations.
+    
 
 ## TimmBackbone
 
-[[autodoc]] models.timm_backbone.TimmBackbone
+models.timm_backbone.TimmBackbone
+
+    Wrapper class for timm models to be used as backbones. This enables using the timm models interchangeably with the
+    other models in the library keeping the same API.
+    
 
 ## TimmBackboneConfig
 
-[[autodoc]] models.timm_backbone.TimmBackboneConfig
+models.timm_backbone.TimmBackbone
+
+    Wrapper class for timm models to be used as backbones. This enables using the timm models interchangeably with the
+    other models in the library keeping the same API.
+    Config

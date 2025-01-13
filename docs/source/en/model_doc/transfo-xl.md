@@ -223,13 +223,13 @@ Methods: save_vocabulary
 
 ## TransfoXL specific outputs
 
-[[autodoc]] models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLModelOutput: module 'transformers.models.deprecated' has no attribute 'transfo_xl'
 
-[[autodoc]] models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLLMHeadModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLLMHeadModelOutput: module 'transformers.models.deprecated' has no attribute 'transfo_xl'
 
-[[autodoc]] models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLModelOutput: module 'transformers.models.deprecated' has no attribute 'transfo_xl'
 
-[[autodoc]] models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLLMHeadModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLLMHeadModelOutput: module 'transformers.models.deprecated' has no attribute 'transfo_xl'
 
 <frameworkcontent>
 <pt>

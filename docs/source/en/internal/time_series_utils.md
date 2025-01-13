@@ -22,8 +22,17 @@ Most of those are only useful if you are studying the code of the time series mo
 
 ## Distributional Output
 
-[[autodoc]] time_series_utils.NormalOutput
+time_series_utils.NormalOutput
 
-[[autodoc]] time_series_utils.StudentTOutput
+    Normal distribution output class.
+    
 
-[[autodoc]] time_series_utils.NegativeBinomialOutput
+time_series_utils.StudentTOutput
+
+    Student-T distribution output class.
+    
+
+time_series_utils.NegativeBinomialOutput
+
+    Negative Binomial distribution output class.
+    

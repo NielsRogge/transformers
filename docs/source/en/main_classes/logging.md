@@ -94,30 +94,30 @@ See reference of the `captureWarnings` method below.
 
 ## Base setters
 
-[[autodoc]] logging.set_verbosity_error
+[[autodoc]] logging.set_verbosity: No module named 'transformers.logging'_error: No module named 'transformers.logging'
 
-[[autodoc]] logging.set_verbosity_warning
+[[autodoc]] logging.set_verbosity: No module named 'transformers.logging'_warning: No module named 'transformers.logging'
 
-[[autodoc]] logging.set_verbosity_info
+[[autodoc]] logging.set_verbosity: No module named 'transformers.logging'_info: No module named 'transformers.logging'
 
-[[autodoc]] logging.set_verbosity_debug
+[[autodoc]] logging.set_verbosity: No module named 'transformers.logging'_debug: No module named 'transformers.logging'
 
 ## Other functions
 
-[[autodoc]] logging.get_verbosity
+[[autodoc]] logging.get_verbosity: No module named 'transformers.logging'
 
-[[autodoc]] logging.set_verbosity
+[[autodoc]] logging.set_verbosity: No module named 'transformers.logging'
 
-[[autodoc]] logging.get_logger
+[[autodoc]] logging.get_logger: No module named 'transformers.logging'
 
-[[autodoc]] logging.enable_default_handler
+[[autodoc]] logging.enable_default_handler: No module named 'transformers.logging'
 
-[[autodoc]] logging.disable_default_handler
+[[autodoc]] logging.disable_default_handler: No module named 'transformers.logging'
 
-[[autodoc]] logging.enable_explicit_format
+[[autodoc]] logging.enable_explicit_format: No module named 'transformers.logging'
 
-[[autodoc]] logging.reset_format
+[[autodoc]] logging.reset_format: No module named 'transformers.logging'
 
-[[autodoc]] logging.enable_progress_bar
+[[autodoc]] logging.enable_progress_bar: No module named 'transformers.logging'
 
-[[autodoc]] logging.disable_progress_bar
+[[autodoc]] logging.disable_progress_bar: No module named 'transformers.logging'

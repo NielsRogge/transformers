@@ -33,15 +33,21 @@ type of model architecture you wish to export:
 
 ### OnnxConfig
 
-[[autodoc]] onnx.config.OnnxConfig
+onnx.config.OnnxConfig
+
+    Base class for ONNX exportable model describing metadata on how to export the model through the ONNX format.
+    
 
 ### OnnxConfigWithPast
 
-[[autodoc]] onnx.config.OnnxConfigWithPast
+onnx.config.OnnxConfig
+
+    Base class for ONNX exportable model describing metadata on how to export the model through the ONNX format.
+    WithPast
 
 ### OnnxSeq2SeqConfigWithPast
 
-[[autodoc]] onnx.config.OnnxSeq2SeqConfigWithPast
+onnx.config.OnnxSeq2SeqConfigWithPast
 
 ## ONNX Features
 
@@ -50,5 +56,5 @@ to export models for different types of topologies or tasks.
 
 ### FeaturesManager
 
-[[autodoc]] onnx.features.FeaturesManager
+onnx.features.FeaturesManager
 

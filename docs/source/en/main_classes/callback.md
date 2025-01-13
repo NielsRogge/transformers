@@ -58,7 +58,10 @@ Trainer's internal state via [`TrainerState`], and can take some actions on the 
 
 Here is the list of the available [`TrainerCallback`] in the library:
 
-[[autodoc]] integrations.CometCallback
+integrations.CometCallback
+
+    A [`TrainerCallback`] that sends the logs to [Comet ML](https://www.comet.com/site/).
+    
     - setup
 
 
@@ -90,27 +93,127 @@ Here is the list of the available [`TrainerCallback`] in the library:
     early stopping will not occur until the next save step.
     
 
-[[autodoc]] integrations.TensorBoardCallback
+integrations.TensorBoardCallback
 
-[[autodoc]] integrations.WandbCallback
+    A [`TrainerCallback`] that sends the logs to [TensorBoard](https://www.tensorflow.org/tensorboard).
+
+    Args:
+        tb_writer (`SummaryWriter`, *optional*):
+            The writer to use. Will instantiate one if not set.
+    
+
+integrations.WandbCallback
+
+    A [`TrainerCallback`] that logs metrics, media, model checkpoints to [Weight and Biases](https://www.wandb.com/).
+    
     - setup
 
-[[autodoc]] integrations.MLflowCallback
+integrations.MLflowCallback
+
+    A [`TrainerCallback`] that sends the logs to [MLflow](https://www.mlflow.org/). Can be disabled by setting
+    environment variable `DISABLE_MLFLOW_INTEGRATION = TRUE`.
+    
     - setup
 
-[[autodoc]] integrations.AzureMLCallback
+integrations.AzureMLCallback
 
-[[autodoc]] integrations.CodeCarbonCallback
+    A [`TrainerCallback`] that sends the logs to [AzureML](https://pypi.org/project/azureml-sdk/).
+    
 
-[[autodoc]] integrations.NeptuneCallback
+integrations.CodeCarbonCallback
 
-[[autodoc]] integrations.ClearMLCallback
+    A [`TrainerCallback`] that tracks the CO2 emission of training.
+    
 
-[[autodoc]] integrations.DagsHubCallback
+integrations.NeptuneCallback
+TrainerCallback that sends the logs to [Neptune](https://app.neptune.ai).
 
-[[autodoc]] integrations.FlyteCallback
+    Args:
+        api_token (`str`, *optional*): Neptune API token obtained upon registration.
+            You can leave this argument out if you have saved your token to the `NEPTUNE_API_TOKEN` environment
+            variable (strongly recommended). See full setup instructions in the
+            [docs](https://docs.neptune.ai/setup/installation).
+        project (`str`, *optional*): Name of an existing Neptune project, in the form "workspace-name/project-name".
+            You can find and copy the name in Neptune from the project settings -> Properties. If None (default), the
+            value of the `NEPTUNE_PROJECT` environment variable is used.
+        name (`str`, *optional*): Custom name for the run.
+        base_namespace (`str`, *optional*, defaults to "finetuning"): In the Neptune run, the root namespace
+            that will contain all of the metadata logged by the callback.
+        log_parameters (`bool`, *optional*, defaults to `True`):
+            If True, logs all Trainer arguments and model parameters provided by the Trainer.
+        log_checkpoints (`str`, *optional*): If "same", uploads checkpoints whenever they are saved by the Trainer.
+            If "last", uploads only the most recently saved checkpoint. If "best", uploads the best checkpoint (among
+            the ones saved by the Trainer). If `None`, does not upload checkpoints.
+        run (`Run`, *optional*): Pass a Neptune run object if you want to continue logging to an existing run.
+            Read more about resuming runs in the [docs](https://docs.neptune.ai/logging/to_existing_object).
+        **neptune_run_kwargs (*optional*):
+            Additional keyword arguments to be passed directly to the
+            [`neptune.init_run()`](https://docs.neptune.ai/api/neptune#init_run) function when a new run is created.
 
-[[autodoc]] integrations.DVCLiveCallback
+    For instructions and examples, see the [Transformers integration
+    guide](https://docs.neptune.ai/integrations/transformers) in the Neptune documentation.
+    
+
+integrations.ClearMLCallback
+
+    A [`TrainerCallback`] that sends the logs to [ClearML](https://clear.ml/).
+
+    Environment:
+    - **CLEARML_PROJECT** (`str`, *optional*, defaults to `HuggingFace Transformers`):
+        ClearML project name.
+    - **CLEARML_TASK** (`str`, *optional*, defaults to `Trainer`):
+        ClearML task name.
+    - **CLEARML_LOG_MODEL** (`bool`, *optional*, defaults to `False`):
+        Whether to log models as artifacts during training.
+    
+
+integrations.DagsHubCallback
+
+    A [`TrainerCallback`] that logs to [DagsHub](https://dagshub.com/). Extends [`MLflowCallback`]
+    
+
+integrations.FlyteCallback
+A [`TrainerCallback`] that sends the logs to [Flyte](https://flyte.org/).
+    NOTE: This callback only works within a Flyte task.
+
+    Args:
+        save_log_history (`bool`, *optional*, defaults to `True`):
+            When set to True, the training logs are saved as a Flyte Deck.
+
+        sync_checkpoints (`bool`, *optional*, defaults to `True`):
+            When set to True, checkpoints are synced with Flyte and can be used to resume training in the case of an
+            interruption.
+
+    Example:
+
+    ```python
+    # Note: This example skips over some setup steps for brevity.
+    from flytekit import current_context, task
+
+
+    @task
+    def train_hf_transformer():
+        cp = current_context().checkpoint
+        trainer = Trainer(..., callbacks=[FlyteCallback()])
+        output = trainer.train(resume_from_checkpoint=cp.restore())
+    ```
+    
+
+integrations.DVCLiveCallback
+
+    A [`TrainerCallback`] that sends the logs to [DVCLive](https://www.dvc.org/doc/dvclive).
+
+    Use the environment variables below in `setup` to configure the integration. To customize this callback beyond
+    those environment variables, see [here](https://dvc.org/doc/dvclive/ml-frameworks/huggingface).
+
+    Args:
+        live (`dvclive.Live`, *optional*, defaults to `None`):
+            Optional Live instance. If None, a new instance will be created using **kwargs.
+        log_model (Union[Literal["all"], bool], *optional*, defaults to `None`):
+            Whether to use `dvclive.Live.log_artifact()` to log checkpoints created by [`Trainer`]. If set to `True`,
+            the final checkpoint is logged at the end of training. If set to `"all"`, the entire
+            [`TrainingArguments`]'s `output_dir` is logged at each checkpoint.
+    
     - setup
 
 ## TrainerCallback

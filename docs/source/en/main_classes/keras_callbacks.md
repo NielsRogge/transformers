@@ -21,8 +21,8 @@ tasks:
 
 ## KerasMetricCallback
 
-[[autodoc]] KerasMetricCallback
+KerasMetricCallback
 
 ## PushToHubCallback
 
-[[autodoc]] PushToHubCallback
+PushToHubCallback

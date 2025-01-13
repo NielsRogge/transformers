@@ -21,7 +21,11 @@ A feature extractor is in charge of preparing input features for audio or vision
 
 ## FeatureExtractionMixin
 
-[[autodoc]] feature_extraction_utils.FeatureExtractionMixin
+feature_extraction_utils.FeatureExtractionMixin
+
+    This is a feature extraction mixin used to provide saving/loading functionality for sequential and image feature
+    extractors.
+    
     - from_pretrained
     - save_pretrained
 
@@ -58,4 +62,7 @@ A feature extractor is in charge of preparing input features for audio or vision
 
 ## ImageFeatureExtractionMixin
 
-[[autodoc]] image_utils.ImageFeatureExtractionMixin
+image_utils.ImageFeatureExtractionMixin
+
+    Mixin that contain utilities for preparing image features.
+    

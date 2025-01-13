@@ -60,23 +60,53 @@ Likewise, if your `NewModel` is a subclass of [`PreTrainedModel`], make sure its
 
 ## AutoConfig
 
-[[autodoc]] AutoConfig
+AutoConfig
+
+    This is a generic configuration class that will be instantiated as one of the configuration classes of the library
+    when created with the [`~AutoConfig.from_pretrained`] class method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+    
 
 ## AutoTokenizer
 
-[[autodoc]] AutoTokenizer
+AutoTokenizer
+
+    This is a generic tokenizer class that will be instantiated as one of the tokenizer classes of the library when
+    created with the [`AutoTokenizer.from_pretrained`] class method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+    
 
 ## AutoFeatureExtractor
 
-[[autodoc]] AutoFeatureExtractor
+AutoFeatureExtractor
+
+    This is a generic feature extractor class that will be instantiated as one of the feature extractor classes of the
+    library when created with the [`AutoFeatureExtractor.from_pretrained`] class method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+    
 
 ## AutoImageProcessor
 
-[[autodoc]] AutoImageProcessor
+AutoImageProcessor
+
+    This is a generic image processor class that will be instantiated as one of the image processor classes of the
+    library when created with the [`AutoImageProcessor.from_pretrained`] class method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+    
 
 ## AutoProcessor
 
-[[autodoc]] AutoProcessor
+AutoProcessor
+
+    This is a generic processor class that will be instantiated as one of the processor classes of the library when
+    created with the [`AutoProcessor.from_pretrained`] class method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+    
 
 ## Generic model classes
 
@@ -84,7 +114,14 @@ The following auto classes are available for instantiating a base model class wi
 
 ### AutoModel
 
-[[autodoc]] AutoModel
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+
 
 ### TFAutoModel
 
@@ -100,7 +137,14 @@ The following auto classes are available for instantiating a model with a pretra
 
 ### AutoModelForPreTraining
 
-[[autodoc]] AutoModelForPreTraining
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForPreTraining
 
 ### TFAutoModelForPreTraining
 
@@ -116,7 +160,14 @@ The following auto classes are available for the following natural language proc
 
 ### AutoModelForCausalLM
 
-[[autodoc]] AutoModelForCausalLM
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForCausalLM
 
 ### TFAutoModelForCausalLM
 
@@ -128,7 +179,14 @@ No docstring available for FlaxAutoModelForCausalLM
 
 ### AutoModelForMaskedLM
 
-[[autodoc]] AutoModelForMaskedLM
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForMaskedLM
 
 ### TFAutoModelForMaskedLM
 
@@ -140,7 +198,14 @@ No docstring available for FlaxAutoModelForMaskedLM
 
 ### AutoModelForMaskGeneration
 
-[[autodoc]] AutoModelForMaskGeneration
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForMaskGeneration
 
 ### TFAutoModelForMaskGeneration
 
@@ -148,7 +213,14 @@ No docstring available for TFAutoModelForMaskGeneration
 
 ### AutoModelForSeq2SeqLM
 
-[[autodoc]] AutoModelForSeq2SeqLM
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForSeq2SeqLM
 
 ### TFAutoModelForSeq2SeqLM
 
@@ -160,7 +232,14 @@ No docstring available for FlaxAutoModelForSeq2SeqLM
 
 ### AutoModelForSequenceClassification
 
-[[autodoc]] AutoModelForSequenceClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForSequenceClassification
 
 ### TFAutoModelForSequenceClassification
 
@@ -172,7 +251,14 @@ No docstring available for FlaxAutoModelForSequenceClassification
 
 ### AutoModelForMultipleChoice
 
-[[autodoc]] AutoModelForMultipleChoice
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForMultipleChoice
 
 ### TFAutoModelForMultipleChoice
 
@@ -184,7 +270,14 @@ No docstring available for FlaxAutoModelForMultipleChoice
 
 ### AutoModelForNextSentencePrediction
 
-[[autodoc]] AutoModelForNextSentencePrediction
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForNextSentencePrediction
 
 ### TFAutoModelForNextSentencePrediction
 
@@ -196,7 +289,14 @@ No docstring available for FlaxAutoModelForNextSentencePrediction
 
 ### AutoModelForTokenClassification
 
-[[autodoc]] AutoModelForTokenClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForTokenClassification
 
 ### TFAutoModelForTokenClassification
 
@@ -208,7 +308,14 @@ No docstring available for FlaxAutoModelForTokenClassification
 
 ### AutoModelForQuestionAnswering
 
-[[autodoc]] AutoModelForQuestionAnswering
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForQuestionAnswering
 
 ### TFAutoModelForQuestionAnswering
 
@@ -220,7 +327,14 @@ No docstring available for FlaxAutoModelForQuestionAnswering
 
 ### AutoModelForTextEncoding
 
-[[autodoc]] AutoModelForTextEncoding
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForTextEncoding
 
 ### TFAutoModelForTextEncoding
 
@@ -232,11 +346,25 @@ The following auto classes are available for the following computer vision tasks
 
 ### AutoModelForDepthEstimation
 
-[[autodoc]] AutoModelForDepthEstimation
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForDepthEstimation
 
 ### AutoModelForImageClassification
 
-[[autodoc]] AutoModelForImageClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForImageClassification
 
 ### TFAutoModelForImageClassification
 
@@ -248,15 +376,36 @@ No docstring available for FlaxAutoModelForImageClassification
 
 ### AutoModelForVideoClassification
 
-[[autodoc]] AutoModelForVideoClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForVideoClassification
 
 ### AutoModelForKeypointDetection
 
-[[autodoc]] AutoModelForKeypointDetection
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForKeypointDetection
 
 ### AutoModelForMaskedImageModeling
 
-[[autodoc]] AutoModelForMaskedImageModeling
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForMaskedImageModeling
 
 ### TFAutoModelForMaskedImageModeling
 
@@ -264,19 +413,47 @@ No docstring available for TFAutoModelForMaskedImageModeling
 
 ### AutoModelForObjectDetection
 
-[[autodoc]] AutoModelForObjectDetection
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForObjectDetection
 
 ### AutoModelForImageSegmentation
 
-[[autodoc]] AutoModelForImageSegmentation
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForImageSegmentation
 
 ### AutoModelForImageToImage
 
-[[autodoc]] AutoModelForImageToImage
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForImageToImage
 
 ### AutoModelForSemanticSegmentation
 
-[[autodoc]] AutoModelForSemanticSegmentation
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForSemanticSegmentation
 
 ### TFAutoModelForSemanticSegmentation
 
@@ -284,15 +461,36 @@ No docstring available for TFAutoModelForSemanticSegmentation
 
 ### AutoModelForInstanceSegmentation
 
-[[autodoc]] AutoModelForInstanceSegmentation
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForInstanceSegmentation
 
 ### AutoModelForUniversalSegmentation
 
-[[autodoc]] AutoModelForUniversalSegmentation
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForUniversalSegmentation
 
 ### AutoModelForZeroShotImageClassification
 
-[[autodoc]] AutoModelForZeroShotImageClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForZeroShotImageClassification
 
 ### TFAutoModelForZeroShotImageClassification
 
@@ -300,7 +498,14 @@ No docstring available for TFAutoModelForZeroShotImageClassification
 
 ### AutoModelForZeroShotObjectDetection
 
-[[autodoc]] AutoModelForZeroShotObjectDetection
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForZeroShotObjectDetection
 
 ## Audio
 
@@ -308,7 +513,14 @@ The following auto classes are available for the following audio tasks.
 
 ### AutoModelForAudioClassification
 
-[[autodoc]] AutoModelForAudioClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForAudioClassification
 
 ### AutoModelForAudioFrameClassification
 
@@ -316,15 +528,36 @@ No docstring available for TFAutoModelForAudioClassification
 
 ### TFAutoModelForAudioFrameClassification
 
-[[autodoc]] AutoModelForAudioFrameClassification
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForAudioFrameClassification
 
 ### AutoModelForCTC
 
-[[autodoc]] AutoModelForCTC
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForCTC
 
 ### AutoModelForSpeechSeq2Seq
 
-[[autodoc]] AutoModelForSpeechSeq2Seq
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForSpeechSeq2Seq
 
 ### TFAutoModelForSpeechSeq2Seq
 
@@ -336,15 +569,36 @@ No docstring available for FlaxAutoModelForSpeechSeq2Seq
 
 ### AutoModelForAudioXVector
 
-[[autodoc]] AutoModelForAudioXVector
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForAudioXVector
 
 ### AutoModelForTextToSpectrogram
 
-[[autodoc]] AutoModelForTextToSpectrogram
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForTextToSpectrogram
 
 ### AutoModelForTextToWaveform
 
-[[autodoc]] AutoModelForTextToWaveform
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForTextToWaveform
 
 ## Multimodal
 
@@ -352,7 +606,14 @@ The following auto classes are available for the following multimodal tasks.
 
 ### AutoModelForTableQuestionAnswering
 
-[[autodoc]] AutoModelForTableQuestionAnswering
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForTableQuestionAnswering
 
 ### TFAutoModelForTableQuestionAnswering
 
@@ -360,7 +621,14 @@ No docstring available for TFAutoModelForTableQuestionAnswering
 
 ### AutoModelForDocumentQuestionAnswering
 
-[[autodoc]] AutoModelForDocumentQuestionAnswering
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForDocumentQuestionAnswering
 
 ### TFAutoModelForDocumentQuestionAnswering
 
@@ -368,11 +636,25 @@ No docstring available for TFAutoModelForDocumentQuestionAnswering
 
 ### AutoModelForVisualQuestionAnswering
 
-[[autodoc]] AutoModelForVisualQuestionAnswering
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForVisualQuestionAnswering
 
 ### AutoModelForVision2Seq
 
-[[autodoc]] AutoModelForVision2Seq
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForVision2Seq
 
 ### TFAutoModelForVision2Seq
 
@@ -384,4 +666,11 @@ No docstring available for FlaxAutoModelForVision2Seq
 
 ### AutoModelForImageTextToText
 
-[[autodoc]] AutoModelForImageTextToText
+AutoModel
+
+    This is a generic model class that will be instantiated as one of the base model classes of the library when created
+    with the [`~AutoModel.from_pretrained`] class method or the [`~AutoModel.from_config`] class
+    method.
+
+    This class cannot be instantiated directly using `__init__()` (throws an error).
+ForImageTextToText

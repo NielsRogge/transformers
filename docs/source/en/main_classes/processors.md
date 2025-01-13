@@ -41,11 +41,37 @@ All processors follow the same architecture which is that of the
 [`~data.processors.utils.InputExample`] can be converted to
 [`~data.processors.utils.InputFeatures`] in order to be fed to the model.
 
-[[autodoc]] data.processors.utils.DataProcessor
+data.processors.utils.DataProcessor
+Base class for data converters for sequence classification data sets.
 
-[[autodoc]] data.processors.utils.InputExample
+data.processors.utils.InputExample
 
-[[autodoc]] data.processors.utils.InputFeatures
+    A single training/test example for simple sequence classification.
+
+    Args:
+        guid: Unique id for the example.
+        text_a: string. The untokenized text of the first sequence. For single
+            sequence tasks, only this sequence must be specified.
+        text_b: (Optional) string. The untokenized text of the second sequence.
+            Only must be specified for sequence pair tasks.
+        label: (Optional) string. The label of the example. This should be
+            specified for train and dev examples, but not for test examples.
+    
+
+data.processors.utils.InputFeatures
+
+    A single set of features of data. Property names are the same names as the corresponding inputs to a model.
+
+    Args:
+        input_ids: Indices of input sequence tokens in the vocabulary.
+        attention_mask: Mask to avoid performing attention on padding token indices.
+            Mask values selected in `[0, 1]`: Usually `1` for tokens that are NOT MASKED, `0` for MASKED (padded)
+            tokens.
+        token_type_ids: (Optional) Segment token indices to indicate first and second
+            portions of the inputs. Only some models use them.
+        label: (Optional) Label corresponding to the input. Int for classification problems,
+            float for regression problems.
+    
 
 ## GLUE
 
@@ -71,7 +97,24 @@ Those processors are:
 Additionally, the following method can be used to load values from a data file and convert them to a list of
 [`~data.processors.utils.InputExample`].
 
-[[autodoc]] data.processors.glue.glue_convert_examples_to_features
+data.processors.glue.glue_convert_examples_to_features
+
+    Loads a data file into a list of `InputFeatures`
+
+    Args:
+        examples: List of `InputExamples` or `tf.data.Dataset` containing the examples.
+        tokenizer: Instance of a tokenizer that will tokenize the examples
+        max_length: Maximum example length. Defaults to the tokenizer's max_len
+        task: GLUE task
+        label_list: List of labels. Can be obtained from the processor using the `processor.get_labels()` method
+        output_mode: String indicating the output mode. Either `regression` or `classification`
+
+    Returns:
+        If the `examples` input is a `tf.data.Dataset`, will return a `tf.data.Dataset` containing the task-specific
+        features. If the input is a list of `InputExamples`, will return a list of task-specific `InputFeatures` which
+        can be fed to the model.
+
+    
 
 
 ## XNLI
@@ -109,13 +152,52 @@ Those processors are:
 
 They both inherit from the abstract class [`~data.processors.utils.SquadProcessor`]
 
-[[autodoc]] data.processors.squad.SquadProcessor
+data.processors.squad.SquadProcessor
+
+    Processor for the SQuAD data set. overridden by SquadV1Processor and SquadV2Processor, used by the version 1.1 and
+    version 2.0 of SQuAD, respectively.
+    
     - all
 
 Additionally, the following method can be used to convert SQuAD examples into
 [`~data.processors.utils.SquadFeatures`] that can be used as model inputs.
 
-[[autodoc]] data.processors.squad.squad_convert_examples_to_features
+data.processors.squad.squad_convert_examples_to_features
+
+    Converts a list of examples into a list of features that can be directly given as input to a model. It is
+    model-dependant and takes advantage of many of the tokenizer's features to create the model's inputs.
+
+    Args:
+        examples: list of [`~data.processors.squad.SquadExample`]
+        tokenizer: an instance of a child of [`PreTrainedTokenizer`]
+        max_seq_length: The maximum sequence length of the inputs.
+        doc_stride: The stride used when the context is too large and is split across several features.
+        max_query_length: The maximum length of the query.
+        is_training: whether to create features for model evaluation or model training.
+        padding_strategy: Default to "max_length". Which padding strategy to use
+        return_dataset: Default False. Either 'pt' or 'tf'.
+            if 'pt': returns a torch.data.TensorDataset, if 'tf': returns a tf.data.Dataset
+        threads: multiple processing threads.
+
+
+    Returns:
+        list of [`~data.processors.squad.SquadFeatures`]
+
+    Example:
+
+    ```python
+    processor = SquadV2Processor()
+    examples = processor.get_dev_examples(data_dir)
+
+    features = squad_convert_examples_to_features(
+        examples=examples,
+        tokenizer=tokenizer,
+        max_seq_length=args.max_seq_length,
+        doc_stride=args.doc_stride,
+        max_query_length=args.max_query_length,
+        is_training=not evaluate,
+    )
+    ```
 
 
 These processors as well as the aforementioned method can be used with files containing the data as well as with the

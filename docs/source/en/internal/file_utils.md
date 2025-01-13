@@ -23,28 +23,49 @@ Most of those are only useful if you are studying the general code in the librar
 
 ## Enums and namedtuples
 
-[[autodoc]] utils.ExplicitEnum
+utils.ExplicitEnum
 
-[[autodoc]] utils.PaddingStrategy
+    Enum with more explicit error message for missing values.
+    
 
-[[autodoc]] utils.TensorType
+utils.PaddingStrategy
+
+    Possible values for the `padding` argument in [`PreTrainedTokenizerBase.__call__`]. Useful for tab-completion in an
+    IDE.
+    
+
+utils.TensorType
+
+    Possible values for the `return_tensors` argument in [`PreTrainedTokenizerBase.__call__`]. Useful for
+    tab-completion in an IDE.
+    
 
 ## Special Decorators
 
-[[autodoc]] utils.add_start_docstrings
+utils.add_start_docstrings
 
-[[autodoc]] utils.add_start_docstrings_to_model_forward
+utils.add_start_docstrings_to_model_forward
 
-[[autodoc]] utils.add_end_docstrings
+utils.add_end_docstrings
 
-[[autodoc]] utils.add_code_sample_docstrings
+utils.add_code_sample_docstrings
 
-[[autodoc]] utils.replace_return_docstrings
+utils.replace_return_docstrings
 
 ## Special Properties
 
-[[autodoc]] utils.cached_property
+utils.cached_property
+
+    Descriptor that mimics @property but caches output in member variable.
+
+    From tensorflow_datasets
+
+    Built-in in functools from Python 3.8.
+    
 
 ## Other Utilities
 
-[[autodoc]] utils._LazyModule
+utils._LazyModule
+
+    Module class that surfaces all objects but only performs associated imports when the objects are requested.
+    
