@@ -22,15 +22,40 @@ Most of those are only useful if you are studying the code of the Trainer in the
 
 ## Utilities
 
-[[autodoc]] EvalPrediction
 
-[[autodoc]] IntervalStrategy
+    Evaluation output (always contains labels), to be used to compute metrics.
 
-[[autodoc]] enable_full_determinism
+    Parameters:
+        predictions (`np.ndarray`): Predictions of the model.
+        label_ids (`np.ndarray`): Targets to be matched.
+        inputs (`np.ndarray`, *optional*): Input data passed to the model.
+        losses (`np.ndarray`, *optional*): Loss values computed during evaluation.
+    
 
-[[autodoc]] set_seed
+Could not find docstring for IntervalStrategy
 
-[[autodoc]] torch_distributed_zero_first
+
+    Helper function for reproducible behavior during distributed training. See
+    - https://pytorch.org/docs/stable/notes/randomness.html for pytorch
+    - https://www.tensorflow.org/api_docs/python/tf/config/experimental/enable_op_determinism for tensorflow
+    
+
+
+    Helper function for reproducible behavior to set the seed in `random`, `numpy`, `torch` and/or `tf` (if installed).
+
+    Args:
+        seed (`int`):
+            The seed to set.
+        deterministic (`bool`, *optional*, defaults to `False`):
+            Whether to use deterministic algorithms where available. Can slow down training.
+    
+
+
+    Decorator to make all processes in distributed training wait for each local_master to do something.
+
+    Args:
+        local_rank (`int`): The rank of the local process.
+    
 
 ## Callbacks internals
 
@@ -42,7 +67,13 @@ Most of those are only useful if you are studying the code of the Trainer in the
 
 ## Trainer Argument Parser
 
-[[autodoc]] HfArgumentParser
+
+    This subclass of `argparse.ArgumentParser` uses type hints on dataclasses to generate arguments.
+
+    The class is designed to play well with the native argparse. In particular, you can add more (non-dataclass backed)
+    arguments to the parser after initialization and you'll get the output back after parsing as an additional
+    namespace. Optional: To create sub argument groups use the `_argument_group_name` attribute in the dataclass.
+    
 
 ## Debug Utilities
 

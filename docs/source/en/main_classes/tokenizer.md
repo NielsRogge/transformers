@@ -72,7 +72,84 @@ print(vision_tokenizer.image_token, vision_tokenizer.image_token_id)
 
 ## PreTrainedTokenizer
 
-[[autodoc]] PreTrainedTokenizer
+
+    Base class for all slow tokenizers.
+
+    Inherits from [`~tokenization_utils_base.PreTrainedTokenizerBase`].
+
+    Handle all the shared methods for tokenization and special tokens as well as methods downloading/caching/loading
+    pretrained tokenizers as well as adding tokens to the vocabulary.
+
+    This class also contain the added tokens in a unified way on top of all tokenizers so we don't have to handle the
+    specific vocabulary augmentation methods of the various underlying dictionary structures (BPE, sentencepiece...).
+    
+    Class attributes (overridden by derived classes)
+
+        - **vocab_files_names** (`Dict[str, str]`) -- A dictionary with, as keys, the `__init__` keyword name of each
+          vocabulary file required by the model, and as associated values, the filename for saving the associated file
+          (string).
+        - **pretrained_vocab_files_map** (`Dict[str, Dict[str, str]]`) -- A dictionary of dictionaries, with the
+          high-level keys being the `__init__` keyword name of each vocabulary file required by the model, the
+          low-level being the `short-cut-names` of the pretrained models with, as associated values, the `url` to the
+          associated pretrained vocabulary file.
+        - **model_input_names** (`List[str]`) -- A list of inputs expected in the forward pass of the model.
+        - **padding_side** (`str`) -- The default value for the side on which the model should have padding applied.
+          Should be `'right'` or `'left'`.
+        - **truncation_side** (`str`) -- The default value for the side on which the model should have truncation
+          applied. Should be `'right'` or `'left'`.
+
+    Args:
+        model_max_length (`int`, *optional*):
+            The maximum length (in number of tokens) for the inputs to the transformer model. When the tokenizer is
+            loaded with [`~tokenization_utils_base.PreTrainedTokenizerBase.from_pretrained`], this will be set to the
+            value stored for the associated model in `max_model_input_sizes` (see above). If no value is provided, will
+            default to VERY_LARGE_INTEGER (`int(1e30)`).
+        padding_side (`str`, *optional*):
+            The side on which the model should have padding applied. Should be selected between ['right', 'left'].
+            Default value is picked from the class attribute of the same name.
+        truncation_side (`str`, *optional*):
+            The side on which the model should have truncation applied. Should be selected between ['right', 'left'].
+            Default value is picked from the class attribute of the same name.
+        chat_template (`str`, *optional*):
+            A Jinja template string that will be used to format lists of chat messages. See
+            https://huggingface.co/docs/transformers/chat_templating for a full description.
+        model_input_names (`List[string]`, *optional*):
+            The list of inputs accepted by the forward pass of the model (like `"token_type_ids"` or
+            `"attention_mask"`). Default value is picked from the class attribute of the same name.
+        bos_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing the beginning of a sentence. Will be associated to `self.bos_token` and
+            `self.bos_token_id`.
+        eos_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing the end of a sentence. Will be associated to `self.eos_token` and
+            `self.eos_token_id`.
+        unk_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing an out-of-vocabulary token. Will be associated to `self.unk_token` and
+            `self.unk_token_id`.
+        sep_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token separating two different sentences in the same input (used by BERT for instance). Will be
+            associated to `self.sep_token` and `self.sep_token_id`.
+        pad_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token used to make arrays of tokens the same size for batching purpose. Will then be ignored by
+            attention mechanisms or loss computation. Will be associated to `self.pad_token` and `self.pad_token_id`.
+        cls_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing the class of the input (used by BERT for instance). Will be associated to
+            `self.cls_token` and `self.cls_token_id`.
+        mask_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing a masked token (used by masked-language modeling pretraining objectives, like
+            BERT). Will be associated to `self.mask_token` and `self.mask_token_id`.
+        additional_special_tokens (tuple or list of `str` or `tokenizers.AddedToken`, *optional*):
+            A tuple or a list of additional special tokens. Add them here to ensure they are skipped when decoding with
+            `skip_special_tokens` is set to True. If they are not part of the vocabulary, they will be added at the end
+            of the vocabulary.
+        clean_up_tokenization_spaces (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should cleanup the spaces that were added when splitting the input text during the
+            tokenization process.
+        split_special_tokens (`bool`, *optional*, defaults to `False`):
+            Whether or not the special tokens should be split during the tokenization process. Passing will affect the
+            internal state of the tokenizer. The default behavior is to not split special tokens. This means that if
+            `<s>` is the `bos_token`, then `tokenizer.tokenize("<s>") = ['<s>`]. Otherwise, if
+            `split_special_tokens=True`, then `tokenizer.tokenize("<s>")` will be give `['<','s', '>']`.
+
     - __call__
     - add_tokens
     - add_special_tokens
@@ -88,7 +165,84 @@ print(vision_tokenizer.image_token, vision_tokenizer.image_token_id)
 The [`PreTrainedTokenizerFast`] depend on the [tokenizers](https://huggingface.co/docs/tokenizers) library. The tokenizers obtained from the 🤗 tokenizers library can be
 loaded very simply into 🤗 transformers. Take a look at the [Using tokenizers from 🤗 tokenizers](../fast_tokenizers) page to understand how this is done.
 
-[[autodoc]] PreTrainedTokenizerFast
+
+    Base class for all slow tokenizers.
+
+    Inherits from [`~tokenization_utils_base.PreTrainedTokenizerBase`].
+
+    Handle all the shared methods for tokenization and special tokens as well as methods downloading/caching/loading
+    pretrained tokenizers as well as adding tokens to the vocabulary.
+
+    This class also contain the added tokens in a unified way on top of all tokenizers so we don't have to handle the
+    specific vocabulary augmentation methods of the various underlying dictionary structures (BPE, sentencepiece...).
+    
+    Class attributes (overridden by derived classes)
+
+        - **vocab_files_names** (`Dict[str, str]`) -- A dictionary with, as keys, the `__init__` keyword name of each
+          vocabulary file required by the model, and as associated values, the filename for saving the associated file
+          (string).
+        - **pretrained_vocab_files_map** (`Dict[str, Dict[str, str]]`) -- A dictionary of dictionaries, with the
+          high-level keys being the `__init__` keyword name of each vocabulary file required by the model, the
+          low-level being the `short-cut-names` of the pretrained models with, as associated values, the `url` to the
+          associated pretrained vocabulary file.
+        - **model_input_names** (`List[str]`) -- A list of inputs expected in the forward pass of the model.
+        - **padding_side** (`str`) -- The default value for the side on which the model should have padding applied.
+          Should be `'right'` or `'left'`.
+        - **truncation_side** (`str`) -- The default value for the side on which the model should have truncation
+          applied. Should be `'right'` or `'left'`.
+
+    Args:
+        model_max_length (`int`, *optional*):
+            The maximum length (in number of tokens) for the inputs to the transformer model. When the tokenizer is
+            loaded with [`~tokenization_utils_base.PreTrainedTokenizerBase.from_pretrained`], this will be set to the
+            value stored for the associated model in `max_model_input_sizes` (see above). If no value is provided, will
+            default to VERY_LARGE_INTEGER (`int(1e30)`).
+        padding_side (`str`, *optional*):
+            The side on which the model should have padding applied. Should be selected between ['right', 'left'].
+            Default value is picked from the class attribute of the same name.
+        truncation_side (`str`, *optional*):
+            The side on which the model should have truncation applied. Should be selected between ['right', 'left'].
+            Default value is picked from the class attribute of the same name.
+        chat_template (`str`, *optional*):
+            A Jinja template string that will be used to format lists of chat messages. See
+            https://huggingface.co/docs/transformers/chat_templating for a full description.
+        model_input_names (`List[string]`, *optional*):
+            The list of inputs accepted by the forward pass of the model (like `"token_type_ids"` or
+            `"attention_mask"`). Default value is picked from the class attribute of the same name.
+        bos_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing the beginning of a sentence. Will be associated to `self.bos_token` and
+            `self.bos_token_id`.
+        eos_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing the end of a sentence. Will be associated to `self.eos_token` and
+            `self.eos_token_id`.
+        unk_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing an out-of-vocabulary token. Will be associated to `self.unk_token` and
+            `self.unk_token_id`.
+        sep_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token separating two different sentences in the same input (used by BERT for instance). Will be
+            associated to `self.sep_token` and `self.sep_token_id`.
+        pad_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token used to make arrays of tokens the same size for batching purpose. Will then be ignored by
+            attention mechanisms or loss computation. Will be associated to `self.pad_token` and `self.pad_token_id`.
+        cls_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing the class of the input (used by BERT for instance). Will be associated to
+            `self.cls_token` and `self.cls_token_id`.
+        mask_token (`str` or `tokenizers.AddedToken`, *optional*):
+            A special token representing a masked token (used by masked-language modeling pretraining objectives, like
+            BERT). Will be associated to `self.mask_token` and `self.mask_token_id`.
+        additional_special_tokens (tuple or list of `str` or `tokenizers.AddedToken`, *optional*):
+            A tuple or a list of additional special tokens. Add them here to ensure they are skipped when decoding with
+            `skip_special_tokens` is set to True. If they are not part of the vocabulary, they will be added at the end
+            of the vocabulary.
+        clean_up_tokenization_spaces (`bool`, *optional*, defaults to `True`):
+            Whether or not the model should cleanup the spaces that were added when splitting the input text during the
+            tokenization process.
+        split_special_tokens (`bool`, *optional*, defaults to `False`):
+            Whether or not the special tokens should be split during the tokenization process. Passing will affect the
+            internal state of the tokenizer. The default behavior is to not split special tokens. This means that if
+            `<s>` is the `bos_token`, then `tokenizer.tokenize("<s>") = ['<s>`]. Otherwise, if
+            `split_special_tokens=True`, then `tokenizer.tokenize("<s>")` will be give `['<','s', '>']`.
+Fast
     - __call__
     - add_tokens
     - add_special_tokens
@@ -101,4 +255,29 @@ loaded very simply into 🤗 transformers. Take a look at the [Using tokenizers 
 
 ## BatchEncoding
 
-[[autodoc]] BatchEncoding
+
+    Holds the output of the [`~tokenization_utils_base.PreTrainedTokenizerBase.__call__`],
+    [`~tokenization_utils_base.PreTrainedTokenizerBase.encode_plus`] and
+    [`~tokenization_utils_base.PreTrainedTokenizerBase.batch_encode_plus`] methods (tokens, attention_masks, etc).
+
+    This class is derived from a python dictionary and can be used as a dictionary. In addition, this class exposes
+    utility methods to map from word/character space to token space.
+
+    Args:
+        data (`dict`, *optional*):
+            Dictionary of lists/arrays/tensors returned by the `__call__`/`encode_plus`/`batch_encode_plus` methods
+            ('input_ids', 'attention_mask', etc.).
+        encoding (`tokenizers.Encoding` or `Sequence[tokenizers.Encoding]`, *optional*):
+            If the tokenizer is a fast tokenizer which outputs additional information like mapping from word/character
+            space to token space the `tokenizers.Encoding` instance or list of instance (for batches) hold this
+            information.
+        tensor_type (`Union[None, str, TensorType]`, *optional*):
+            You can give a tensor_type here to convert the lists of integers in PyTorch/TensorFlow/Numpy Tensors at
+            initialization.
+        prepend_batch_axis (`bool`, *optional*, defaults to `False`):
+            Whether or not to add a batch axis when converting to tensors (see `tensor_type` above). Note that this
+            parameter has an effect if the parameter `tensor_type` is set, *otherwise has no effect*.
+        n_sequences (`Optional[int]`, *optional*):
+            You can give a tensor_type here to convert the lists of integers in PyTorch/TensorFlow/Numpy Tensors at
+            initialization.
+    

@@ -27,7 +27,26 @@ ExecuTorch introduces well defined entry points to perform model, device, and/or
 
 An integration point is being developed to ensure that 🤗 Transformers can be exported using `torch.export`. The goal of this integration is not only to enable export but also to ensure that the exported artifact can be further lowered and optimized to run efficiently in `ExecuTorch`, particularly for mobile and edge use cases.
 
-[[autodoc]] TorchExportableModuleWithStaticCache
+
+    A wrapper module designed to make a `PreTrainedModel` exportable with `torch.export`,
+    specifically for use with static caching. This module ensures that the exported model
+    is compatible with further lowering and execution in `ExecuTorch`.
+
+    Note:
+        This class is specifically designed to support export process using `torch.export`
+        in a way that ensures the model can be further lowered and run efficiently in `ExecuTorch`.
+    
     - forward
 
-[[autodoc]] convert_and_export_with_cache
+
+    Convert a `PreTrainedModel` into an exportable module and export it using `torch.export`,
+    ensuring the exported model is compatible with `ExecuTorch`.
+
+    Args:
+        model (`PreTrainedModel`): The pretrained model to be exported.
+        example_input_ids (`torch.Tensor`): Example input token id used by `torch.export`.
+        example_cache_position (`torch.Tensor`): Example current cache position used by `torch.export`.
+
+    Returns:
+        Exported program (`torch.export.ExportedProgram`): The exported program generated via `torch.export`.
+    

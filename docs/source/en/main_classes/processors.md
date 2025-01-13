@@ -29,7 +29,9 @@ such as tokenizers (for the text modality), image processors (for vision) and fe
 
 Those processors inherit from the following base class that implements the saving and loading functionality:
 
-[[autodoc]] ProcessorMixin
+
+    This is a mixin used to provide saving/loading functionality for all processor classes.
+    
 
 ## Deprecated processors
 

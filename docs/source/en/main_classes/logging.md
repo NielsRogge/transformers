@@ -86,7 +86,11 @@ What does that mean for developers of the library? We should respect the followi
 
 See reference of the `captureWarnings` method below.
 
-[[autodoc]] logging.captureWarnings
+
+    If capture is true, redirect all warnings to the logging package.
+    If capture is False, ensure that warnings are not redirected to logging
+    but to their original destinations.
+    
 
 ## Base setters
 

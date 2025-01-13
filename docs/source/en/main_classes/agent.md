@@ -36,57 +36,206 @@ We provide two types of agents, based on the main [`Agent`] class:
 
 ### Agent
 
-[[autodoc]] Agent
+Could not find docstring for Agent
 
 ### CodeAgent
 
-[[autodoc]] CodeAgent
+
+    A class for an agent that solves the given task using a single block of code. It plans all its actions, then executes all in one shot.
+    
 
 ### React agents
 
-[[autodoc]] ReactAgent
 
-[[autodoc]] ReactJsonAgent
+    This agent that solves the given task step by step, using the ReAct framework:
+    While the objective is not reached, the agent will perform a cycle of thinking and acting.
+    The action will be parsed from the LLM output: it consists in calls to tools from the toolbox, with arguments chosen by the LLM engine.
+    
 
-[[autodoc]] ReactCodeAgent
+
+    This agent that solves the given task step by step, using the ReAct framework:
+    While the objective is not reached, the agent will perform a cycle of thinking and acting.
+    The tool calls will be formulated by the LLM in JSON format, then parsed and executed.
+    
+
+
+    This agent that solves the given task step by step, using the ReAct framework:
+    While the objective is not reached, the agent will perform a cycle of thinking and acting.
+    The tool calls will be formulated by the LLM in code format, then parsed and executed.
+    
 
 ### ManagedAgent
 
-[[autodoc]] ManagedAgent
+Could not find docstring for ManagedAgent
 
 ## Tools
 
 ### load_tool
 
-[[autodoc]] load_tool
+
+    Main function to quickly load a tool, be it on the Hub or in the Transformers library.
+
+    <Tip warning={true}>
+
+    Loading a tool means that you'll download the tool and execute it locally.
+    ALWAYS inspect the tool you're downloading before loading it within your runtime, as you would do when
+    installing a package using pip/npm/apt.
+
+    </Tip>
+
+    Args:
+        task_or_repo_id (`str`):
+            The task for which to load the tool or a repo ID of a tool on the Hub. Tasks implemented in Transformers
+            are:
+
+            - `"document_question_answering"`
+            - `"image_question_answering"`
+            - `"speech_to_text"`
+            - `"text_to_speech"`
+            - `"translation"`
+
+        model_repo_id (`str`, *optional*):
+            Use this argument to use a different model than the default one for the tool you selected.
+        token (`str`, *optional*):
+            The token to identify you on hf.co. If unset, will use the token generated when running `huggingface-cli
+            login` (stored in `~/.huggingface`).
+        kwargs (additional keyword arguments, *optional*):
+            Additional keyword arguments that will be split in two: all arguments relevant to the Hub (such as
+            `cache_dir`, `revision`, `subfolder`) will be used when downloading the files for your tool, and the others
+            will be passed along to its init.
+    
 
 ### tool
 
-[[autodoc]] tool
+
+    Converts a function into an instance of a Tool subclass.
+
+    Args:
+        tool_function: Your function. Should have type hints for each input and a type hint for the output.
+        Should also have a docstring description including an 'Args:' part where each argument is described.
+    
 
 ### Tool
 
-[[autodoc]] Tool
+
+    A base class for the functions used by the agent. Subclass this and implement the `__call__` method as well as the
+    following class attributes:
+
+    - **description** (`str`) -- A short description of what your tool does, the inputs it expects and the output(s) it
+      will return. For instance 'This is a tool that downloads a file from a `url`. It takes the `url` as input, and
+      returns the text contained in the file'.
+    - **name** (`str`) -- A performative name that will be used for your tool in the prompt to the agent. For instance
+      `"text-classifier"` or `"image_generator"`.
+    - **inputs** (`Dict[str, Dict[str, Union[str, type]]]`) -- The dict of modalities expected for the inputs.
+      It has one `type`key and a `description`key.
+      This is used by `launch_gradio_demo` or to make a nice space from your tool, and also can be used in the generated
+      description for your tool.
+    - **output_type** (`type`) -- The type of the tool output. This is used by `launch_gradio_demo`
+      or to make a nice space from your tool, and also can be used in the generated description for your tool.
+
+    You can also override the method [`~Tool.setup`] if your tool as an expensive operation to perform before being
+    usable (such as loading a model). [`~Tool.setup`] will be called the first time you use your tool, but not at
+    instantiation.
+    
 
 ### Toolbox
 
-[[autodoc]] Toolbox
+
+    A base class for the functions used by the agent. Subclass this and implement the `__call__` method as well as the
+    following class attributes:
+
+    - **description** (`str`) -- A short description of what your tool does, the inputs it expects and the output(s) it
+      will return. For instance 'This is a tool that downloads a file from a `url`. It takes the `url` as input, and
+      returns the text contained in the file'.
+    - **name** (`str`) -- A performative name that will be used for your tool in the prompt to the agent. For instance
+      `"text-classifier"` or `"image_generator"`.
+    - **inputs** (`Dict[str, Dict[str, Union[str, type]]]`) -- The dict of modalities expected for the inputs.
+      It has one `type`key and a `description`key.
+      This is used by `launch_gradio_demo` or to make a nice space from your tool, and also can be used in the generated
+      description for your tool.
+    - **output_type** (`type`) -- The type of the tool output. This is used by `launch_gradio_demo`
+      or to make a nice space from your tool, and also can be used in the generated description for your tool.
+
+    You can also override the method [`~Tool.setup`] if your tool as an expensive operation to perform before being
+    usable (such as loading a model). [`~Tool.setup`] will be called the first time you use your tool, but not at
+    instantiation.
+    box
 
 ### PipelineTool
 
-[[autodoc]] PipelineTool
+
+    A [`Tool`] tailored towards Transformer models. On top of the class attributes of the base class [`Tool`], you will
+    need to specify:
+
+    - **model_class** (`type`) -- The class to use to load the model in this tool.
+    - **default_checkpoint** (`str`) -- The default checkpoint that should be used when the user doesn't specify one.
+    - **pre_processor_class** (`type`, *optional*, defaults to [`AutoProcessor`]) -- The class to use to load the
+      pre-processor
+    - **post_processor_class** (`type`, *optional*, defaults to [`AutoProcessor`]) -- The class to use to load the
+      post-processor (when different from the pre-processor).
+
+    Args:
+        model (`str` or [`PreTrainedModel`], *optional*):
+            The name of the checkpoint to use for the model, or the instantiated model. If unset, will default to the
+            value of the class attribute `default_checkpoint`.
+        pre_processor (`str` or `Any`, *optional*):
+            The name of the checkpoint to use for the pre-processor, or the instantiated pre-processor (can be a
+            tokenizer, an image processor, a feature extractor or a processor). Will default to the value of `model` if
+            unset.
+        post_processor (`str` or `Any`, *optional*):
+            The name of the checkpoint to use for the post-processor, or the instantiated pre-processor (can be a
+            tokenizer, an image processor, a feature extractor or a processor). Will default to the `pre_processor` if
+            unset.
+        device (`int`, `str` or `torch.device`, *optional*):
+            The device on which to execute the model. Will default to any accelerator available (GPU, MPS etc...), the
+            CPU otherwise.
+        device_map (`str` or `dict`, *optional*):
+            If passed along, will be used to instantiate the model.
+        model_kwargs (`dict`, *optional*):
+            Any keyword argument to send to the model instantiation.
+        token (`str`, *optional*):
+            The token to use as HTTP bearer authorization for remote files. If unset, will use the token generated when
+            running `huggingface-cli login` (stored in `~/.huggingface`).
+        hub_kwargs (additional keyword arguments, *optional*):
+            Any additional keyword argument to send to the methods that will load the data from the Hub.
+    
 
 ### launch_gradio_demo
 
-[[autodoc]] launch_gradio_demo
+
+    Launches a gradio demo for a tool. The corresponding tool class needs to properly implement the class attributes
+    `inputs` and `output_type`.
+
+    Args:
+        tool_class (`type`): The class of the tool for which to launch the demo.
+    
 
 ### stream_to_gradio
 
-[[autodoc]] stream_to_gradio
+Runs an agent with the given task and streams the messages from the agent as gradio ChatMessages.
 
 ### ToolCollection
 
-[[autodoc]] ToolCollection
+
+    A base class for the functions used by the agent. Subclass this and implement the `__call__` method as well as the
+    following class attributes:
+
+    - **description** (`str`) -- A short description of what your tool does, the inputs it expects and the output(s) it
+      will return. For instance 'This is a tool that downloads a file from a `url`. It takes the `url` as input, and
+      returns the text contained in the file'.
+    - **name** (`str`) -- A performative name that will be used for your tool in the prompt to the agent. For instance
+      `"text-classifier"` or `"image_generator"`.
+    - **inputs** (`Dict[str, Dict[str, Union[str, type]]]`) -- The dict of modalities expected for the inputs.
+      It has one `type`key and a `description`key.
+      This is used by `launch_gradio_demo` or to make a nice space from your tool, and also can be used in the generated
+      description for your tool.
+    - **output_type** (`type`) -- The type of the tool output. This is used by `launch_gradio_demo`
+      or to make a nice space from your tool, and also can be used in the generated description for your tool.
+
+    You can also override the method [`~Tool.setup`] if your tool as an expensive operation to perform before being
+    usable (such as loading a model). [`~Tool.setup`] will be called the first time you use your tool, but not at
+    instantiation.
+    Collection
 
 ## Engines
 
@@ -114,7 +263,7 @@ For convenience, we have added a `TransformersEngine` that implements the points
 "What a "
 ```
 
-[[autodoc]] TransformersEngine
+This engine uses a pre-initialized local text-generation pipeline.
 
 ### HfApiEngine
 
@@ -134,7 +283,25 @@ The `HfApiEngine` is an engine that wraps an [HF Inference API](https://huggingf
 "That's very kind of you to say! It's always nice to have a relaxed "
 ```
 
-[[autodoc]] HfApiEngine
+A class to interact with Hugging Face's Inference API for language model interaction.
+
+    This engine allows you to communicate with Hugging Face's models using the Inference API. It can be used in both serverless mode or with a dedicated endpoint, supporting features like stop sequences and grammar customization.
+
+    Parameters:
+        model (`str`, *optional*, defaults to `"meta-llama/Meta-Llama-3.1-8B-Instruct"`):
+            The Hugging Face model ID to be used for inference. This can be a path or model identifier from the Hugging Face model hub.
+        token (`str`, *optional*):
+            Token used by the Hugging Face API for authentication.
+            If not provided, the class will use the token stored in the Hugging Face CLI configuration.
+        max_tokens (`int`, *optional*, defaults to 1500):
+            The maximum number of tokens allowed in the output.
+        timeout (`int`, *optional*, defaults to 120):
+            Timeout for the API request, in seconds.
+
+    Raises:
+        ValueError:
+            If the model name is not provided.
+    
 
 
 ## Agent Types
@@ -156,12 +323,18 @@ These types have three specific purposes:
 
 ### AgentText
 
-[[autodoc]] transformers.agents.agent_types.AgentText
+
+    Text type returned by the agent. Behaves as a string.
+    
 
 ### AgentImage
 
-[[autodoc]] transformers.agents.agent_types.AgentImage
+
+    Image type returned by the agent. Behaves as a PIL.Image.
+    
 
 ### AgentAudio
 
-[[autodoc]] transformers.agents.agent_types.AgentAudio
+
+    Audio type returned by the agent.
+    

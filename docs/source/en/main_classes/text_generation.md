@@ -43,17 +43,31 @@ like token streaming.
 
 ## GenerationMixin
 
-[[autodoc]] GenerationMixin
+
+    A class containing all functions for auto-regressive text generation, to be used as a mixin in [`PreTrainedModel`].
+
+    The class exposes [`~generation.GenerationMixin.generate`], which can be used for:
+        - *greedy decoding* if `num_beams=1` and `do_sample=False`
+        - *contrastive search* if `penalty_alpha>0` and `top_k>1`
+        - *multinomial sampling* if `num_beams=1` and `do_sample=True`
+        - *beam-search decoding* if `num_beams>1` and `do_sample=False`
+        - *beam-search multinomial sampling* if `num_beams>1` and `do_sample=True`
+        - *diverse beam-search decoding* if `num_beams>1` and `num_beam_groups>1`
+        - *constrained beam-search decoding* if `constraints!=None` or `force_words_ids!=None`
+        - *assisted decoding* if `assistant_model` or `prompt_lookup_num_tokens` is passed to `.generate()`
+
+    To learn more about decoding strategies refer to the [text generation strategies guide](../generation_strategies).
+    
 	- generate
 	- compute_transition_scores
 
 ## TFGenerationMixin
 
-[[autodoc]] TFGenerationMixin
+Could not find docstring for TFGenerationMixin
 	- generate
 	- compute_transition_scores
 
 ## FlaxGenerationMixin
 
-[[autodoc]] FlaxGenerationMixin
+Could not find docstring for FlaxGenerationMixin
 	- generate

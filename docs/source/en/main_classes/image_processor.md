@@ -67,7 +67,19 @@ These benchmarks were run on an [AWS EC2 g5.2xlarge instance](https://aws.amazon
 
 ## BatchFeature
 
-[[autodoc]] BatchFeature
+
+    Holds the output of the [`~SequenceFeatureExtractor.pad`] and feature extractor specific `__call__` methods.
+
+    This class is derived from a python dictionary and can be used as a dictionary.
+
+    Args:
+        data (`dict`, *optional*):
+            Dictionary of lists/arrays/tensors returned by the __call__/pad methods ('input_values', 'attention_mask',
+            etc.).
+        tensor_type (`Union[None, str, TensorType]`, *optional*):
+            You can give a tensor_type here to convert the lists of integers in PyTorch/TensorFlow/Numpy Tensors at
+            initialization.
+    
 
 ## BaseImageProcessor
 

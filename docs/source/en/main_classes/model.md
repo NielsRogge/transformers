@@ -36,7 +36,32 @@ for text generation, [`~generation.GenerationMixin`] (for the PyTorch models),
 
 ## PreTrainedModel
 
-[[autodoc]] PreTrainedModel
+
+    Base class for all models.
+
+    [`PreTrainedModel`] takes care of storing the configuration of the models and handles methods for loading,
+    downloading and saving models as well as a few methods common to all models to:
+
+        - resize the input embeddings,
+        - prune heads in the self-attention heads.
+
+    Class attributes (overridden by derived classes):
+
+        - **config_class** ([`PretrainedConfig`]) -- A subclass of [`PretrainedConfig`] to use as configuration class
+          for this model architecture.
+        - **load_tf_weights** (`Callable`) -- A python *method* for loading a TensorFlow checkpoint in a PyTorch model,
+          taking as arguments:
+
+            - **model** ([`PreTrainedModel`]) -- An instance of the model on which to load the TensorFlow checkpoint.
+            - **config** ([`PreTrainedConfig`]) -- An instance of the configuration associated to the model.
+            - **path** (`str`) -- A path to the TensorFlow checkpoint.
+
+        - **base_model_prefix** (`str`) -- A string indicating the attribute associated to the base model in derived
+          classes of the same architecture adding modules on top of the base model.
+        - **is_parallelizable** (`bool`) -- A flag indicating whether this model supports model parallelization.
+        - **main_input_name** (`str`) -- The name of the principal input to the model (often `input_ids` for NLP
+          models, `pixel_values` for vision models and `input_values` for speech models).
+    
     - push_to_hub
     - all
 
@@ -50,7 +75,7 @@ set this to `False`.
 
 ## TFPreTrainedModel
 
-[[autodoc]] TFPreTrainedModel
+Could not find docstring for TFPreTrainedModel
     - push_to_hub
     - all
 
@@ -60,7 +85,7 @@ set this to `False`.
 
 ## FlaxPreTrainedModel
 
-[[autodoc]] FlaxPreTrainedModel
+Could not find docstring for FlaxPreTrainedModel
     - push_to_hub
     - all
 

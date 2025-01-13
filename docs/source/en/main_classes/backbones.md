@@ -41,7 +41,7 @@ Backbones are supported for the following models:
 
 ## AutoBackbone
 
-[[autodoc]] AutoBackbone
+Could not find docstring for AutoBackbone
 
 ## BackboneMixin
 

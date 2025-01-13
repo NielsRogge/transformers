@@ -1,65 +1,65 @@
-import re
 import os
-from pathlib import Path
-from transformers import AutoConfig, AutoModel, AutoTokenizer
-from transformers.utils import direct_transformers_import
+import re
+from transformers.utils.doc import add_start_docstrings, add_end_docstrings, add_code_sample_docstrings
+import importlib
 
 def get_docstring_from_class(class_name):
-    """Get docstring from a Transformers class by name."""
     try:
-        # Try to get the class from transformers
-        if class_name.startswith("transformers."):
-            class_name = class_name.split(".")[-1]
-            
-        if class_name.startswith("Auto"):
-            cls = getattr(AutoModel, class_name, None) or \
-                  getattr(AutoConfig, class_name, None) or \
-                  getattr(AutoTokenizer, class_name, None)
-        else:
-            transformers = direct_transformers_import("src/transformers")
-            cls = getattr(transformers, class_name, None)
-            
-        if cls is None:
+        # Split the class name into module path and class name
+        module_parts = class_name.split('.')
+        class_name_only = module_parts[-1]
+        module_path = '.'.join(module_parts[:-1])
+        
+        # Import the module
+        module = importlib.import_module(module_path)
+        
+        # Get the class
+        cls = getattr(module, class_name_only)
+        
+        # Get the docstring
+        docstring = cls.__doc__
+        if docstring is None:
             return f"Could not find docstring for {class_name}"
-            
-        return cls.__doc__ or f"No docstring available for {class_name}"
-    except Exception as e:
-        return f"Error getting docstring for {class_name}: {str(e)}"
+        
+        return docstring
+    except (ImportError, AttributeError) as e:
+        return f"Could not find docstring for {class_name}: {str(e)}"
 
 def process_markdown_file(file_path):
-    """Process a markdown file and replace [[autodoc]] directives with actual docstrings."""
-    with open(file_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    # Regular expression to match [[autodoc]] directives with optional method specifications
-    autodoc_pattern = r'(?:## [^\n]+\n)?\[\[autodoc\]\]\s+([^\n]+?)(?:\s+-\s+([^\n]+))?$'
-    
-    def replace_autodoc(match):
-        class_name = match.group(1).strip()
-        methods = match.group(2).split('\n') if match.group(2) else None
+    try:
+        print(f"Processing {file_path}")
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
         
-        docstring = get_docstring_from_class(class_name)
+        # Find all [[autodoc]] directives
+        pattern = r'\[\[autodoc\]\]\s+([^\s]+)'
+        matches = re.finditer(pattern, content)
         
-        if methods:
-            return f"{docstring}\n\nMethods: {', '.join(methods)}"
-        return docstring
-    
-    processed_content = re.sub(autodoc_pattern, replace_autodoc, content, flags=re.MULTILINE)
-    
-    with open(file_path, 'w', encoding='utf-8') as f:
-        f.write(processed_content)
+        # Replace each [[autodoc]] directive with the actual docstring
+        for match in matches:
+            class_name = match.group(1)
+            docstring = get_docstring_from_class(class_name)
+            content = content.replace(match.group(0), docstring)
+        
+        # Write the modified content back to the file
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        print(f"Completed processing {file_path}")
+    except Exception as e:
+        print(f"Error processing {file_path}: {str(e)}")
 
-def process_docs_directory(docs_dir="docs/source/en"):
-    """Process all markdown files in the English docs directory."""
-    docs_path = Path(docs_dir)
-    if not docs_path.exists():
-        raise ValueError(f"Documentation directory {docs_dir} does not exist")
-        
-    for md_file in docs_path.rglob("*.md"):
-        if "model_doc" in str(md_file):  # Focus on model documentation
-            print(f"Processing {md_file}")
-            process_markdown_file(md_file)
-            print(f"Completed processing {md_file}")
+def process_directory(directory_path):
+    for root, dirs, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith('.md'):
+                file_path = os.path.join(root, file)
+                process_markdown_file(file_path)
 
 if __name__ == "__main__":
-    process_docs_directory()
+    # Add the transformers source directory to the Python path
+    import sys
+    sys.path.append(os.path.abspath("src"))
+    
+    # Process all markdown files in docs/source/en
+    process_directory("docs/source/en")
