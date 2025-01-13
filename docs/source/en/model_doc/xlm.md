@@ -245,7 +245,7 @@ Methods: build_inputs_with_special_tokens
 
 ## XLM specific outputs
 
-Could not find docstring for models.xlm.modeling_xlm.XLMForQuestionAnsweringOutput
+[[autodoc]] models.xlm.modeling_xlm.XLMForQuestionAnsweringOutput
 
 <frameworkcontent>
 <pt>

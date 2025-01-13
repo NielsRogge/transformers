@@ -178,13 +178,13 @@ The Authors' code can be found [here](https://github.com/microsoft/ProphetNet).
 
 ## ProphetNet specific outputs
 
-Could not find docstring for models.prophetnet.modeling_prophetnet.ProphetNetSeq2SeqLMOutput
+[[autodoc]] models.prophetnet.modeling_prophetnet.ProphetNetSeq2SeqLMOutput
 
-Could not find docstring for models.prophetnet.modeling_prophetnet.ProphetNetSeq2SeqModelOutput
+[[autodoc]] models.prophetnet.modeling_prophetnet.ProphetNetSeq2SeqModelOutput
 
-Could not find docstring for models.prophetnet.modeling_prophetnet.ProphetNetDecoderModelOutput
+[[autodoc]] models.prophetnet.modeling_prophetnet.ProphetNetDecoderModelOutput
 
-Could not find docstring for models.prophetnet.modeling_prophetnet.ProphetNetDecoderLMOutput
+[[autodoc]] models.prophetnet.modeling_prophetnet.ProphetNetDecoderLMOutput
 
 ## ProphetNetModel
 

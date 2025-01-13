@@ -1,29 +1,38 @@
 import os
 import re
-from transformers.utils.doc import add_start_docstrings, add_end_docstrings, add_code_sample_docstrings
 import importlib
+
 
 def get_docstring_from_class(class_name):
     try:
-        # Split the class name into module path and class name
-        module_parts = class_name.split('.')
-        class_name_only = module_parts[-1]
-        module_path = '.'.join(module_parts[:-1])
-        
-        # Import the module
-        module = importlib.import_module(module_path)
-        
-        # Get the class
-        cls = getattr(module, class_name_only)
-        
-        # Get the docstring
-        docstring = cls.__doc__
-        if docstring is None:
-            return f"Could not find docstring for {class_name}"
-        
-        return docstring
-    except (ImportError, AttributeError) as e:
-        return f"Could not find docstring for {class_name}: {str(e)}"
+        if '.' in class_name:
+            # For any class in transformers (e.g. models.ernie.modeling_ernie.ErnieForPreTrainingOutput or pipelines.ArgumentHandler)
+            first_part = class_name.split('.')[0]
+            module_path = f'transformers.{first_part}'
+            remaining_path = '.'.join(class_name.split('.')[1:])
+            
+            module = importlib.import_module(module_path)
+            
+            # Navigate through the remaining path
+            obj = module
+            for part in remaining_path.split('.'):
+                obj = getattr(obj, part)
+            
+            docstring = obj.__doc__
+            if docstring:
+                return docstring
+        else:
+            # Try importing directly from transformers as fallback
+            module = importlib.import_module('transformers')
+            cls = getattr(module, class_name)
+            docstring = cls.__doc__
+            if docstring:
+                return docstring
+
+        return f"[[autodoc]] {class_name}"
+    except Exception as e:
+        return f"[[autodoc]] {class_name}: {str(e)}"
+
 
 def process_markdown_file(file_path):
     try:
@@ -49,12 +58,14 @@ def process_markdown_file(file_path):
     except Exception as e:
         print(f"Error processing {file_path}: {str(e)}")
 
+
 def process_directory(directory_path):
     for root, dirs, files in os.walk(directory_path):
         for file in files:
             if file.endswith('.md'):
                 file_path = os.path.join(root, file)
                 process_markdown_file(file_path)
+
 
 if __name__ == "__main__":
     # Add the transformers source directory to the Python path

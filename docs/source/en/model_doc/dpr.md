@@ -321,11 +321,11 @@ This model was contributed by [lhoestq](https://huggingface.co/lhoestq). The ori
 
 ## DPR specific outputs
 
-Could not find docstring for models.dpr.modeling_dpr.DPRContextEncoderOutput
+[[autodoc]] models.dpr.modeling_dpr.DPRContextEncoderOutput
 
-Could not find docstring for models.dpr.modeling_dpr.DPRQuestionEncoderOutput
+[[autodoc]] models.dpr.modeling_dpr.DPRQuestionEncoderOutput
 
-Could not find docstring for models.dpr.modeling_dpr.DPRReaderOutput
+[[autodoc]] models.dpr.modeling_dpr.DPRReaderOutput
 
 <frameworkcontent>
 <pt>

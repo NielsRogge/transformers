@@ -21,8 +21,8 @@ tasks:
 
 ## KerasMetricCallback
 
-Could not find docstring for KerasMetricCallback
+[[autodoc]] KerasMetricCallback
 
 ## PushToHubCallback
 
-Could not find docstring for PushToHubCallback
+[[autodoc]] PushToHubCallback

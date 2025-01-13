@@ -36,7 +36,7 @@ We provide two types of agents, based on the main [`Agent`] class:
 
 ### Agent
 
-Could not find docstring for Agent
+[[autodoc]] Agent
 
 ### CodeAgent
 
@@ -66,7 +66,7 @@ Could not find docstring for Agent
 
 ### ManagedAgent
 
-Could not find docstring for ManagedAgent
+[[autodoc]] ManagedAgent
 
 ## Tools
 

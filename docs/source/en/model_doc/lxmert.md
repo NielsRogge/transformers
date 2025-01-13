@@ -229,15 +229,15 @@ This model was contributed by [eltoto1219](https://huggingface.co/eltoto1219). T
 
 ## Lxmert specific outputs
 
-Could not find docstring for models.lxmert.modeling_lxmert.LxmertModelOutput
+[[autodoc]] models.lxmert.modeling_lxmert.LxmertModelOutput
 
-Could not find docstring for models.lxmert.modeling_lxmert.LxmertForPreTrainingOutput
+[[autodoc]] models.lxmert.modeling_lxmert.LxmertForPreTrainingOutput
 
-Could not find docstring for models.lxmert.modeling_lxmert.LxmertForQuestionAnsweringOutput
+[[autodoc]] models.lxmert.modeling_lxmert.LxmertForQuestionAnsweringOutput
 
-Could not find docstring for models.lxmert.modeling_tf_lxmert.TFLxmertModelOutput
+[[autodoc]] models.lxmert.modeling_tf_lxmert.TFLxmertModelOutput
 
-Could not find docstring for models.lxmert.modeling_tf_lxmert.TFLxmertForPreTrainingOutput
+[[autodoc]] models.lxmert.modeling_tf_lxmert.TFLxmertForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

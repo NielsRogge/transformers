@@ -208,7 +208,7 @@ found [here](https://github.com/microsoft/UniSpeech/tree/main/UniSpeech).
 
 ## UniSpeech specific outputs
 
-Could not find docstring for models.unispeech.modeling_unispeech.UniSpeechForPreTrainingOutput
+[[autodoc]] models.unispeech.modeling_unispeech.UniSpeechForPreTrainingOutput
 
 ## UniSpeechModel
 

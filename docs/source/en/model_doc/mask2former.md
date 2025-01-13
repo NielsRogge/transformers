@@ -151,9 +151,9 @@ The resource should ideally demonstrate something new instead of duplicating an 
 
 ## MaskFormer specific outputs
 
-Could not find docstring for models.mask2former.modeling_mask2former.Mask2FormerModelOutput
+[[autodoc]] models.mask2former.modeling_mask2former.Mask2FormerModelOutput
 
-Could not find docstring for models.mask2former.modeling_mask2former.Mask2FormerForUniversalSegmentationOutput
+[[autodoc]] models.mask2former.modeling_mask2former.Mask2FormerForUniversalSegmentationOutput
 
 ## Mask2FormerModel
 

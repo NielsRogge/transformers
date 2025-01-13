@@ -347,11 +347,11 @@ No docstring available for TFBertTokenizer
 
 ## Bert specific outputs
 
-Could not find docstring for models.bert.modeling_bert.BertForPreTrainingOutput
+[[autodoc]] models.bert.modeling_bert.BertForPreTrainingOutput
 
-Could not find docstring for models.bert.modeling_tf_bert.TFBertForPreTrainingOutput
+[[autodoc]] models.bert.modeling_tf_bert.TFBertForPreTrainingOutput
 
-Could not find docstring for models.bert.modeling_flax_bert.FlaxBertForPreTrainingOutput
+[[autodoc]] models.bert.modeling_flax_bert.FlaxBertForPreTrainingOutput
 
 
 <frameworkcontent>

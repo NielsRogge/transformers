@@ -37,16 +37,16 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## AutoformerConfig
 
-Could not find docstring for AutoformerConfig
+[[autodoc]] AutoformerConfig
 
 ## AutoformerModel
 
-Could not find docstring for AutoformerModel
+[[autodoc]] AutoformerModel
 
 Methods: forward
 
 ## AutoformerForPrediction
 
-Could not find docstring for AutoformerForPrediction
+[[autodoc]] AutoformerForPrediction
 
 Methods: forward

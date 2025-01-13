@@ -305,21 +305,21 @@ Methods: build_inputs_with_special_tokens
 
 ## LED specific outputs
 
-Could not find docstring for models.led.modeling_led.LEDEncoderBaseModelOutput
+[[autodoc]] models.led.modeling_led.LEDEncoderBaseModelOutput
 
-Could not find docstring for models.led.modeling_led.LEDSeq2SeqModelOutput
+[[autodoc]] models.led.modeling_led.LEDSeq2SeqModelOutput
 
-Could not find docstring for models.led.modeling_led.LEDSeq2SeqLMOutput
+[[autodoc]] models.led.modeling_led.LEDSeq2SeqLMOutput
 
-Could not find docstring for models.led.modeling_led.LEDSeq2SeqSequenceClassifierOutput
+[[autodoc]] models.led.modeling_led.LEDSeq2SeqSequenceClassifierOutput
 
-Could not find docstring for models.led.modeling_led.LEDSeq2SeqQuestionAnsweringModelOutput
+[[autodoc]] models.led.modeling_led.LEDSeq2SeqQuestionAnsweringModelOutput
 
-Could not find docstring for models.led.modeling_tf_led.TFLEDEncoderBaseModelOutput
+[[autodoc]] models.led.modeling_tf_led.TFLEDEncoderBaseModelOutput
 
-Could not find docstring for models.led.modeling_tf_led.TFLEDSeq2SeqModelOutput
+[[autodoc]] models.led.modeling_tf_led.TFLEDSeq2SeqModelOutput
 
-Could not find docstring for models.led.modeling_tf_led.TFLEDSeq2SeqLMOutput
+[[autodoc]] models.led.modeling_tf_led.TFLEDSeq2SeqLMOutput
 
 <frameworkcontent>
 <pt>

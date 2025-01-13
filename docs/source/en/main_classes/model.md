@@ -75,7 +75,7 @@ set this to `False`.
 
 ## TFPreTrainedModel
 
-Could not find docstring for TFPreTrainedModel
+[[autodoc]] TFPreTrainedModel
     - push_to_hub
     - all
 
@@ -85,7 +85,7 @@ Could not find docstring for TFPreTrainedModel
 
 ## FlaxPreTrainedModel
 
-Could not find docstring for FlaxPreTrainedModel
+[[autodoc]] FlaxPreTrainedModel
     - push_to_hub
     - all
 

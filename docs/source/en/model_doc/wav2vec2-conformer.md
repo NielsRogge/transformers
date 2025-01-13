@@ -227,7 +227,7 @@ an improved word error rate.
 
 ## Wav2Vec2Conformer specific outputs
 
-Could not find docstring for models.wav2vec2_conformer.modeling_wav2vec2_conformer.Wav2Vec2ConformerForPreTrainingOutput
+[[autodoc]] models.wav2vec2_conformer.modeling_wav2vec2_conformer.Wav2Vec2ConformerForPreTrainingOutput
 
 ## Wav2Vec2ConformerModel
 

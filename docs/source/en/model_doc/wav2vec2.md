@@ -453,15 +453,15 @@ Otherwise, [`~Wav2Vec2ProcessorWithLM.batch_decode`] performance will be slower 
 
 ## Wav2Vec2 specific outputs
 
-Could not find docstring for models.wav2vec2_with_lm.processing_wav2vec2_with_lm.Wav2Vec2DecoderWithLMOutput
+[[autodoc]] models.wav2vec2_with_lm.processing_wav2vec2_with_lm.Wav2Vec2DecoderWithLMOutput
 
-Could not find docstring for models.wav2vec2.modeling_wav2vec2.Wav2Vec2BaseModelOutput
+[[autodoc]] models.wav2vec2.modeling_wav2vec2.Wav2Vec2BaseModelOutput
 
-Could not find docstring for models.wav2vec2.modeling_wav2vec2.Wav2Vec2ForPreTrainingOutput
+[[autodoc]] models.wav2vec2.modeling_wav2vec2.Wav2Vec2ForPreTrainingOutput
 
-Could not find docstring for models.wav2vec2.modeling_flax_wav2vec2.FlaxWav2Vec2BaseModelOutput
+[[autodoc]] models.wav2vec2.modeling_flax_wav2vec2.FlaxWav2Vec2BaseModelOutput
 
-Could not find docstring for models.wav2vec2.modeling_flax_wav2vec2.FlaxWav2Vec2ForPreTrainingOutput
+[[autodoc]] models.wav2vec2.modeling_flax_wav2vec2.FlaxWav2Vec2ForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

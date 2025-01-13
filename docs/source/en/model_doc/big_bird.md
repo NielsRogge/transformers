@@ -238,7 +238,7 @@ Methods: build_inputs_with_special_tokens
 
 ## BigBird specific outputs
 
-Could not find docstring for models.big_bird.modeling_big_bird.BigBirdForPreTrainingOutput
+[[autodoc]] models.big_bird.modeling_big_bird.BigBirdForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

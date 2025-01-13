@@ -124,9 +124,9 @@ If you're interested in submitting a resource to be included here, please feel f
 
 ## BEiT specific outputs
 
-Could not find docstring for models.beit.modeling_beit.BeitModelOutputWithPooling
+[[autodoc]] models.beit.modeling_beit.BeitModelOutputWithPooling
 
-Could not find docstring for models.beit.modeling_flax_beit.FlaxBeitModelOutputWithPooling
+[[autodoc]] models.beit.modeling_flax_beit.FlaxBeitModelOutputWithPooling
 
 ## BeitConfig
 

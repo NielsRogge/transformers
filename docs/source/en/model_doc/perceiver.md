@@ -101,13 +101,13 @@ audio classification, video classification, etc.
 
 ## Perceiver specific outputs
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverModelOutput
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverModelOutput
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverDecoderOutput
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverDecoderOutput
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMaskedLMOutput
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMaskedLMOutput
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverClassifierOutput
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassifierOutput
 
 ## PerceiverConfig
 
@@ -277,63 +277,63 @@ Methods: preprocess
 
 ## PerceiverTextPreprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverTextPreprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverTextPreprocessor
 
 ## PerceiverImagePreprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverImagePreprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverImagePreprocessor
 
 ## PerceiverOneHotPreprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverOneHotPreprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverOneHotPreprocessor
 
 ## PerceiverAudioPreprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverAudioPreprocessor
 
 ## PerceiverMultimodalPreprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalPreprocessor
 
 ## PerceiverProjectionDecoder
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverProjectionDecoder
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverProjectionDecoder
 
 ## PerceiverBasicDecoder
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverBasicDecoder
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverBasicDecoder
 
 ## PerceiverClassificationDecoder
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverClassificationDecoder
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassificationDecoder
 
 ## PerceiverOpticalFlowDecoder
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverOpticalFlowDecoder
 
 ## PerceiverBasicVideoAutoencodingDecoder
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverBasicVideoAutoencodingDecoder
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverBasicVideoAutoencodingDecoder
 
 ## PerceiverMultimodalDecoder
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalDecoder
 
 ## PerceiverProjectionPostprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverProjectionPostprocessor
 
 ## PerceiverAudioPostprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverAudioPostprocessor
 
 ## PerceiverClassificationPostprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverClassificationPostprocessor
 
 ## PerceiverMultimodalPostprocessor
 
-Could not find docstring for models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor
+[[autodoc]] models.perceiver.modeling_perceiver.PerceiverMultimodalPostprocessor
 
 ## PerceiverModel
 

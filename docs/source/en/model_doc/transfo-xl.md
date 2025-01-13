@@ -223,13 +223,13 @@ Methods: save_vocabulary
 
 ## TransfoXL specific outputs
 
-Could not find docstring for models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLModelOutput
 
-Could not find docstring for models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLLMHeadModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_transfo_xl.TransfoXLLMHeadModelOutput
 
-Could not find docstring for models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLModelOutput
 
-Could not find docstring for models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLLMHeadModelOutput
+[[autodoc]] models.deprecated.transfo_xl.modeling_tf_transfo_xl.TFTransfoXLLMHeadModelOutput
 
 <frameworkcontent>
 <pt>

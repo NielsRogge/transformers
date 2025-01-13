@@ -137,7 +137,7 @@ Methods: all
 
 ## Ernie specific outputs
 
-Could not find docstring for models.ernie.modeling_ernie.ErnieForPreTrainingOutput
+[[autodoc]] models.ernie.modeling_ernie.ErnieForPreTrainingOutput
 
 ## ErnieModel
 

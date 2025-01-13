@@ -377,9 +377,9 @@ Methods: build_inputs_with_special_tokens
 
 ## Albert specific outputs
 
-Could not find docstring for models.albert.modeling_albert.AlbertForPreTrainingOutput
+[[autodoc]] models.albert.modeling_albert.AlbertForPreTrainingOutput
 
-Could not find docstring for models.albert.modeling_tf_albert.TFAlbertForPreTrainingOutput
+[[autodoc]] models.albert.modeling_tf_albert.TFAlbertForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

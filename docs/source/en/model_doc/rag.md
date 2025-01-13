@@ -124,9 +124,9 @@ No docstring available for RagTokenizer
 
 ## Rag specific outputs
 
-Could not find docstring for models.rag.modeling_rag.RetrievAugLMMarginOutput
+[[autodoc]] models.rag.modeling_rag.RetrievAugLMMarginOutput
 
-Could not find docstring for models.rag.modeling_rag.RetrievAugLMOutput
+[[autodoc]] models.rag.modeling_rag.RetrievAugLMOutput
 
 ## RagRetriever
 

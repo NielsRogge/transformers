@@ -235,9 +235,9 @@ Methods: build_inputs_with_special_tokens
 
 ## Funnel specific outputs
 
-Could not find docstring for models.funnel.modeling_funnel.FunnelForPreTrainingOutput
+[[autodoc]] models.funnel.modeling_funnel.FunnelForPreTrainingOutput
 
-Could not find docstring for models.funnel.modeling_tf_funnel.TFFunnelForPreTrainingOutput
+[[autodoc]] models.funnel.modeling_tf_funnel.TFFunnelForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

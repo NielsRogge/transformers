@@ -55,9 +55,9 @@ This model was contributed by [francesco](https://huggingface.co/francesco). The
 
 ## MaskFormer specific outputs
 
-Could not find docstring for models.maskformer.modeling_maskformer.MaskFormerModelOutput
+[[autodoc]] models.maskformer.modeling_maskformer.MaskFormerModelOutput
 
-Could not find docstring for models.maskformer.modeling_maskformer.MaskFormerForInstanceSegmentationOutput
+[[autodoc]] models.maskformer.modeling_maskformer.MaskFormerForInstanceSegmentationOutput
 
 ## MaskFormerConfig
 

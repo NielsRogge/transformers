@@ -63,11 +63,11 @@ like token streaming.
 
 ## TFGenerationMixin
 
-Could not find docstring for TFGenerationMixin
+[[autodoc]] TFGenerationMixin
 	- generate
 	- compute_transition_scores
 
 ## FlaxGenerationMixin
 
-Could not find docstring for FlaxGenerationMixin
+[[autodoc]] FlaxGenerationMixin
 	- generate

@@ -231,9 +231,9 @@ Methods: save_vocabulary
 
 ## OpenAI specific outputs
 
-Could not find docstring for models.openai.modeling_openai.OpenAIGPTDoubleHeadsModelOutput
+[[autodoc]] models.openai.modeling_openai.OpenAIGPTDoubleHeadsModelOutput
 
-Could not find docstring for models.openai.modeling_tf_openai.TFOpenAIGPTDoubleHeadsModelOutput
+[[autodoc]] models.openai.modeling_tf_openai.TFOpenAIGPTDoubleHeadsModelOutput
 
 <frameworkcontent>
 <pt>

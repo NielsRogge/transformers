@@ -1448,90 +1448,90 @@ Abstract base class for all logit processors that can be applied during generati
 
 ### TensorFlow
 
-Could not find docstring for TFForcedBOSTokenLogitsProcessor
+[[autodoc]] TFForcedBOSTokenLogitsProcessor
     - __call__
 
-Could not find docstring for TFForcedEOSTokenLogitsProcessor
+[[autodoc]] TFForcedEOSTokenLogitsProcessor
     - __call__
 
-Could not find docstring for TFForceTokensLogitsProcessor
+[[autodoc]] TFForceTokensLogitsProcessor
     - __call__
 
-Could not find docstring for TFLogitsProcessor
+[[autodoc]] TFLogitsProcessor
     - __call__
 
-Could not find docstring for TFLogitsProcessorList
+[[autodoc]] TFLogitsProcessorList
     - __call__
 
-Could not find docstring for TFLogitsWarper
+[[autodoc]] TFLogitsWarper
     - __call__
 
-Could not find docstring for TFMinLengthLogitsProcessor
+[[autodoc]] TFMinLengthLogitsProcessor
     - __call__
 
-Could not find docstring for TFNoBadWordsLogitsProcessor
+[[autodoc]] TFNoBadWordsLogitsProcessor
     - __call__
 
-Could not find docstring for TFNoRepeatNGramLogitsProcessor
+[[autodoc]] TFNoRepeatNGramLogitsProcessor
     - __call__
 
-Could not find docstring for TFRepetitionPenaltyLogitsProcessor
+[[autodoc]] TFRepetitionPenaltyLogitsProcessor
     - __call__
 
-Could not find docstring for TFSuppressTokensAtBeginLogitsProcessor
+[[autodoc]] TFSuppressTokensAtBeginLogitsProcessor
     - __call__
 
-Could not find docstring for TFSuppressTokensLogitsProcessor
+[[autodoc]] TFSuppressTokensLogitsProcessor
     - __call__
 
-Could not find docstring for TFTemperatureLogitsWarper
+[[autodoc]] TFTemperatureLogitsWarper
     - __call__
 
-Could not find docstring for TFTopKLogitsWarper
+[[autodoc]] TFTopKLogitsWarper
     - __call__
 
-Could not find docstring for TFTopPLogitsWarper
+[[autodoc]] TFTopPLogitsWarper
     - __call__
 
 ### FLAX
 
-Could not find docstring for FlaxForcedBOSTokenLogitsProcessor
+[[autodoc]] FlaxForcedBOSTokenLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxForcedEOSTokenLogitsProcessor
+[[autodoc]] FlaxForcedEOSTokenLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxForceTokensLogitsProcessor
+[[autodoc]] FlaxForceTokensLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxLogitsProcessor
+[[autodoc]] FlaxLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxLogitsProcessorList
+[[autodoc]] FlaxLogitsProcessorList
     - __call__
 
-Could not find docstring for FlaxLogitsWarper
+[[autodoc]] FlaxLogitsWarper
     - __call__
 
-Could not find docstring for FlaxMinLengthLogitsProcessor
+[[autodoc]] FlaxMinLengthLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxSuppressTokensAtBeginLogitsProcessor
+[[autodoc]] FlaxSuppressTokensAtBeginLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxSuppressTokensLogitsProcessor
+[[autodoc]] FlaxSuppressTokensLogitsProcessor
     - __call__
 
-Could not find docstring for FlaxTemperatureLogitsWarper
+[[autodoc]] FlaxTemperatureLogitsWarper
     - __call__
 
-Could not find docstring for FlaxTopKLogitsWarper
+[[autodoc]] FlaxTopKLogitsWarper
     - __call__
 
-Could not find docstring for FlaxTopPLogitsWarper
+[[autodoc]] FlaxTopPLogitsWarper
     - __call__
 
-Could not find docstring for FlaxWhisperTimeStampLogitsProcessor
+[[autodoc]] FlaxWhisperTimeStampLogitsProcessor
     - __call__
 
 ## StoppingCriteria

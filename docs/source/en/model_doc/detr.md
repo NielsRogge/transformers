@@ -404,11 +404,11 @@ Methods: __call__
 
 ## DETR specific outputs
 
-Could not find docstring for models.detr.modeling_detr.DetrModelOutput
+[[autodoc]] models.detr.modeling_detr.DetrModelOutput
 
-Could not find docstring for models.detr.modeling_detr.DetrObjectDetectionOutput
+[[autodoc]] models.detr.modeling_detr.DetrObjectDetectionOutput
 
-Could not find docstring for models.detr.modeling_detr.DetrSegmentationOutput
+[[autodoc]] models.detr.modeling_detr.DetrSegmentationOutput
 
 ## DetrModel
 

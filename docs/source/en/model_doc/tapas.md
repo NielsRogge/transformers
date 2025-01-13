@@ -578,7 +578,7 @@ In case of a conversational set-up, then each table-question pair must be provid
 - [Text classification task guide](../tasks/sequence_classification)
 - [Masked language modeling task guide](../tasks/masked_language_modeling)
 
-Could not find docstring for models.tapas.modeling_tapas.TableQuestionAnsweringOutput
+[[autodoc]] models.tapas.modeling_tapas.TableQuestionAnsweringOutput
 
 
     This is the configuration class to store the configuration of a [`TapasModel`]. It is used to instantiate a TAPAS

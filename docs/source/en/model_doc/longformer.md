@@ -327,33 +327,33 @@ loss = model(input_ids, labels=input_ids, masked_lm_labels=mlm_labels)[0]
 
 ## Longformer specific outputs
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerBaseModelOutput
+[[autodoc]] models.longformer.modeling_longformer.LongformerBaseModelOutput
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerBaseModelOutputWithPooling
+[[autodoc]] models.longformer.modeling_longformer.LongformerBaseModelOutputWithPooling
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerMaskedLMOutput
+[[autodoc]] models.longformer.modeling_longformer.LongformerMaskedLMOutput
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerQuestionAnsweringModelOutput
+[[autodoc]] models.longformer.modeling_longformer.LongformerQuestionAnsweringModelOutput
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerSequenceClassifierOutput
+[[autodoc]] models.longformer.modeling_longformer.LongformerSequenceClassifierOutput
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerMultipleChoiceModelOutput
+[[autodoc]] models.longformer.modeling_longformer.LongformerMultipleChoiceModelOutput
 
-Could not find docstring for models.longformer.modeling_longformer.LongformerTokenClassifierOutput
+[[autodoc]] models.longformer.modeling_longformer.LongformerTokenClassifierOutput
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerBaseModelOutput
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerBaseModelOutput
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerBaseModelOutputWithPooling
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerBaseModelOutputWithPooling
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerMaskedLMOutput
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerMaskedLMOutput
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerQuestionAnsweringModelOutput
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerQuestionAnsweringModelOutput
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerSequenceClassifierOutput
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerSequenceClassifierOutput
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerMultipleChoiceModelOutput
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerMultipleChoiceModelOutput
 
-Could not find docstring for models.longformer.modeling_tf_longformer.TFLongformerTokenClassifierOutput
+[[autodoc]] models.longformer.modeling_tf_longformer.TFLongformerTokenClassifierOutput
 
 <frameworkcontent>
 <pt>

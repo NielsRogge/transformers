@@ -32,7 +32,7 @@ Most of those are only useful if you are studying the code of the Trainer in the
         losses (`np.ndarray`, *optional*): Loss values computed during evaluation.
     
 
-Could not find docstring for IntervalStrategy
+[[autodoc]] IntervalStrategy
 
 
     Helper function for reproducible behavior during distributed training. See

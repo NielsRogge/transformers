@@ -257,9 +257,9 @@ This model was contributed by [lysandre](https://huggingface.co/lysandre). The o
 
 ## Electra specific outputs
 
-Could not find docstring for models.electra.modeling_electra.ElectraForPreTrainingOutput
+[[autodoc]] models.electra.modeling_electra.ElectraForPreTrainingOutput
 
-Could not find docstring for models.electra.modeling_tf_electra.TFElectraForPreTrainingOutput
+[[autodoc]] models.electra.modeling_tf_electra.TFElectraForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

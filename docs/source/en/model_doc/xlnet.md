@@ -321,31 +321,31 @@ Methods: build_inputs_with_special_tokens
 
 ## XLNet specific outputs
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetModelOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetModelOutput
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetLMHeadModelOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetLMHeadModelOutput
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetForSequenceClassificationOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetForSequenceClassificationOutput
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetForMultipleChoiceOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetForMultipleChoiceOutput
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetForTokenClassificationOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetForTokenClassificationOutput
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringSimpleOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringSimpleOutput
 
-Could not find docstring for models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringOutput
+[[autodoc]] models.xlnet.modeling_xlnet.XLNetForQuestionAnsweringOutput
 
-Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetModelOutput
+[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetModelOutput
 
-Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetLMHeadModelOutput
+[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetLMHeadModelOutput
 
-Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForSequenceClassificationOutput
+[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForSequenceClassificationOutput
 
-Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForMultipleChoiceOutput
+[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForMultipleChoiceOutput
 
-Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForTokenClassificationOutput
+[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForTokenClassificationOutput
 
-Could not find docstring for models.xlnet.modeling_tf_xlnet.TFXLNetForQuestionAnsweringSimpleOutput
+[[autodoc]] models.xlnet.modeling_tf_xlnet.TFXLNetForQuestionAnsweringSimpleOutput
 
 <frameworkcontent>
 <pt>

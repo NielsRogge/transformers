@@ -53,9 +53,9 @@ The resource should ideally demonstrate something new instead of duplicating an 
 
 ## OneFormer specific outputs
 
-Could not find docstring for models.oneformer.modeling_oneformer.OneFormerModelOutput
+[[autodoc]] models.oneformer.modeling_oneformer.OneFormerModelOutput
 
-Could not find docstring for models.oneformer.modeling_oneformer.OneFormerForUniversalSegmentationOutput
+[[autodoc]] models.oneformer.modeling_oneformer.OneFormerForUniversalSegmentationOutput
 
 ## OneFormerConfig
 

@@ -154,7 +154,7 @@ The `.optimization` module provides:
             A flag used to disable the deprecation warning (set to `True` to disable the warning).
     eightDecay
 
-Could not find docstring for create_optimizer
+[[autodoc]] create_optimizer
 
 ## Schedules
 
@@ -366,10 +366,10 @@ Could not find docstring for create_optimizer
 
 ### Warmup (TensorFlow)
 
-Could not find docstring for WarmUp
+[[autodoc]] WarmUp
 
 ## Gradient Strategies
 
 ### GradientAccumulator (TensorFlow)
 
-Could not find docstring for GradientAccumulator
+[[autodoc]] GradientAccumulator

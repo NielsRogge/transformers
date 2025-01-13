@@ -223,7 +223,7 @@ found [here](https://github.com/microsoft/UniSpeech/tree/main/UniSpeech-SAT).
 
 ## UniSpeechSat specific outputs
 
-Could not find docstring for models.unispeech_sat.modeling_unispeech_sat.UniSpeechSatForPreTrainingOutput
+[[autodoc]] models.unispeech_sat.modeling_unispeech_sat.UniSpeechSatForPreTrainingOutput
 
 ## UniSpeechSatModel
 

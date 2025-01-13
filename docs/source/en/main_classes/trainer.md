@@ -131,7 +131,7 @@ when used with other models. When using it with your own model, make sure:
 
 ## Seq2SeqTrainer
 
-Could not find docstring for Seq2SeqTrainer
+[[autodoc]] Seq2SeqTrainer
     - evaluate
     - predict
 

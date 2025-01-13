@@ -196,7 +196,7 @@ Methods: build_inputs_with_special_tokens
 
 ## CANINE specific outputs
 
-Could not find docstring for models.canine.modeling_canine.CanineModelOutputWithPooling
+[[autodoc]] models.canine.modeling_canine.CanineModelOutputWithPooling
 
 ## CanineModel
 

@@ -224,9 +224,9 @@ This model was contributed by [vshampor](https://huggingface.co/vshampor). The o
 
 ## MobileBert specific outputs
 
-Could not find docstring for models.mobilebert.modeling_mobilebert.MobileBertForPreTrainingOutput
+[[autodoc]] models.mobilebert.modeling_mobilebert.MobileBertForPreTrainingOutput
 
-Could not find docstring for models.mobilebert.modeling_tf_mobilebert.TFMobileBertForPreTrainingOutput
+[[autodoc]] models.mobilebert.modeling_tf_mobilebert.TFMobileBertForPreTrainingOutput
 
 <frameworkcontent>
 <pt>

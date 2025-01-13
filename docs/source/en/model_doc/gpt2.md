@@ -417,9 +417,9 @@ Methods: save_vocabulary
 
 ## GPT2 specific outputs
 
-Could not find docstring for models.gpt2.modeling_gpt2.GPT2DoubleHeadsModelOutput
+[[autodoc]] models.gpt2.modeling_gpt2.GPT2DoubleHeadsModelOutput
 
-Could not find docstring for models.gpt2.modeling_tf_gpt2.TFGPT2DoubleHeadsModelOutput
+[[autodoc]] models.gpt2.modeling_tf_gpt2.TFGPT2DoubleHeadsModelOutput
 
 <frameworkcontent>
 <pt>
@@ -598,7 +598,7 @@ Methods: call
 
 ## TFSequenceClassifierOutputWithPast
 
-Could not find docstring for modeling_tf_outputs.TFSequenceClassifierOutputWithPast
+[[autodoc]] modeling_tf_outputs.TFSequenceClassifierOutputWithPast
 
 ## TFGPT2Tokenizer
 
