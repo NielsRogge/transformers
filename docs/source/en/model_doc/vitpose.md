@@ -274,7 +274,28 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 ## VitPoseImageProcessor
 
-[[autodoc]] VitPoseImageProcessor
+VitPoseImageProcessor
+
+    Constructs a VitPose image processor.
+
+    Args:
+        do_affine_transform (`bool`, *optional*, defaults to `True`):
+            Whether to apply an affine transformation to the input images.
+        size (`Dict[str, int]` *optional*, defaults to `{"height": 256, "width": 192}`):
+            Resolution of the image after `affine_transform` is applied. Only has an effect if `do_affine_transform` is set to `True`. Can
+            be overriden by `size` in the `preprocess` method.
+        do_rescale (`bool`, *optional*, defaults to `True`):
+            Whether or not to apply the scaling factor (to make pixel values floats between 0. and 1.).
+        rescale_factor (`int` or `float`, *optional*, defaults to `1/255`):
+            Scale factor to use if rescaling the image. Can be overriden by `rescale_factor` in the `preprocess`
+            method.
+        do_normalize (`bool`, *optional*, defaults to `True`):
+            Whether or not to normalize the input with mean and standard deviation.
+        image_mean (`List[int]`, defaults to `[0.485, 0.456, 0.406]`, *optional*):
+            The sequence of means for each channel, to be used when normalizing images.
+        image_std (`List[int]`, defaults to `[0.229, 0.224, 0.225]`, *optional*):
+            The sequence of standard deviations for each channel, to be used when normalizing images.
+    
     - preprocess
     - post_process_pose_estimation
 

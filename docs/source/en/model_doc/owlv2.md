@@ -265,7 +265,18 @@ Methods: preprocess
 
 ## Owlv2Processor
 
-[[autodoc]] Owlv2Processor
+Owlv2Processor
+
+    Constructs an Owlv2 processor which wraps [`Owlv2ImageProcessor`] and [`CLIPTokenizer`]/[`CLIPTokenizerFast`] into
+    a single processor that interits both the image processor and tokenizer functionalities. See the
+    [`~OwlViTProcessor.__call__`] and [`~OwlViTProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`Owlv2ImageProcessor`]):
+            The image processor is a required input.
+        tokenizer ([`CLIPTokenizer`, `CLIPTokenizerFast`]):
+            The tokenizer is a required input.
+    
     - __call__
     - post_process_grounded_object_detection
     - post_process_image_guided_detection

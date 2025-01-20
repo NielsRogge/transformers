@@ -261,7 +261,18 @@ Methods: preprocess
 
 ## OwlViTProcessor
 
-[[autodoc]] OwlViTProcessor
+OwlViTProcessor
+
+    Constructs an OWL-ViT processor which wraps [`OwlViTImageProcessor`] and [`CLIPTokenizer`]/[`CLIPTokenizerFast`]
+    into a single processor that interits both the image processor and tokenizer functionalities. See the
+    [`~OwlViTProcessor.__call__`] and [`~OwlViTProcessor.decode`] for more information.
+
+    Args:
+        image_processor ([`OwlViTImageProcessor`], *optional*):
+            The image processor is a required input.
+        tokenizer ([`CLIPTokenizer`, `CLIPTokenizerFast`], *optional*):
+            The tokenizer is a required input.
+    
     - __call__
     - post_process_grounded_object_detection
     - post_process_image_guided_detection
