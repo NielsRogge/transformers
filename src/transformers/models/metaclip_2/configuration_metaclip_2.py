@@ -17,7 +17,7 @@ class MetaClip2TextConfig(PretrainedConfig):
     This is the configuration class to store the configuration of a [`MetaClip2TextModel`]. It is used to instantiate a METACLIP_2
     text encoder according to the specified arguments, defining the model architecture. Instantiating a configuration
     with the defaults will yield a similar configuration to that of the text encoder of the METACLIP_2
-    [openai/metaclip_2-vit-base-patch32](https://huggingface.co/openai/metaclip_2-vit-base-patch32) architecture.
+    [facebook/metaclip-2-worldwide-huge-quickgelu](https://huggingface.co/facebook/metaclip-2-worldwide-huge-quickgelu) architecture.
 
     Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
     documentation from [`PretrainedConfig`] for more information.
@@ -63,10 +63,10 @@ class MetaClip2TextConfig(PretrainedConfig):
     ```python
     >>> from transformers import MetaClip2TextConfig, MetaClip2TextModel
 
-    >>> # Initializing a MetaClip2TextConfig with openai/metaclip_2-vit-base-patch32 style configuration
+    >>> # Initializing a MetaClip2TextConfig with facebook/metaclip-2-worldwide-huge-quickgelu style configuration
     >>> configuration = MetaClip2TextConfig()
 
-    >>> # Initializing a MetaClip2TextModel (with random weights) from the openai/metaclip_2-vit-base-patch32 style configuration
+    >>> # Initializing a MetaClip2TextModel (with random weights) from the facebook/metaclip-2-worldwide-huge-quickgelu style configuration
     >>> model = MetaClip2TextModel(configuration)
 
     >>> # Accessing the model configuration
@@ -118,7 +118,7 @@ class MetaClip2VisionConfig(PretrainedConfig):
     This is the configuration class to store the configuration of a [`MetaClip2VisionModel`]. It is used to instantiate a
     METACLIP_2 vision encoder according to the specified arguments, defining the model architecture. Instantiating a
     configuration with the defaults will yield a similar configuration to that of the vision encoder of the METACLIP_2
-    [openai/metaclip_2-vit-base-patch32](https://huggingface.co/openai/metaclip_2-vit-base-patch32) architecture.
+    [facebook/metaclip-2-worldwide-huge-quickgelu](https://huggingface.co/facebook/metaclip-2-worldwide-huge-quickgelu) architecture.
 
     Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
     documentation from [`PretrainedConfig`] for more information.
@@ -158,10 +158,10 @@ class MetaClip2VisionConfig(PretrainedConfig):
     ```python
     >>> from transformers import MetaClip2VisionConfig, MetaClip2VisionModel
 
-    >>> # Initializing a MetaClip2VisionConfig with openai/metaclip_2-vit-base-patch32 style configuration
+    >>> # Initializing a MetaClip2VisionConfig with facebook/metaclip-2-worldwide-huge-quickgelu style configuration
     >>> configuration = MetaClip2VisionConfig()
 
-    >>> # Initializing a MetaClip2VisionModel (with random weights) from the openai/metaclip_2-vit-base-patch32 style configuration
+    >>> # Initializing a MetaClip2VisionModel (with random weights) from the facebook/metaclip-2-worldwide-huge-quickgelu style configuration
     >>> model = MetaClip2VisionModel(configuration)
 
     >>> # Accessing the model configuration
@@ -210,7 +210,7 @@ class MetaClip2Config(PretrainedConfig):
     [`MetaClip2Config`] is the configuration class to store the configuration of a [`MetaClip2Model`]. It is used to instantiate
     a METACLIP_2 model according to the specified arguments, defining the text model and vision model configs. Instantiating
     a configuration with the defaults will yield a similar configuration to that of the METACLIP_2
-    [openai/metaclip_2-vit-base-patch32](https://huggingface.co/openai/metaclip_2-vit-base-patch32) architecture.
+    [facebook/metaclip-2-worldwide-huge-quickgelu](https://huggingface.co/facebook/metaclip-2-worldwide-huge-quickgelu) architecture.
 
     Configuration objects inherit from [`PretrainedConfig`] and can be used to control the model outputs. Read the
     documentation from [`PretrainedConfig`] for more information.
@@ -232,10 +232,10 @@ class MetaClip2Config(PretrainedConfig):
     ```python
     >>> from transformers import MetaClip2Config, MetaClip2Model
 
-    >>> # Initializing a MetaClip2Config with openai/metaclip_2-vit-base-patch32 style configuration
+    >>> # Initializing a MetaClip2Config with facebook/metaclip-2-worldwide-huge-quickgelu style configuration
     >>> configuration = MetaClip2Config()
 
-    >>> # Initializing a MetaClip2Model (with random weights) from the openai/metaclip_2-vit-base-patch32 style configuration
+    >>> # Initializing a MetaClip2Model (with random weights) from the facebook/metaclip-2-worldwide-huge-quickgelu style configuration
     >>> model = MetaClip2Model(configuration)
 
     >>> # Accessing the model configuration

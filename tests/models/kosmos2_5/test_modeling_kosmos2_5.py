@@ -764,8 +764,8 @@ class Kosmos2_5ModelIntegrationTest(unittest.TestCase):
             repo,
             device_map=torch_device,
             torch_dtype=dtype,
-            attn_implementation="flash_attention_2"
-            , revision="refs/pr/17"
+            attn_implementation="flash_attention_2",
+            revision="refs/pr/17",
         )
         processor = AutoProcessor.from_pretrained(repo, revision="refs/pr/17")
         prompt = "<ocr>"
