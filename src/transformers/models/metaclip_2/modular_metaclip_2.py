@@ -56,7 +56,7 @@ class MetaClip2MLP(CLIPMLP):
     pass
 
 
-@auto_docstring
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2PreTrainedModel(PreTrainedModel):
     config: MetaClip2Config
     base_model_prefix = "metaclip_2"
@@ -125,7 +125,7 @@ class MetaClip2PreTrainedModel(PreTrainedModel):
 
 class MetaClip2TextTransformer(CLIPTextTransformer):
     @check_model_inputs
-    @auto_docstring
+    @auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
     def forward(
         self,
         input_ids,
@@ -174,6 +174,7 @@ class MetaClip2TextTransformer(CLIPTextTransformer):
         )
 
 
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2TextModel(CLIPTextModel):
     def __init__(self, config: MetaClip2TextConfig):
         super().__init__(config)
@@ -182,6 +183,7 @@ class MetaClip2TextModel(CLIPTextModel):
         self.post_init()
 
 
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2TextModelWithProjection(CLIPTextModelWithProjection):
     def __init__(self, config: MetaClip2TextConfig):
         super().__init__(config)
@@ -195,6 +197,7 @@ class MetaClip2TextModelWithProjection(CLIPTextModelWithProjection):
         self.post_init()
 
 
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2Model(CLIPModel):
     def __init__(self, config: MetaClip2Config):
         super().__init__(config)
@@ -220,14 +223,17 @@ class MetaClip2Model(CLIPModel):
         self.post_init()
 
 
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2VisionModel(CLIPVisionModel):
     pass
 
 
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2VisionModelWithProjection(CLIPVisionModelWithProjection):
     pass
 
 
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2ForImageClassification(CLIPForImageClassification):
     pass
 

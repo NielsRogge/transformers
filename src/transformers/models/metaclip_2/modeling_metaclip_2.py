@@ -268,7 +268,7 @@ class MetaClip2MLP(nn.Module):
         return hidden_states
 
 
-@auto_docstring
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2PreTrainedModel(PreTrainedModel):
     config: MetaClip2Config
     base_model_prefix = "metaclip_2"
@@ -487,7 +487,7 @@ class MetaClip2TextTransformer(nn.Module):
         self._use_flash_attention_2 = config._attn_implementation == "flash_attention_2"
 
     @check_model_inputs
-    @auto_docstring
+    @auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
     def forward(
         self,
         input_ids,
@@ -536,11 +536,7 @@ class MetaClip2TextTransformer(nn.Module):
         )
 
 
-@auto_docstring(
-    custom_intro="""
-    The text model from METACLIP_2 without any head or projection on top.
-    """
-)
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2TextModel(MetaClip2PreTrainedModel):
     config: MetaClip2TextConfig
 
@@ -575,8 +571,8 @@ class MetaClip2TextModel(MetaClip2PreTrainedModel):
         ```python
         >>> from transformers import AutoTokenizer, MetaClip2TextModel
 
-        >>> model = MetaClip2TextModel.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> tokenizer = AutoTokenizer.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2TextModel.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> tokenizer = AutoTokenizer.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> inputs = tokenizer(["a photo of a cat", "a photo of a dog"], padding=True, return_tensors="pt")
 
@@ -612,7 +608,7 @@ class MetaClip2TextModelOutput(ModelOutput):
     attentions: Optional[tuple[torch.FloatTensor, ...]] = None
 
 
-@auto_docstring
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2TextModelWithProjection(MetaClip2PreTrainedModel):
     config: MetaClip2TextConfig
 
@@ -651,8 +647,8 @@ class MetaClip2TextModelWithProjection(MetaClip2PreTrainedModel):
         ```python
         >>> from transformers import AutoTokenizer, MetaClip2TextModelWithProjection
 
-        >>> model = MetaClip2TextModelWithProjection.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> tokenizer = AutoTokenizer.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2TextModelWithProjection.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> tokenizer = AutoTokenizer.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> inputs = tokenizer(["a photo of a cat", "a photo of a dog"], padding=True, return_tensors="pt")
 
@@ -786,7 +782,7 @@ def _get_vector_norm(tensor: torch.Tensor) -> torch.Tensor:
     return normed_tensor
 
 
-@auto_docstring
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2Model(MetaClip2PreTrainedModel):
     config: MetaClip2Config
     _no_split_modules = ["MetaClip2TextEmbeddings", "MetaClip2EncoderLayer", "MetaClip2VisionEmbeddings"]
@@ -846,8 +842,8 @@ class MetaClip2Model(MetaClip2PreTrainedModel):
         ```python
         >>> from transformers import AutoTokenizer, MetaClip2Model
 
-        >>> model = MetaClip2Model.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> tokenizer = AutoTokenizer.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2Model.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> tokenizer = AutoTokenizer.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> inputs = tokenizer(["a photo of a cat", "a photo of a dog"], padding=True, return_tensors="pt")
         >>> text_features = model.get_text_features(**inputs)
@@ -891,8 +887,8 @@ class MetaClip2Model(MetaClip2PreTrainedModel):
         >>> import requests
         >>> from transformers import AutoProcessor, MetaClip2Model
 
-        >>> model = MetaClip2Model.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> processor = AutoProcessor.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2Model.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> processor = AutoProcessor.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> url = "http://images.cocodataset.org/val2017/000000039769.jpg"
         >>> image = Image.open(requests.get(url, stream=True).raw)
@@ -943,8 +939,8 @@ class MetaClip2Model(MetaClip2PreTrainedModel):
         >>> import requests
         >>> from transformers import AutoProcessor, MetaClip2Model
 
-        >>> model = MetaClip2Model.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> processor = AutoProcessor.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2Model.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> processor = AutoProcessor.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> url = "http://images.cocodataset.org/val2017/000000039769.jpg"
         >>> image = Image.open(requests.get(url, stream=True).raw)
@@ -1009,11 +1005,7 @@ class MetaClip2Model(MetaClip2PreTrainedModel):
         )
 
 
-@auto_docstring(
-    custom_intro="""
-    The vision model from METACLIP_2 without any head or projection on top.
-    """
-)
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2VisionModel(MetaClip2PreTrainedModel):
     config: MetaClip2VisionConfig
     main_input_name = "pixel_values"
@@ -1045,8 +1037,8 @@ class MetaClip2VisionModel(MetaClip2PreTrainedModel):
         >>> import requests
         >>> from transformers import AutoProcessor, MetaClip2VisionModel
 
-        >>> model = MetaClip2VisionModel.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> processor = AutoProcessor.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2VisionModel.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> processor = AutoProcessor.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> url = "http://images.cocodataset.org/val2017/000000039769.jpg"
         >>> image = Image.open(requests.get(url, stream=True).raw)
@@ -1084,7 +1076,7 @@ class MetaClip2VisionModelOutput(ModelOutput):
     attentions: Optional[tuple[torch.FloatTensor, ...]] = None
 
 
-@auto_docstring
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2VisionModelWithProjection(MetaClip2PreTrainedModel):
     config: MetaClip2VisionConfig
     main_input_name = "pixel_values"
@@ -1120,8 +1112,8 @@ class MetaClip2VisionModelWithProjection(MetaClip2PreTrainedModel):
         >>> import requests
         >>> from transformers import AutoProcessor, MetaClip2VisionModelWithProjection
 
-        >>> model = MetaClip2VisionModelWithProjection.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
-        >>> processor = AutoProcessor.from_pretrained("facebook/metaclip-2-worldwide-huge-quickgelu")
+        >>> model = MetaClip2VisionModelWithProjection.from_pretrained("openai/metaclip_2-vit-base-patch32")
+        >>> processor = AutoProcessor.from_pretrained("openai/metaclip_2-vit-base-patch32")
 
         >>> url = "http://images.cocodataset.org/val2017/000000039769.jpg"
         >>> image = Image.open(requests.get(url, stream=True).raw)
@@ -1149,12 +1141,7 @@ class MetaClip2VisionModelWithProjection(MetaClip2PreTrainedModel):
         )
 
 
-@auto_docstring(
-    custom_intro="""
-    METACLIP_2 vision encoder with an image classification head on top (a linear layer on top of the pooled final hidden states of
-    the patch tokens) e.g. for ImageNet.
-    """
-)
+@auto_docstring(checkpoint="facebook/metaclip-2-worldwide-huge-quickgelu")
 class MetaClip2ForImageClassification(MetaClip2PreTrainedModel):
     main_input_name = "pixel_values"
 
