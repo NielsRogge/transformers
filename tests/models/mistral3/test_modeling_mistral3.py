@@ -419,11 +419,11 @@ class Mistral3IntegrationTest(unittest.TestCase):
                     "content": [
                         {
                             "type": "image",
-                            "url": "https://huggingface.co/ydshieh/mistral3-test-data/resolve/main/view.jpg",
+                            "url": "https://huggingface.co/ydshieh/mistral3-test-data/resolve/main/Statue-of-Liberty-Island-New-York-Bay.jpg",
                         },
                         {
                             "type": "image",
-                            "url": "https://huggingface.co/ydshieh/mistral3-test-data/resolve/main/view.jpg",
+                            "url": "https://huggingface.co/ydshieh/mistral3-test-data/resolve/main/golden-gate-bridge-san-francisco-purple-flowers-california-echium-candicans-36805947.jpg",
                         },
                         {
                             "type": "text",
