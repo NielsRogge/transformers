@@ -757,9 +757,8 @@ class Kosmos2_5ModelIntegrationTest(unittest.TestCase):
             device_map=torch_device,
             dtype=dtype,
             attn_implementation="flash_attention_2",
-            revision="refs/pr/17",
         )
-        processor = AutoProcessor.from_pretrained(repo, revision="refs/pr/17")
+        processor = AutoProcessor.from_pretrained(repo)
         prompt = "<ocr>"
         generated_ids, generated_text = self.run_example(prompt, image, model, processor)
         EXPECTED_TEXT = [
