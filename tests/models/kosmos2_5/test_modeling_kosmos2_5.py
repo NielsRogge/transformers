@@ -524,7 +524,7 @@ class Kosmos2_5ModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTester
     @slow
     def test_model_from_pretrained(self):
         model_name = "microsoft/kosmos-2.5"
-        model = Kosmos2_5Model.from_pretrained(model_name, revision="refs/pr/17")
+        model = Kosmos2_5Model.from_pretrained(model_name)
         self.assertIsNotNone(model)
 
     @unittest.skip(reason="Does not work on the tiny model as we keep hitting edge cases.")
@@ -583,14 +583,6 @@ class Kosmos2_5ModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineTester
         "KOSMOS-2.5 doesn't support inputs embeds. The test isn't skipped by checking input args because KOSMOS-2 has `generate()` overwritten",
     )
     def test_generate_from_inputs_embeds(self):
-        pass
-
-    # TODO: ydshieh
-    @pytest.mark.generate
-    @unittest.skip(
-        "Kosmos2_5ForConditionalGeneration returns `vision_model_output` which is currently not working with `stack_model_outputs`",
-    )
-    def test_beam_search_low_memory(self):
         pass
 
     @pytest.mark.generate
@@ -683,9 +675,9 @@ class Kosmos2_5ModelIntegrationTest(unittest.TestCase):
         dtype = torch.bfloat16
         repo = "microsoft/kosmos-2.5"
         model = Kosmos2_5ForConditionalGeneration.from_pretrained(
-            repo, device_map=torch_device, torch_dtype=dtype, attn_implementation="eager", revision="refs/pr/17"
+            repo, device_map=torch_device, dtype=dtype, attn_implementation="eager"
         )
-        processor = AutoProcessor.from_pretrained(repo, revision="refs/pr/17")
+        processor = AutoProcessor.from_pretrained(repo)
         prompt = "<ocr>"
         generated_ids, generated_text = self.run_example(prompt, image, model, processor)
         EXPECTED_TEXT = {
@@ -720,9 +712,9 @@ class Kosmos2_5ModelIntegrationTest(unittest.TestCase):
         dtype = torch.bfloat16
         repo = "microsoft/kosmos-2.5"
         model = Kosmos2_5ForConditionalGeneration.from_pretrained(
-            repo, device_map=torch_device, torch_dtype=dtype, attn_implementation="sdpa", revision="refs/pr/17"
+            repo, device_map=torch_device, dtype=dtype, attn_implementation="sdpa"
         )
-        processor = AutoProcessor.from_pretrained(repo, revision="refs/pr/17")
+        processor = AutoProcessor.from_pretrained(repo)
         prompt = "<ocr>"
         generated_ids, generated_text = self.run_example(prompt, image, model, processor)
         EXPECTED_TEXT = {
@@ -763,7 +755,7 @@ class Kosmos2_5ModelIntegrationTest(unittest.TestCase):
         model = Kosmos2_5ForConditionalGeneration.from_pretrained(
             repo,
             device_map=torch_device,
-            torch_dtype=dtype,
+            dtype=dtype,
             attn_implementation="flash_attention_2",
             revision="refs/pr/17",
         )
