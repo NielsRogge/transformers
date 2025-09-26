@@ -43,29 +43,29 @@ CAT_URL = "http://images.cocodataset.org/val2017/000000039769.jpg"
 
 
 DELTA_KEY_REPLACEMENTS: tuple[tuple[str, str], ...] = (
-    (r"^network\\.encoder\\.backbone\\.patch_embed\\.cls_token$", "embeddings.cls_token"),
-    (r"^network\\.encoder\\.backbone\\.patch_embed\\.register_tokens$", "embeddings.register_tokens"),
+    (r"^network\.encoder\.backbone\.patch_embed\.cls_token$", "embeddings.cls_token"),
+    (r"^network\.encoder\.backbone\.patch_embed\.register_tokens$", "embeddings.register_tokens"),
     (
-        r"^network\\.encoder\\.backbone\\.patch_embed\\.patch_embeddings\\.",
+        r"^network\.encoder\.backbone\.patch_embed\.patch_embeddings\.",
         "embeddings.patch_embeddings.",
     ),
-    (r"^network\\.encoder\\.backbone\\.blocks\\.(\\d+)\\.", r"layers.\\1."),
-    (r"^network\\.encoder\\.backbone\\.norm\\.", "layernorm."),
-    (r"^network\\.q\\.", "query."),
-    (r"^network\\.class_head\\.", "class_predictor."),
-    (r"^network\\.mask_head\\.0\\.", "mask_head.fc1."),
-    (r"^network\\.mask_head\\.2\\.", "mask_head.fc2."),
-    (r"^network\\.mask_head\\.4\\.", "mask_head.fc3."),
-    (r"^network\\.upscale\\.(\\d+)\\.conv1\\.", r"upscale_block.block.\\1.conv1."),
-    (r"^network\\.upscale\\.(\\d+)\\.conv2\\.", r"upscale_block.block.\\1.conv2."),
-    (r"^network\\.upscale\\.(\\d+)\\.norm\\.", r"upscale_block.block.\\1.layernorm2d."),
-    (r"^network\\.attn_mask_probs$", "attn_mask_probs"),
+    (r"^network\.encoder\.backbone\.blocks\.(\d+)\.", r"layers.\1."),
+    (r"^network\.encoder\.backbone\.norm\.", "layernorm."),
+    (r"^network\.q\.", "query."),
+    (r"^network\.class_head\.", "class_predictor."),
+    (r"^network\.mask_head\.0\.", "mask_head.fc1."),
+    (r"^network\.mask_head\.2\.", "mask_head.fc2."),
+    (r"^network\.mask_head\.4\.", "mask_head.fc3."),
+    (r"^network\.upscale\.(\d+)\.conv1\.", r"upscale_block.block.\1.conv1."),
+    (r"^network\.upscale\.(\d+)\.conv2\.", r"upscale_block.block.\1.conv2."),
+    (r"^network\.upscale\.(\d+)\.norm\.", r"upscale_block.block.\1.layernorm2d."),
+    (r"^network\.attn_mask_probs$", "attn_mask_probs"),
+    (r"^criterion\.", "criterion."),
 )
 
 SKIP_KEYS = {
     "network.encoder.pixel_mean",
     "network.encoder.pixel_std",
-    "criterion.empty_weight",
 }
 
 
@@ -361,10 +361,15 @@ def _load_original_model(
     for key, value in delta_state.items():
         if key in SKIP_KEYS or key.startswith("criterion"):
             continue
-        if key.startswith("network.encoder.backbone"):
-            state_dict[key] = state_dict[key] + value
-        else:
-            state_dict[key] = value
+
+        target_key = key
+        if key.startswith("network."):
+            target_key = key.replace("network.", "", 1)
+
+        if target_key.startswith("encoder.backbone"):
+            state_dict[target_key] = state_dict[target_key] + value
+        elif target_key in state_dict:
+            state_dict[target_key] = value
 
     model.load_state_dict(state_dict)
     model.eval()
