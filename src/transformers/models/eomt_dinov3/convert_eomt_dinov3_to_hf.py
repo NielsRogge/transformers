@@ -27,7 +27,7 @@ import re
 import sys
 import tempfile
 from pathlib import Path
-from typing import Iterable, Optional, Tuple
+from typing import Iterable, NamedTuple, Optional, Tuple
 
 import requests
 import torch
@@ -376,7 +376,16 @@ def _load_original_model(
     return model
 
 
-def _collect_original_backbone_states(model, pixel_values: torch.Tensor):
+class BackboneVerificationOutputs(NamedTuple):
+    patch_embeddings: torch.Tensor
+    rope_embeddings: tuple[torch.Tensor, torch.Tensor]
+    hidden_states: list[torch.Tensor]
+    mask_logits: list[torch.Tensor]
+    class_logits: list[torch.Tensor]
+    sequence_output: torch.Tensor
+
+
+def _collect_original_backbone_states(model, pixel_values: torch.Tensor) -> BackboneVerificationOutputs:
     backbone = model.encoder.backbone
     hidden_states = (pixel_values - model.encoder.pixel_mean) / model.encoder.pixel_std
 
@@ -385,6 +394,9 @@ def _collect_original_backbone_states(model, pixel_values: torch.Tensor):
         rope = backbone.rope_embeddings(hidden_states)
 
     hidden_states = backbone.patch_embed(hidden_states)
+    patch_embeddings = hidden_states.detach().clone()
+    if rope is None:
+        raise ValueError("Original model is missing rope embeddings")
     outputs = []
     mask_logits_list = []
     class_logits_list = []
@@ -422,12 +434,22 @@ def _collect_original_backbone_states(model, pixel_values: torch.Tensor):
     mask_logits_list.append(mask_logits)
     class_logits_list.append(class_logits)
 
-    return outputs, mask_logits_list, class_logits_list, sequence_output
+    return BackboneVerificationOutputs(
+        patch_embeddings=patch_embeddings,
+        rope_embeddings=rope,
+        hidden_states=outputs,
+        mask_logits=mask_logits_list,
+        class_logits=class_logits_list,
+        sequence_output=sequence_output,
+    )
 
 
-def _collect_hf_backbone_states(model: EomtDinov3ForUniversalSegmentation, pixel_values: torch.Tensor):
-    hidden_states = model.embeddings(pixel_values)
+def _collect_hf_backbone_states(
+    model: EomtDinov3ForUniversalSegmentation, pixel_values: torch.Tensor
+) -> BackboneVerificationOutputs:
     position_embeddings = model.rope_embeddings(pixel_values)
+    hidden_states = model.embeddings(pixel_values)
+    patch_embeddings = hidden_states.detach().clone()
 
     outputs = []
     mask_logits_list = []
@@ -485,7 +507,14 @@ def _collect_hf_backbone_states(model: EomtDinov3ForUniversalSegmentation, pixel
     mask_logits_list.append(mask_logits)
     class_logits_list.append(class_logits)
 
-    return outputs, mask_logits_list, class_logits_list, sequence_output
+    return BackboneVerificationOutputs(
+        patch_embeddings=patch_embeddings,
+        rope_embeddings=position_embeddings,
+        hidden_states=outputs,
+        mask_logits=mask_logits_list,
+        class_logits=class_logits_list,
+        sequence_output=sequence_output,
+    )
 
 
 def _assert_allclose(reference: Iterable[torch.Tensor], actual: Iterable[torch.Tensor], message: str) -> None:
@@ -528,11 +557,15 @@ def verify_conversion(
         orig_outputs = _collect_original_backbone_states(original_model, pixel_values)
         hf_outputs = _collect_hf_backbone_states(hf_model, pixel_values)
 
-    _assert_allclose(orig_outputs[0], hf_outputs[0], "backbone hidden states")
-    _assert_allclose(orig_outputs[1], hf_outputs[1], "mask logits")
-    _assert_allclose(orig_outputs[2], hf_outputs[2], "class logits")
+    if not torch.allclose(orig_outputs.patch_embeddings, hf_outputs.patch_embeddings, atol=1e-4, rtol=1e-4):
+        raise ValueError("Mismatch in patch embeddings")
 
-    if not torch.allclose(orig_outputs[3], hf_outputs[3], atol=1e-4, rtol=1e-4):
+    _assert_allclose(orig_outputs.rope_embeddings, hf_outputs.rope_embeddings, "rope embeddings")
+    _assert_allclose(orig_outputs.hidden_states, hf_outputs.hidden_states, "backbone hidden states")
+    _assert_allclose(orig_outputs.mask_logits, hf_outputs.mask_logits, "mask logits")
+    _assert_allclose(orig_outputs.class_logits, hf_outputs.class_logits, "class logits")
+
+    if not torch.allclose(orig_outputs.sequence_output, hf_outputs.sequence_output, atol=1e-4, rtol=1e-4):
         raise ValueError("Mismatch in final sequence output")
 
 
