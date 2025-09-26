@@ -1,4 +1,22 @@
-"""Conversion script for EoMT-DINOv3 checkpoints."""
+"""Conversion script for EoMT-DINOv3 checkpoints.
+
+Example
+-------
+Assuming the delta checkpoint has been downloaded to ``/tmp/eomt_delta.bin`` and the
+original EoMT repository is cloned at ``/tmp/eomt`` you can run:
+
+.. code-block:: bash
+
+    HF_TOKEN=your_token_here \
+    python -m transformers.models.eomt_dinov3.convert_eomt_dinov3_to_hf \
+        /tmp/eomt_delta.bin \
+        /tmp/eomt_converted \
+        --backbone-repo-id facebook/dinov3-vits16-pretrain-lvd1689m \
+        --verify \
+        --original-repo-path /tmp/eomt
+
+Make sure the token used above has been granted access to the gated DINOv3 weights.
+"""
 
 from __future__ import annotations
 
@@ -68,7 +86,17 @@ def _download_file(
         return destination
 
     with requests.get(url, headers=headers, stream=True) as response:
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as error:
+            if response.status_code == 401:
+                message = (
+                    "Failed to download gated weights. "
+                    "Please make sure you have been granted access and either set the HF_TOKEN "
+                    "environment variable or pass --token."
+                )
+                raise requests.HTTPError(message) from error
+            raise
         with open(destination, "wb") as handle:
             for chunk in response.iter_content(chunk_size=1 << 20):
                 if chunk:
