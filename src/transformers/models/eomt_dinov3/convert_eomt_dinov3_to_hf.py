@@ -70,14 +70,22 @@ SKIP_KEYS = {
 
 
 def _download_file(
-    repo_id: str,
+    repo_id: str | os.PathLike[str],
     filename: str,
     token: Optional[str] = None,
     revision: Optional[str] = None,
     cache_dir: Optional[Path] = None,
 ) -> Path:
+    repo_path = Path(repo_id)
+
+    if repo_path.exists():
+        destination = repo_path / filename
+        if not destination.exists():
+            raise FileNotFoundError(f"File {filename} not found in local repository {repo_path}")
+        return destination
+
     headers = build_hf_headers(token=token)
-    url = hf_hub_url(repo_id, filename=filename, revision=revision)
+    url = hf_hub_url(str(repo_id), filename=filename, revision=revision)
     cache_dir = cache_dir or Path(tempfile.mkdtemp(prefix="eomt_dinov3_"))
     cache_dir.mkdir(parents=True, exist_ok=True)
     destination = cache_dir / filename
@@ -330,7 +338,7 @@ def convert_model(
 
 def _prepare_image(processor: EomtDinov3ImageProcessorFast) -> torch.Tensor:
     image = Image.open(requests.get(CAT_URL, stream=True).raw).convert("RGB")
-    inputs = processor(images=image, return_tensors="pt")
+    inputs = processor(images=image, do_normalize=False, return_tensors="pt")
     return inputs.pixel_values
 
 
@@ -540,6 +548,14 @@ def verify_conversion(
 
     pixel_values = _prepare_image(processor)
 
+    image_mean = torch.tensor(processor.image_mean, dtype=pixel_values.dtype, device=pixel_values.device)[
+        None, :, None, None
+    ]
+    image_std = torch.tensor(processor.image_std, dtype=pixel_values.dtype, device=pixel_values.device)[
+        None, :, None, None
+    ]
+    normalized_pixel_values = (pixel_values - image_mean) / image_std
+
     original_model = _load_original_model(
         original_repo_path=original_repo_path,
         backbone_repo_id=backbone_repo_id,
@@ -555,7 +571,20 @@ def verify_conversion(
 
     with torch.no_grad():
         orig_outputs = _collect_original_backbone_states(original_model, pixel_values)
-        hf_outputs = _collect_hf_backbone_states(hf_model, pixel_values)
+        hf_outputs = _collect_hf_backbone_states(hf_model, normalized_pixel_values)
+
+    patch_abs_diff = (orig_outputs.patch_embeddings - hf_outputs.patch_embeddings).abs()
+    print(f"Patch embedding max abs diff: {patch_abs_diff.max().item():.6e}")
+
+    rope_abs_diffs = [
+        (orig - hf).abs()
+        for orig, hf in zip(orig_outputs.rope_embeddings, hf_outputs.rope_embeddings)
+    ]
+    rope_max_diffs = [diff.max().item() for diff in rope_abs_diffs]
+    print(
+        "RoPE embedding max abs diff: "
+        + ", ".join(f"component_{idx}={value:.6e}" for idx, value in enumerate(rope_max_diffs))
+    )
 
     if not torch.allclose(orig_outputs.patch_embeddings, hf_outputs.patch_embeddings, atol=1e-4, rtol=1e-4):
         raise ValueError("Mismatch in patch embeddings")
