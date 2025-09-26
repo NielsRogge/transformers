@@ -475,7 +475,7 @@ def _collect_hf_backbone_states(
             mask_logits_list.append(mask_logits)
             class_logits_list.append(class_logits)
 
-            bool_attention_mask = torch.ones(
+            attention_mask = torch.ones(
                 hidden_states.shape[0],
                 hidden_states.shape[1],
                 hidden_states.shape[1],
@@ -491,17 +491,21 @@ def _collect_hf_backbone_states(
 
             num_query_tokens = model.config.num_queries
             encoder_start_tokens = num_query_tokens + model.embeddings.num_prefix_tokens
-            bool_attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
+            attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
 
-            bool_attention_mask = bool_attention_mask[:, None, ...].expand(
-                -1, model.config.num_attention_heads, -1, -1
+            probs_index = idx - model.num_hidden_layers + model.config.num_blocks
+            attention_mask = model._disable_attention_mask(
+                attention_mask,
+                prob=model.attn_mask_probs[probs_index],
+                num_query_tokens=num_query_tokens,
+                encoder_start_tokens=encoder_start_tokens,
+                device=hidden_states.device,
             )
 
-            attention_mask = torch.zeros(
-                bool_attention_mask.shape,
-                device=hidden_states.device,
-                dtype=hidden_states.dtype,
-            ).masked_fill(~bool_attention_mask, float("-inf"))
+            attention_mask = attention_mask[:, None, ...].expand(
+                -1, model.config.num_attention_heads, -1, -1
+            )
+            attention_mask = attention_mask.float().masked_fill(~attention_mask, -1e9)
 
         hidden_states = layer_module(
             hidden_states,
