@@ -1,30 +1,30 @@
 """Conversion script for EoMT-DINOv3 checkpoints.
 
-Example
--------
+URL: https://github.com/tue-mps/eomt/blob/master/model_zoo/dinov3.md
+
 To convert one of the official checkpoints directly from the Hugging Face Hub you can run:
 
-.. code-block:: bash
-
-    HF_TOKEN=your_token_here \
-    python -m transformers.models.eomt_dinov3.convert_eomt_dinov3_to_hf \
-        --model-id tue-mps/coco_panoptic_eomt_large_640_dinov3 \
-        --output-dir /tmp/eomt_converted \
-        --verify \
-        --original-repo-path /tmp/eomt
+```bash
+HF_TOKEN=your_token_here \
+python -m transformers.models.eomt_dinov3.convert_eomt_dinov3_to_hf \
+    --model-id tue-mps/coco_panoptic_eomt_large_640_dinov3 \
+    --output-dir /tmp/eomt_converted \
+    --verify \
+    --original-repo-path /tmp/eomt
+```
 
 Alternatively, if the delta checkpoint has already been downloaded to ``/tmp/eomt_delta.bin``
 and the original EoMT repository is cloned at ``/tmp/eomt`` you can run:
 
-.. code-block:: bash
-
-    HF_TOKEN=your_token_here \
-    python -m transformers.models.eomt_dinov3.convert_eomt_dinov3_to_hf \
-        /tmp/eomt_delta.bin \
-        /tmp/eomt_converted \
-        --backbone-repo-id facebook/dinov3-vits16-pretrain-lvd1689m \
-        --verify \
-        --original-repo-path /tmp/eomt
+```bash
+HF_TOKEN=your_token_here \
+python -m transformers.models.eomt_dinov3.convert_eomt_dinov3_to_hf \
+    /tmp/eomt_delta.bin \
+    /tmp/eomt_converted \
+    --backbone-repo-id facebook/dinov3-vits16-pretrain-lvd1689m \
+    --verify \
+    --original-repo-path /tmp/eomt
+```
 
 Make sure the token used above has been granted access to the gated DINOv3 weights.
 """
@@ -41,16 +41,14 @@ from pathlib import Path
 from typing import Iterable, NamedTuple, Optional
 
 import requests
-import torch
-from accelerate import init_empty_weights
-from huggingface_hub import hf_hub_url
-from huggingface_hub.utils import build_hf_headers
 from PIL import Image
 
+import torch
+from accelerate import init_empty_weights
+from huggingface_hub import hf_hub_download
+from safetensors.torch import load_file
+
 from transformers import EomtDinov3Config, EomtDinov3ForUniversalSegmentation, EomtDinov3ImageProcessorFast
-
-
-CAT_URL = "http://images.cocodataset.org/val2017/000000039769.jpg"
 
 
 DEFAULT_BACKBONE_REPO_ID = "facebook/dinov3-vitl16-pretrain-lvd1689m"
@@ -171,66 +169,6 @@ SKIP_KEYS = {
 }
 
 
-def _download_file(
-    repo_id: str | os.PathLike[str],
-    filename: str,
-    token: Optional[str] = None,
-    revision: Optional[str] = None,
-    cache_dir: Optional[Path] = None,
-) -> Path:
-    repo_path = Path(repo_id)
-
-    if repo_path.exists():
-        destination = repo_path / filename
-        if not destination.exists():
-            raise FileNotFoundError(f"File {filename} not found in local repository {repo_path}")
-        return destination
-
-    headers = build_hf_headers(token=token)
-    url = hf_hub_url(str(repo_id), filename=filename, revision=revision)
-    cache_dir = cache_dir or Path(tempfile.mkdtemp(prefix="eomt_dinov3_"))
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    destination = cache_dir / filename
-
-    if destination.exists():
-        return destination
-
-    with requests.get(url, headers=headers, stream=True) as response:
-        try:
-            response.raise_for_status()
-        except requests.HTTPError as error:
-            if response.status_code == 401:
-                message = (
-                    "Failed to download gated weights. "
-                    "Please make sure you have been granted access and either set the HF_TOKEN "
-                    "environment variable or pass --token."
-                )
-                raise requests.HTTPError(message) from error
-            raise
-        with open(destination, "wb") as handle:
-            for chunk in response.iter_content(chunk_size=1 << 20):
-                if chunk:
-                    handle.write(chunk)
-
-    return destination
-
-
-def _load_state_dict_from_repo(
-    repo_id: str,
-    filename: str,
-    token: Optional[str] = None,
-    revision: Optional[str] = None,
-) -> dict[str, torch.Tensor]:
-    path = _download_file(repo_id, filename, token=token, revision=revision)
-
-    if path.suffix == ".safetensors":
-        from safetensors.torch import load_file
-
-        return load_file(path)
-
-    return torch.load(path, map_location="cpu")
-
-
 def _rename_delta_key(key: str) -> tuple[Optional[str], bool]:
     if key in SKIP_KEYS:
         return None, False
@@ -346,12 +284,6 @@ def build_eomt_config(
     return config
 
 
-def load_json_config(repo_id: str, token: Optional[str], revision: Optional[str]) -> dict[str, object]:
-    path = _download_file(repo_id, "config.json", token=token, revision=revision)
-    with open(path, "r") as handle:
-        return json.load(handle)
-
-
 def convert_checkpoint(
     *,
     delta_state: dict[str, torch.Tensor],
@@ -360,14 +292,14 @@ def convert_checkpoint(
     backbone_revision: Optional[str],
     image_size: int,
 ) -> tuple[EomtDinov3Config, dict[str, torch.Tensor]]:
-    base_state = _load_state_dict_from_repo(
-        backbone_repo_id,
-        filename="model.safetensors",
-        token=token,
-        revision=backbone_revision,
-    )
 
-    base_config = load_json_config(backbone_repo_id, token=token, revision=backbone_revision)
+    # load model.safetensors
+    filepath = hf_hub_download(backbone_repo_id, filename="model.safetensors", token=token, revision=backbone_revision)
+    base_state = load_file(filepath)
+
+    # load config.json
+    filepath = hf_hub_download(backbone_repo_id, filename="config.json", token=token, revision=backbone_revision)
+    base_config = json.load(open(filepath, "r"))
 
     mapped_base = map_dinov3_state_to_eomt(base_state)
     converted_delta, backbone_delta_keys = convert_delta_state_dict(delta_state)
@@ -423,6 +355,7 @@ def convert_model(
         do_pad=True,
     )
 
+    print("Verifying conversion...")
     if verify:
         verify_conversion(
             hf_model=model,
@@ -445,7 +378,8 @@ def convert_model(
 
 
 def _prepare_image(processor: EomtDinov3ImageProcessorFast) -> torch.Tensor:
-    image = Image.open(requests.get(CAT_URL, stream=True).raw).convert("RGB")
+    url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+    image = Image.open(requests.get(url, stream=True).raw).convert("RGB")
     inputs = processor(images=image, do_normalize=False, return_tensors="pt")
     return inputs.pixel_values
 
@@ -708,9 +642,8 @@ def verify_conversion(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert EoMT-DINOv3 checkpoints to 🤗 Transformers format")
-    parser.add_argument("delta", type=Path, nargs="?", help="Path to the delta checkpoint (pytorch_model.bin)")
-    parser.add_argument("output_dir", type=Path, nargs="?", help="Directory to save the converted model")
-    parser.add_argument("--output-dir", dest="output_dir_kw", type=Path, help="Directory to save the converted model")
+    parser.add_argument("--delta-path", type=Path, help="Path to the delta checkpoint (pytorch_model.bin)")
+    parser.add_argument("--output-dir", type=Path, help="Directory to save the converted model")
     parser.add_argument(
         "--model-id",
         help="Name of an official EoMT-DINOv3 checkpoint to download and convert",
@@ -738,8 +671,8 @@ def main() -> None:
         print_checkpoint_catalog()
         return
 
-    output_dir = args.output_dir_kw or args.output_dir
-    delta_path = args.delta
+    output_dir = args.output_dir
+    delta_path = args.delta_path
 
     if args.model_id is not None:
         spec = resolve_checkpoint_spec(args.model_id)
@@ -747,15 +680,14 @@ def main() -> None:
         if (
             output_dir is None
             and args.output_dir is None
-            and args.output_dir_kw is None
             and delta_path is not None
         ):
             output_dir = delta_path
             delta_path = None
 
         if delta_path is None:
-            delta_path = _download_file(
-                spec.model_id,
+            delta_path = hf_hub_download(
+                repo_id=spec.model_id,
                 filename=spec.delta_filename,
                 token=args.token,
             )
