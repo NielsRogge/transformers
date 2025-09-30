@@ -2,8 +2,19 @@
 
 Example
 -------
-Assuming the delta checkpoint has been downloaded to ``/tmp/eomt_delta.bin`` and the
-original EoMT repository is cloned at ``/tmp/eomt`` you can run:
+To convert one of the official checkpoints directly from the Hugging Face Hub you can run:
+
+.. code-block:: bash
+
+    HF_TOKEN=your_token_here \
+    python -m transformers.models.eomt_dinov3.convert_eomt_dinov3_to_hf \
+        --model-id tue-mps/coco_panoptic_eomt_large_640_dinov3 \
+        --output-dir /tmp/eomt_converted \
+        --verify \
+        --original-repo-path /tmp/eomt
+
+Alternatively, if the delta checkpoint has already been downloaded to ``/tmp/eomt_delta.bin``
+and the original EoMT repository is cloned at ``/tmp/eomt`` you can run:
 
 .. code-block:: bash
 
@@ -40,6 +51,97 @@ from transformers import EomtDinov3Config, EomtDinov3ForUniversalSegmentation, E
 
 
 CAT_URL = "http://images.cocodataset.org/val2017/000000039769.jpg"
+
+
+DEFAULT_BACKBONE_REPO_ID = "facebook/dinov3-vitl16-pretrain-lvd1689m"
+DEFAULT_IMAGE_SIZE = 640
+
+
+class CheckpointSpec(NamedTuple):
+    """Metadata describing how to convert an official EoMT-DINOv3 checkpoint."""
+
+    model_id: str
+    delta_filename: str
+    backbone_repo_id: str
+    image_size: int
+
+
+CHECKPOINT_CATALOG: tuple[CheckpointSpec, ...] = (
+    CheckpointSpec(
+        model_id="tue-mps/coco_panoptic_eomt_small_640_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vits16-pretrain-lvd1689m",
+        image_size=640,
+    ),
+    CheckpointSpec(
+        model_id="tue-mps/coco_panoptic_eomt_base_640_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vitb16-pretrain-lvd1689m",
+        image_size=640,
+    ),
+    CheckpointSpec(
+        model_id="tue-mps/coco_panoptic_eomt_large_640_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vitl16-pretrain-lvd1689m",
+        image_size=640,
+    ),
+    CheckpointSpec(
+        model_id="tue-mps/coco_panoptic_eomt_large_1280_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vitl16-pretrain-lvd1689m",
+        image_size=1280,
+    ),
+    CheckpointSpec(
+        model_id="tue-mps/ade20k_semantic_eomt_large_512_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vitl16-pretrain-lvd1689m",
+        image_size=512,
+    ),
+    CheckpointSpec(
+        model_id="tue-mps/coco_instance_eomt_large_640_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vitl16-pretrain-lvd1689m",
+        image_size=640,
+    ),
+    CheckpointSpec(
+        model_id="tue-mps/coco_instance_eomt_large_1280_dinov3",
+        delta_filename="pytorch_model.bin",
+        backbone_repo_id="facebook/dinov3-vitl16-pretrain-lvd1689m",
+        image_size=1280,
+    ),
+)
+
+
+def _build_checkpoint_index() -> dict[str, CheckpointSpec]:
+    index: dict[str, CheckpointSpec] = {}
+
+    for spec in CHECKPOINT_CATALOG:
+        keys = {spec.model_id.lower(), spec.model_id.split("/", maxsplit=1)[-1].lower()}
+        for key in keys:
+            index[key] = spec
+
+    return index
+
+
+CHECKPOINT_SPECS = _build_checkpoint_index()
+
+
+def resolve_checkpoint_spec(model_id: str) -> CheckpointSpec:
+    key = model_id.lower()
+    if key not in CHECKPOINT_SPECS:
+        available = ", ".join(sorted(spec.model_id for spec in CHECKPOINT_CATALOG))
+        raise ValueError(
+            f"Unknown checkpoint '{model_id}'. Available options: {available}."
+        )
+    return CHECKPOINT_SPECS[key]
+
+
+def print_checkpoint_catalog() -> None:
+    print("Supported checkpoints:")
+    for spec in CHECKPOINT_CATALOG:
+        print(
+            f"- {spec.model_id} (image_size={spec.image_size}, backbone={spec.backbone_repo_id})"
+        )
 
 
 DELTA_KEY_REPLACEMENTS: tuple[tuple[str, str], ...] = (
@@ -604,16 +706,22 @@ def verify_conversion(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert EoMT-DINOv3 checkpoints to 🤗 Transformers format")
-    parser.add_argument("delta", type=Path, help="Path to the delta checkpoint (pytorch_model.bin)")
-    parser.add_argument("output_dir", type=Path, help="Directory to save the converted model")
+    parser.add_argument("delta", type=Path, nargs="?", help="Path to the delta checkpoint (pytorch_model.bin)")
+    parser.add_argument("output_dir", type=Path, nargs="?", help="Directory to save the converted model")
+    parser.add_argument("--output-dir", dest="output_dir_kw", type=Path, help="Directory to save the converted model")
+    parser.add_argument(
+        "--model-id",
+        help="Name of an official EoMT-DINOv3 checkpoint to download and convert",
+    )
+    parser.add_argument("--list-models", action="store_true", help="List supported checkpoint names and exit")
     parser.add_argument(
         "--backbone-repo-id",
-        default="facebook/dinov3-vitl16-pretrain-lvd1689m",
+        default=DEFAULT_BACKBONE_REPO_ID,
         help="Hugging Face Hub repository id for the base DINOv3 weights",
     )
     parser.add_argument("--token", default=os.environ.get("HF_TOKEN"))
     parser.add_argument("--backbone-revision", default=None)
-    parser.add_argument("--image-size", type=int, default=640)
+    parser.add_argument("--image-size", type=int, default=DEFAULT_IMAGE_SIZE)
     parser.add_argument("--safe-serialization", action="store_true")
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--original-repo-path", type=Path, default=None)
@@ -623,13 +731,55 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
+    if args.list_models:
+        print_checkpoint_catalog()
+        return
+
+    output_dir = args.output_dir_kw or args.output_dir
+    delta_path = args.delta
+
+    if args.model_id is not None:
+        spec = resolve_checkpoint_spec(args.model_id)
+
+        if (
+            output_dir is None
+            and args.output_dir is None
+            and args.output_dir_kw is None
+            and delta_path is not None
+        ):
+            output_dir = delta_path
+            delta_path = None
+
+        if delta_path is None:
+            delta_path = _download_file(
+                spec.model_id,
+                filename=spec.delta_filename,
+                token=args.token,
+            )
+
+        if args.backbone_repo_id == DEFAULT_BACKBONE_REPO_ID:
+            args.backbone_repo_id = spec.backbone_repo_id
+
+        if args.image_size == DEFAULT_IMAGE_SIZE:
+            args.image_size = spec.image_size
+
+    if output_dir is None:
+        raise ValueError(
+            "An output directory must be provided via the positional argument or --output-dir."
+        )
+
+    if delta_path is None:
+        raise ValueError(
+            "Provide a delta checkpoint path or choose a supported checkpoint with --model-id."
+        )
+
     convert_model(
-        delta_path=args.delta,
+        delta_path=delta_path,
         backbone_repo_id=args.backbone_repo_id,
         token=args.token,
         backbone_revision=args.backbone_revision,
         image_size=args.image_size,
-        output_dir=args.output_dir,
+        output_dir=output_dir,
         safe_serialization=args.safe_serialization,
         verify=args.verify,
         original_repo_path=args.original_repo_path,
