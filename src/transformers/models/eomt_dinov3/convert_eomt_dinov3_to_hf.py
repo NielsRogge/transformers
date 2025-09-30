@@ -27,7 +27,7 @@ import re
 import sys
 import tempfile
 from pathlib import Path
-from typing import Iterable, NamedTuple, Optional, Tuple
+from typing import Iterable, NamedTuple, Optional
 
 import requests
 import torch
@@ -129,7 +129,7 @@ def _load_state_dict_from_repo(
     return torch.load(path, map_location="cpu")
 
 
-def _rename_delta_key(key: str) -> Tuple[Optional[str], bool]:
+def _rename_delta_key(key: str) -> tuple[Optional[str], bool]:
     if key in SKIP_KEYS:
         return None, False
 
@@ -297,6 +297,7 @@ def convert_model(
     safe_serialization: bool,
     verify: bool,
     original_repo_path: Optional[Path],
+    push_to_hub: bool = False,
 ) -> None:
     raw_delta_state = torch.load(delta_path, map_location="cpu")
     delta_state = ensure_state_dict(raw_delta_state)
@@ -331,9 +332,14 @@ def convert_model(
             original_repo_path=original_repo_path,
         )
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(output_dir, safe_serialization=safe_serialization)
-    processor.save_pretrained(output_dir)
+    if output_dir is not None:
+        output_dir.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(output_dir, safe_serialization=safe_serialization)
+        processor.save_pretrained(output_dir)
+
+    if push_to_hub:
+        model.push_to_hub("nielsr/eomt-dinov3")
+        processor.push_to_hub("nielsr/eomt-dinov3")
 
 
 def _prepare_image(processor: EomtDinov3ImageProcessorFast) -> torch.Tensor:
@@ -352,7 +358,7 @@ def _load_original_model(
     num_queries: int,
     num_blocks: int,
     delta_state: dict[str, torch.Tensor],
-) -> "torch.nn.Module":
+) -> torch.nn.Module:
     sys.path.insert(0, str(original_repo_path))
 
     from models.eomt import EoMT
@@ -502,9 +508,7 @@ def _collect_hf_backbone_states(
                 device=hidden_states.device,
             )
 
-            attention_mask = attention_mask[:, None, ...].expand(
-                -1, model.config.num_attention_heads, -1, -1
-            )
+            attention_mask = attention_mask[:, None, ...].expand(-1, model.config.num_attention_heads, -1, -1)
             attention_mask = attention_mask.float().masked_fill(~attention_mask, -1e9)
 
         hidden_states = layer_module(
@@ -580,10 +584,7 @@ def verify_conversion(
     patch_abs_diff = (orig_outputs.patch_embeddings - hf_outputs.patch_embeddings).abs()
     print(f"Patch embedding max abs diff: {patch_abs_diff.max().item():.6e}")
 
-    rope_abs_diffs = [
-        (orig - hf).abs()
-        for orig, hf in zip(orig_outputs.rope_embeddings, hf_outputs.rope_embeddings)
-    ]
+    rope_abs_diffs = [(orig - hf).abs() for orig, hf in zip(orig_outputs.rope_embeddings, hf_outputs.rope_embeddings)]
     rope_max_diffs = [diff.max().item() for diff in rope_abs_diffs]
     print(
         "RoPE embedding max abs diff: "
@@ -597,6 +598,7 @@ def verify_conversion(
     _assert_allclose(orig_outputs.hidden_states, hf_outputs.hidden_states, "backbone hidden states")
     _assert_allclose(orig_outputs.mask_logits, hf_outputs.mask_logits, "mask logits")
     _assert_allclose(orig_outputs.class_logits, hf_outputs.class_logits, "class logits")
+    print("✅ Original implementation matches 🤗 Transformers implementation!")
 
     if not torch.allclose(orig_outputs.sequence_output, hf_outputs.sequence_output, atol=1e-4, rtol=1e-4):
         raise ValueError("Mismatch in final sequence output")
@@ -617,6 +619,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--safe-serialization", action="store_true")
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--original-repo-path", type=Path, default=None)
+    parser.add_argument("--push-to-hub", action="store_true")
     return parser.parse_args()
 
 
@@ -633,9 +636,9 @@ def main() -> None:
         safe_serialization=args.safe_serialization,
         verify=args.verify,
         original_repo_path=args.original_repo_path,
+        push_to_hub=args.push_to_hub,
     )
 
 
 if __name__ == "__main__":
     main()
-

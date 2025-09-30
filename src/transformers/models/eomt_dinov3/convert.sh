@@ -3,4 +3,5 @@ python convert_eomt_dinov3_to_hf.py \
     . \
     --backbone-repo-id facebook/dinov3-vits16-pretrain-lvd1689m \
     --verify \
-    --original-repo-path /Users/nielsrogge/Documents/python_projects/eomt
+    --original-repo-path /Users/nielsrogge/Documents/python_projects/eomt \
+    --push-to-hub
