@@ -30,12 +30,6 @@ Find more details at `docs/source/en/contributing.md`.
   - `/models`: Tests for individual models. Model tests inherit from common tests in the root `/tests` directory.
 - `/docs`: This contains the documentation for the library, including guides, tutorials, and API references.
 
-## Coding Conventions for Hugging Face Transformers
-
-- PRs should be as brief as possible. Bugfix PRs in particular can often be only one or two lines long, and do not need large comments, docstrings or new functions in this case. Aim to minimize the size of the diff.
-- When writing tests, they should be added to an existing file. The only exception is for PRs to add a new model, when a new test directory should be created for that model.
-- Code style is enforced in the CI. You can install the style tools with `pip install -e .[quality]`. You can then run `make fixup` to apply style and consistency fixes to your code.
-
 ## Copying and inheritance
 
 Many models in the codebase share similar code, but the philosophy of Transformers is that each model implementation should be self-contained and independent. Each model is implemented in a standalone `modeling_xxx.py` file which does not rely on inheritance. This allows people to easily debug a single model implementation without having to traverse many files.
@@ -43,15 +37,22 @@ Many models in the codebase share similar code, but the philosophy of Transforme
 However, to make it easier for contributors to add new models, the "modular" system was introduced. Modular allows contributors to use inheritance by implementing a `modular_xxx.py` file. These files are not meant to be used directly. Instead, style tools like `make fix-copies` and `make fixup` automatically generate a complete standalone modeling file, like `modeling_bert.py`, from the modular file like `modular_bert.py`. If a model has a modular file, the modeling file should never be edited directly! Instead, changes should be made in the modular file, and then you should run `make fixup` to update the modeling file automatically. When adding new models, you should prefer the `modular` style. Find a complete guide on modular at docs/source/en/modular_transformers.md.
 
 Besides that, there's the "Copied from" syntax. Functions or entire classes can have a comment at the top like this: `# Copied from transformers.models.llama.modeling_llama.rotate_half` or `# Copied from transformers.models.t5.modeling_t5.T5LayerNorm with T5->MT5`. These comments are actively checked by the style tools, and copies will automatically be updated when the base code is updated. If you need to update a copied function, you should either update the base function and use `make fixup` to propagate the change to all copies, or simply remove the `# Copied from` comment if that is inappropriate.
-- "Modular" files. These files briefly define models by composing them using inheritance from other models. They are not meant to be used directly. 
 
-## Conversion script
+## Preprocessor classes
 
-When converting checkpoints of a given model from the original Github repository to the Transformers API, one typically implements a so-called conversion script at `src/transformers/models/[name]/convert_name_to_hf.py`. This script not only converts the weights by remapping the keys and values of the state dictionary, it also verifies whether the outputs of the Transformers model are exactly the same as the original implementation on the same dummy inputs. For example, the `src/transformers/models/dinov3_vit/convert_dinov3_vit_to_hf.py` conversion script was used to convert the weights of DINOv3, a vision model by Meta, from the original implementation to the Transformers format.
+Each model in the Transformers library has one or more corresponding preprocessor classes which allow to preprocess inputs (such as text, images or video) for the model. Currently, the following preprocessor classes are available:
 
-Conversion of weights is typically done by forwarding the same dummy input (e.g. a cats image in case of a vision model) through both the original implementation and the Transformers implementation, and then verifying the outputs at each layer of the neural network in a bottom-up fashion, starting with the embedding layer, then the position embedding layer, and so on. One can use print statements or `torch.testing.assert_close` to verify the values. A conversion is successful in case the outputs of the model are exactly the same between both implementations (up to a certain absolute tolerance or `atol`).
+- tokenizers: used to convert text into so-called `input_ids`. See `docs/source/en/main_classes/tokenizer.md` for details.
+- image processors: used to convert images into so-called `pixel_values`. See `docs/source/en/main_classes/image_processor.md` for details.
+- video processors: used to convert videos into similarly called `pixel_values`. See `docs/source/en/main_classes/video_processor.md` for details.
+- feature extractors: used to convert audio into so-called `input_features`. See `docs/source/en/main_classes/feature_extractor.md` for details.
+- processors: used to combine several processor classes for multimodal models. For example, the Qwen2-VL is a vision-language model, hence it requires both a tokenizer and an image processor. The `Qwen2VLProcessor` class combines both processor classes into one. See `docs/source/en/processors.md` for details.
 
-The script should allow for flexibility to convert each of the released checkpoints by providing a `--model_name` or `--model_id` flag. Additionally, an option to push the converted weights to the hub is provided via a `--push_to_hub` flag.
+Tokenizers and image processors both come in two flavors, a slow and a fast one. 
+- fast tokenizers use a Rust backend from the `tokenizers` library.
+- fast image processors use the `torchvision` backend.
+
+Typically one prefers the fast implementation.
 
 ## Auto mappings
 
@@ -60,6 +61,22 @@ Oftentimes, a new model can simply reuse an existing preprocessor class, like a 
 For example, when Qwen3-VL came out, one simply added the line `("qwen3_vl", ("Qwen2VLImageProcessor", "Qwen2VLImageProcessorFast")),` to `src/transformers/models/auto/image_processing_auto.py` so that people can use the `AutoImageProcessor` class which will load an instance of `Qwen2VLImageProcessorFast` behind the scenes (since Qwen3-VL reuses the same image processor as Qwen2-VL).
 
 In case the model introduces some new logic which is not yet present in any of the existing preprocessors, one typically adds a new one. For example, if a text model introduces a new way of tokenization, one would add a new tokenizer at `src/transformers/models/[name]/tokenization_[name]_fast.py`.
+
+Additionally, in case a model class follows the same API as other classes, one also adds it to the corresponding auto mapping at `src/transformers/models/auto/modeling_auto.py`. For example, the Qwen2-VL and Qwen3-VL classes can both be loaded using the `AutoModelForImageTextToText` class.
+
+## Coding Conventions for Hugging Face Transformers
+
+- PRs should be as brief as possible. Bugfix PRs in particular can often be only one or two lines long, and do not need large comments, docstrings or new functions in this case. Aim to minimize the size of the diff.
+- When writing tests, they should be added to an existing file. The only exception is for PRs to add a new model, when a new test directory should be created for that model.
+- Code style is enforced in the CI. You can install the style tools with `pip install -e .[quality]`. You can then run `make fixup` to apply style and consistency fixes to your code.
+
+## Conversion script
+
+When converting checkpoints of a given model from the original Github repository to the Transformers API, one typically implements a so-called conversion script at `src/transformers/models/[name]/convert_name_to_hf.py`. This script not only converts the weights by remapping the keys and values of the state dictionary, it also verifies whether the outputs of the Transformers model are exactly the same as the original implementation on the same dummy inputs. For example, the `src/transformers/models/dinov3_vit/convert_dinov3_vit_to_hf.py` conversion script was used to convert the weights of DINOv3, a vision model by Meta, from the original implementation to the Transformers format.
+
+Conversion of weights is typically done by forwarding the same dummy input (e.g. a cats image in case of a vision model) through both the original implementation and the Transformers implementation, and then verifying the outputs at each layer of the neural network in a bottom-up fashion, starting with the embedding layer, then the position embedding layer, and so on. One can use print statements or `torch.testing.assert_close` to verify the values. A conversion is successful in case the outputs of the model are exactly the same between both implementations (up to a certain absolute tolerance or `atol`).
+
+The script should allow for flexibility to convert each of the released checkpoints by providing a `--model_name` or `--model_id` flag. Additionally, an option to push the converted weights to the hub is provided via a `--push_to_hub` flag.
 
 ## Testing
 
