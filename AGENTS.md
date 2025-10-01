@@ -14,9 +14,10 @@ Next, let `uv` create a virtual environment and install an editable version the 
 
 ```bash
 uv venv
-uv pip install -e ".[dev]"
+uv pip install -e ".[dev-torch]"
 ```
 
+This command installes an editable (`-e`) version of the Transformers library along with required `dev` dependencies which includes PyTorch. 
 Make sure to always work within the virtual environment in order to use the necessary dependencies like `ruff` and `pytest`.
 
 Find more details at `docs/source/en/contributing.md`.
@@ -44,10 +45,57 @@ However, to make it easier for contributors to add new models, the "modular" sys
 Besides that, there's the "Copied from" syntax. Functions or entire classes can have a comment at the top like this: `# Copied from transformers.models.llama.modeling_llama.rotate_half` or `# Copied from transformers.models.t5.modeling_t5.T5LayerNorm with T5->MT5`. These comments are actively checked by the style tools, and copies will automatically be updated when the base code is updated. If you need to update a copied function, you should either update the base function and use `make fixup` to propagate the change to all copies, or simply remove the `# Copied from` comment if that is inappropriate.
 - "Modular" files. These files briefly define models by composing them using inheritance from other models. They are not meant to be used directly. 
 
+## Conversion script
+
+When converting checkpoints of a given model from the original Github repository to the Transformers API, one typically implements a so-called conversion script at `src/transformers/models/[name]/convert_name_to_hf.py`. This script not only converts the weights by remapping the keys and values of the state dictionary, it also verifies whether the outputs of the Transformers model are exactly the same as the original implementation on the same dummy inputs. For example, the `src/transformers/models/dinov3_vit/convert_dinov3_vit_to_hf.py` conversion script was used to convert the weights of DINOv3, a vision model by Meta, from the original implementation to the Transformers format.
+
+Conversion of weights is typically done by forwarding the same dummy input (e.g. a cats image in case of a vision model) through both the original implementation and the Transformers implementation, and then verifying the outputs at each layer of the neural network in a bottom-up fashion, starting with the embedding layer, then the position embedding layer, and so on. One can use print statements or `torch.testing.assert_close` to verify the values. A conversion is successful in case the outputs of the model are exactly the same between both implementations (up to a certain absolute tolerance or `atol`).
+
+The script should allow for flexibility to convert each of the released checkpoints by providing a `--model_name` or `--model_id` flag. Additionally, an option to push the converted weights to the hub is provided via a `--push_to_hub` flag.
+
+## Auto mappings
+
+Oftentimes, a new model can simply reuse an existing preprocessor class, like a tokenizer, image processor or multimodal processor. In that case, there's no need for the new model to duplicate that logic, but instead simply add a mapping to the corresponding "auto" file.
+
+For example, when Qwen3-VL came out, one simply added the line `("qwen3_vl", ("Qwen2VLImageProcessor", "Qwen2VLImageProcessorFast")),` to `src/transformers/models/auto/image_processing_auto.py` so that people can use the `AutoImageProcessor` class which will load an instance of `Qwen2VLImageProcessorFast` behind the scenes (since Qwen3-VL reuses the same image processor as Qwen2-VL).
+
+In case the model introduces some new logic which is not yet present in any of the existing preprocessors, one typically adds a new one. For example, if a text model introduces a new way of tokenization, one would add a new tokenizer at `src/transformers/models/[name]/tokenization_[name]_fast.py`.
+
 ## Testing
 
-After making changes, you should usually run `make fixup` to ensure any copies and modular files are updated, and then test all affected models. This includes both
-the model you made the changes in and any other models that were updated by `make fixup`. Tests can be run with `pytest tests/models/[name]/test_modeling_[name].py`
-If your changes affect code in other classes like tokenizers or processors, you should run those tests instead, like `test_processing_[name].py` or `test_tokenization_[name].py`.
+Tests live in the `tests` folder. In order to run tests, you may need to install dependencies. You can do this with `pip install -e .[testing]`. You will probably also need to `pip install torch accelerate` if your environment does not already have them.
 
-In order to run tests, you may need to install dependencies. You can do this with `pip install -e .[testing]`. You will probably also need to `pip install torch accelerate` if your environment does not already have them.
+Tests for models live in the `tests/models` folder. Each model has its own test files implemented. Some models only have a test file for their model implementation, e.g. `tests/models/[name]/test_modeling_[name].py`, others also have test files for their preprocessors, e.g. `test_processing_[name].py` or `test_tokenization_[name].py`. Models which don't have their preprocessors tested are models which simply re-use existing preprocessors from other models. This is defined in the `src/transformers/models/auto` files.
+
+### Running tests
+
+In case you want to run a single test file, you can use the following command:
+
+```bash
+pytest tests/models/[name]/test_modeling_[name].py
+```
+
+In case you want to run all tests of a given model, you can run the following command:
+
+```bash
+pytest tests/models/[name]
+```
+
+In case your changes affect code in other classes like tokenizers or processors, you should run those tests instead, like `test_processing_[name].py` or `test_tokenization_[name].py`.
+
+To run an individual test method, you can use the following command (example given for BERT):
+
+```bash
+pytest tests/models/bert/test_modeling_bert.py::BertModelTest::test_model_as_decoder_with_3d_input_mask
+```
+
+### Slow tests
+
+Some tests take a long time to run, for example when they involve loading pre-trained weights from the hub. In that case, they have the @slow annotator. Integration tests are examples of slow tests, as they verify the outputs of the model on some dummy or fixed inputs. Slow tests can be run using the `RUN_SLOW=1` environment variable, for example:
+
+```bash
+RUN_SLOW=yes pytest tests/models/bert/test_modeling_bert.py::BertModelIntegrationTest
+```
+
+After making changes, you should usually run `make fixup` to ensure any copies and modular files are updated, and then test all affected models. This includes both
+the model you made the changes in and any other models that were updated by `make fixup`. 
