@@ -2,6 +2,25 @@
 
 This AGENTS.md file provides guidance for code agents working with this codebase.
 
+## Environment setup
+
+When contributing to the Transformers library, prefer [`uv`](https://docs.astral.sh/uv/guides/install-python/) for Python package management since it is much faster than `pip`. First install it as explained in the [installation guide](https://docs.astral.sh/uv/getting-started/installation/), e.g. using pip:
+
+```bash
+pip install uv
+```
+
+Next, let `uv` create a virtual environment and install an editable version the Transformers library within it as follows:
+
+```bash
+uv venv
+uv pip install -e ".[dev]"
+```
+
+Make sure to always work within the virtual environment in order to use the necessary dependencies like `ruff` and `pytest`.
+
+Find more details at `docs/source/en/contributing.md`.
+
 ## Core Project Structure
 
 - `/src/transformers`: This contains the core source code for the library
@@ -18,17 +37,12 @@ This AGENTS.md file provides guidance for code agents working with this codebase
 
 ## Copying and inheritance
 
-Many models in the codebase have similar code, but it is not shared by inheritance because we want each model file to be self-contained.
-We use two mechanisms to keep this code in sync:
+Many models in the codebase share similar code, but the philosophy of Transformers is that each model implementation should be self-contained and independent. Each model is implemented in a standalone `modeling_xxx.py` file which does not rely on inheritance. This allows people to easily debug a single model implementation without having to traverse many files.
 
-- "Copied from" syntax. Functions or entire classes can have a comment at the top like this: `# Copied from transformers.models.llama.modeling_llama.rotate_half` or `# Copied from transformers.models.t5.modeling_t5.T5LayerNorm with T5->MT5`
-  These comments are actively checked by the style tools, and copies will automatically be updated when the base code is updated. If you need to update a copied function, you should
-  either update the base function and use `make fixup` to propagate the change to all copies, or simply remove the `# Copied from` comment if that is inappropriate.
-- "Modular" files. These files briefly define models by composing them using inheritance from other models. They are not meant to be used directly. Instead, the style tools
-  automatically generate a complete modeling file, like `modeling_bert.py`, from the modular file like `modular_bert.py`. If a model has a modular file, the modeling file
-  should never be edited directly! Instead, changes should be made in the modular file, and then you should run `make fixup` to update the modeling file automatically.
+However, to make it easier for contributors to add new models, the "modular" system was introduced. Modular allows contributors to use inheritance by implementing a `modular_xxx.py` file. These files are not meant to be used directly. Instead, style tools like `make fix-copies` and `make fixup` automatically generate a complete standalone modeling file, like `modeling_bert.py`, from the modular file like `modular_bert.py`. If a model has a modular file, the modeling file should never be edited directly! Instead, changes should be made in the modular file, and then you should run `make fixup` to update the modeling file automatically. When adding new models, you should prefer the `modular` style. Find a complete guide on modular at docs/source/en/modular_transformers.md.
 
-When adding new models, you should prefer `modular` style.
+Besides that, there's the "Copied from" syntax. Functions or entire classes can have a comment at the top like this: `# Copied from transformers.models.llama.modeling_llama.rotate_half` or `# Copied from transformers.models.t5.modeling_t5.T5LayerNorm with T5->MT5`. These comments are actively checked by the style tools, and copies will automatically be updated when the base code is updated. If you need to update a copied function, you should either update the base function and use `make fixup` to propagate the change to all copies, or simply remove the `# Copied from` comment if that is inappropriate.
+- "Modular" files. These files briefly define models by composing them using inheritance from other models. They are not meant to be used directly. 
 
 ## Testing
 
