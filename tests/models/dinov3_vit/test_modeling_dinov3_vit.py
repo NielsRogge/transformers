@@ -20,6 +20,7 @@ from transformers import DINOv3ViTConfig
 from transformers.testing_utils import require_torch, require_vision, slow, torch_device
 from transformers.utils import is_torch_available, is_vision_available
 
+from ...test_backbone_common import BackboneTesterMixin
 from ...test_configuration_common import ConfigTester
 from ...test_modeling_common import ModelTesterMixin, _config_zero_init, floats_tensor, ids_tensor
 from ...test_pipeline_mixin import PipelineTesterMixin
@@ -29,7 +30,7 @@ if is_torch_available():
     import torch
     from torch import nn
 
-    from transformers import DINOv3ViTModel
+    from transformers import DINOv3ViTBackbone, DINOv3ViTModel
 
 
 if is_vision_available():
@@ -230,6 +231,17 @@ class Dinov3ModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         model_name = "facebook/dinov3-vits16-pretrain-lvd1689m"
         model = DINOv3ViTModel.from_pretrained(model_name)
         self.assertIsNotNone(model)
+
+
+@require_torch
+class DINOv3ViTBackboneTest(unittest.TestCase, BackboneTesterMixin):
+    all_model_classes = (DINOv3ViTBackbone,) if is_torch_available() else ()
+    config_class = DINOv3ViTConfig
+
+    has_attentions = False
+
+    def setUp(self):
+        self.model_tester = DINOv3ViTModelTester(self)
 
 
 # We will verify our results on an image of cute cats

@@ -114,6 +114,8 @@ MODEL_MAPPING_NAMES = OrderedDict(
         ("deepseek_vl", "DeepseekVLModel"),
         ("deepseek_vl_hybrid", "DeepseekVLHybridModel"),
         ("deformable_detr", "DeformableDetrModel"),
+        ("deimv2", "Deimv2Model"),
+        ("deimv2", "Deimv2Model"),
         ("deit", "DeiTModel"),
         ("depth_pro", "DepthProModel"),
         ("deta", "DetaModel"),
@@ -924,7 +926,16 @@ MODEL_FOR_IMAGE_SEGMENTATION_MAPPING_NAMES = OrderedDict(
     [
         # Do not add new models here, this class will be deprecated in the future.
         # Model for Image Segmentation mapping
+        ("deimv2", "Deimv2ForSegmentation"),
         ("detr", "DetrForSegmentation"),
+    ]
+)
+
+MODEL_FOR_SEMANTIC_SEGMENTATION_MAPPING_NAMES = OrderedDict(
+    [
+        # Model for Semantic Segmentation mapping
+        ("beit", "BeitForSemanticSegmentation"),
+        ("deimv2", "Deimv2ForSegmentation"),
     ]
 )
 
@@ -1119,6 +1130,7 @@ MODEL_FOR_OBJECT_DETECTION_MAPPING_NAMES = OrderedDict(
         ("d_fine", "DFineForObjectDetection"),
         ("dab-detr", "DabDetrForObjectDetection"),
         ("deformable_detr", "DeformableDetrForObjectDetection"),
+        ("deimv2", "Deimv2ForObjectDetection"),
         ("deta", "DetaForObjectDetection"),
         ("detr", "DetrForObjectDetection"),
         ("rt_detr", "RTDetrForObjectDetection"),
@@ -1693,6 +1705,7 @@ MODEL_FOR_BACKBONE_MAPPING_NAMES = OrderedDict(
         ("dinat", "DinatBackbone"),
         ("dinov2", "Dinov2Backbone"),
         ("dinov2_with_registers", "Dinov2WithRegistersBackbone"),
+        ("dinov3_vit", "DINOv3ViTBackbone"),
         ("focalnet", "FocalNetBackbone"),
         ("hgnet_v2", "HGNetV2Backbone"),
         ("hiera", "HieraBackbone"),

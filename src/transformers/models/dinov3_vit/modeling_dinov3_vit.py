@@ -28,11 +28,12 @@ from torch import nn
 
 from ...activations import ACT2FN
 from ...modeling_layers import GradientCheckpointingLayer
-from ...modeling_outputs import BaseModelOutputWithPooling
+from ...modeling_outputs import BackboneOutput, BaseModelOutputWithPooling
 from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...pytorch_utils import compile_compatible_method_lru_cache
 from ...utils import TransformersKwargs, auto_docstring
+from ...utils.backbone_utils import BackboneMixin
 from ...utils.generic import check_model_inputs
 from .configuration_dinov3_vit import DINOv3ViTConfig
 
@@ -448,7 +449,7 @@ class DINOv3ViTPreTrainedModel(PreTrainedModel):
 
     def _init_weights(self, module) -> None:
         """Initialize the weights"""
-        if isinstance(module, (nn.Linear, nn.Conv2d)):
+        if isinstance(module, nn.Linear | nn.Conv2d):
             # Upcast the input in `fp32` and cast it back to desired `dtype` to avoid
             # `trunc_normal_cpu` not implemented in `half` issues
             module.weight.data = nn.init.trunc_normal_(
@@ -527,4 +528,74 @@ class DINOv3ViTModel(DINOv3ViTPreTrainedModel):
         )
 
 
-__all__ = ["DINOv3ViTModel", "DINOv3ViTPreTrainedModel"]
+@auto_docstring
+class DINOv3ViTBackbone(DINOv3ViTPreTrainedModel, BackboneMixin):
+    def __init__(self, config: DINOv3ViTConfig):
+        super().__init__(config)
+        super()._init_backbone(config)
+
+        self.num_features = [config.hidden_size for _ in range(len(self.stage_names))]
+
+        self.embeddings = DINOv3ViTEmbeddings(config)
+        self.rope_embeddings = DINOv3ViTRopePositionEmbedding(config)
+        self.layer = nn.ModuleList([DINOv3ViTLayer(config) for _ in range(config.num_hidden_layers)])
+        self.norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.gradient_checkpointing = False
+
+        # Initialize weights and apply final processing
+        self.post_init()
+
+    def get_input_embeddings(self):
+        return self.embeddings.patch_embeddings
+
+    @check_model_inputs
+    @auto_docstring
+    def forward(
+        self,
+        pixel_values: torch.Tensor,
+        output_hidden_states: Optional[bool] = None,
+        **kwargs: Unpack[TransformersKwargs],
+    ) -> BackboneOutput:
+        if output_hidden_states is None:
+            output_hidden_states = self.config.output_hidden_states
+
+        target_dtype = self.embeddings.patch_embeddings.weight.dtype
+        pixel_values = pixel_values.to(target_dtype)
+
+        hidden_state = self.embeddings(pixel_values)
+        cos, sin = self.rope_embeddings(pixel_values)
+
+        # Collect hidden states per stage (stem + transformer blocks)
+        hidden_states_per_stage = [hidden_state]
+        for layer_module in self.layer:
+            hidden_state = layer_module(hidden_state, position_embeddings=(cos, sin))
+            hidden_states_per_stage.append(hidden_state)
+
+        hidden_states_per_stage[-1] = self.norm(hidden_states_per_stage[-1])
+
+        feature_maps: list[torch.Tensor] = []
+        for stage_name, stage_hidden_state in zip(self.stage_names, hidden_states_per_stage):
+            if stage_name not in self.out_features:
+                continue
+
+            stage_hidden = stage_hidden_state
+
+            if self.config.reshape_hidden_states:
+                prefix_tokens = 1 + self.config.num_register_tokens
+                stage_hidden = stage_hidden[:, prefix_tokens:, :]
+
+                batch_size = stage_hidden.shape[0]
+                height = pixel_values.shape[2] // self.config.patch_size
+                width = pixel_values.shape[3] // self.config.patch_size
+                stage_hidden = stage_hidden.reshape(batch_size, height, width, -1)
+                stage_hidden = stage_hidden.permute(0, 3, 1, 2).contiguous()
+
+            feature_maps.append(stage_hidden)
+
+        return BackboneOutput(
+            feature_maps=tuple(feature_maps),
+            hidden_states=tuple(hidden_states_per_stage) if output_hidden_states else None,
+        )
+
+
+__all__ = ["DINOv3ViTBackbone", "DINOv3ViTModel", "DINOv3ViTPreTrainedModel"]

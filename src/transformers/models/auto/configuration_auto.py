@@ -109,6 +109,7 @@ CONFIG_MAPPING_NAMES = OrderedDict[str, str](
         ("deepseek_vl", "DeepseekVLConfig"),
         ("deepseek_vl_hybrid", "DeepseekVLHybridConfig"),
         ("deformable_detr", "DeformableDetrConfig"),
+        ("deimv2", "Deimv2Config"),
         ("deit", "DeiTConfig"),
         ("depth_anything", "DepthAnythingConfig"),
         ("depth_pro", "DepthProConfig"),
@@ -544,6 +545,7 @@ MODEL_NAMES_MAPPING = OrderedDict[str, str](
         ("deepseek_vl", "DeepseekVL"),
         ("deepseek_vl_hybrid", "DeepseekVLHybrid"),
         ("deformable_detr", "Deformable DETR"),
+        ("deimv2", "DEIMv2"),
         ("deit", "DeiT"),
         ("deplot", "DePlot"),
         ("depth_anything", "Depth Anything"),
@@ -1137,7 +1139,7 @@ class _LazyLoadAllMappings(OrderedDict[str, str]):
 
 
 def _get_class_name(model_class: Union[str, list[str]]):
-    if isinstance(model_class, (list, tuple)):
+    if isinstance(model_class, list | tuple):
         return " or ".join([f"[`{c}`]" for c in model_class if c is not None])
     return f"[`{model_class}`]"
 

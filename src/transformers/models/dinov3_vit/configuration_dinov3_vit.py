@@ -18,12 +18,13 @@ from typing import Optional
 
 from ...configuration_utils import PretrainedConfig
 from ...utils import logging
+from ...utils.backbone_utils import BackboneConfigMixin, get_aligned_output_features_output_indices
 
 
 logger = logging.get_logger(__name__)
 
 
-class DINOv3ViTConfig(PretrainedConfig):
+class DINOv3ViTConfig(BackboneConfigMixin, PretrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`DINOv3Model`]. It is used to instantiate an
     DINOv3 model according to the specified arguments, defining the model architecture. Instantiating a configuration
@@ -77,6 +78,15 @@ class DINOv3ViTConfig(PretrainedConfig):
             Whether to use the SwiGLU feedforward neural network.
         num_register_tokens (`int`, *optional*, defaults to 0):
             The number of register tokens.
+        out_features (`List[str]`, *optional*):
+            Name of the hidden states to output. Can be any of `"stem"`, `"stage1"`, ..., `"stage{num_hidden_layers}"`.
+            If unset, the final stage is returned.
+        out_indices (`List[int]`, *optional*):
+            Indices of the hidden states to output. Mutually exclusive with `out_features`.
+        reshape_hidden_states (`bool`, *optional*, defaults to `True`):
+            Whether hidden states should be reshaped to image feature maps when used as a backbone.
+        apply_layernorm (`bool`, *optional*, defaults to `True`):
+            Whether to apply the final layer normalization before returning the last hidden state.
         pos_embed_shift (`float`, *optional*):
             Amount to randomly shift position embedding coordinates in [-shift, shift],
             applied only in training mode if not `None`.
@@ -127,6 +137,10 @@ class DINOv3ViTConfig(PretrainedConfig):
         drop_path_rate: float = 0.0,
         use_gated_mlp: bool = False,
         num_register_tokens: int = 0,
+        out_features: Optional[list[str]] = None,
+        out_indices: Optional[list[int]] = None,
+        reshape_hidden_states: bool = True,
+        apply_layernorm: bool = True,
         # train augs
         pos_embed_shift: Optional[float] = None,
         pos_embed_jitter: Optional[float] = None,
@@ -161,6 +175,13 @@ class DINOv3ViTConfig(PretrainedConfig):
         self.pos_embed_shift = pos_embed_shift
         self.pos_embed_jitter = pos_embed_jitter
         self.pos_embed_rescale = pos_embed_rescale
+
+        self.stage_names = ["stem"] + [f"stage{idx}" for idx in range(1, num_hidden_layers + 1)]
+        self._out_features, self._out_indices = get_aligned_output_features_output_indices(
+            out_features=out_features, out_indices=out_indices, stage_names=self.stage_names
+        )
+        self.reshape_hidden_states = reshape_hidden_states
+        self.apply_layernorm = apply_layernorm
 
 
 __all__ = ["DINOv3ViTConfig"]
