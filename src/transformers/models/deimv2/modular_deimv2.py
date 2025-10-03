@@ -14,22 +14,18 @@
 # limitations under the License.
 
 import math
+from typing import Optional
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-from ...activations import ACT2CLS
-from ...modeling_outputs import BaseModelOutput
-from ...utils import torch_int
 from ...utils.backbone_utils import load_backbone
 from ..rt_detr.configuration_rt_detr import RTDetrConfig
 from ..rt_detr.modeling_rt_detr import (
     MultiScaleDeformableAttention,
     RTDetrConvNormLayer,
     RTDetrCSPRepLayer,
-    RTDetrDecoder,
-    RTDetrDecoderLayer,
     RTDetrDecoderOutput,
     RTDetrEncoder,
     RTDetrEncoderLayer,
@@ -44,12 +40,15 @@ from ..rt_detr.modeling_rt_detr import (
     RTDetrObjectDetectionOutput,
     RTDetrPreTrainedModel,
     RTDetrRepVggBlock,
+    inverse_sigmoid,
     replace_batch_norm,
 )
 
 
 class Deimv2Config(RTDetrConfig):
-    pass
+    def __init__(self, use_decoder_gate: bool = True, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.use_decoder_gate = use_decoder_gate
 
 
 class MultiScaleDeformableAttention(MultiScaleDeformableAttention):
@@ -229,9 +228,9 @@ class Deimv2ConvEncoder(nn.Module):
         outputs = []
 
         if self._uses_dinov3:
-            backbone_outputs = self.backbone(
-                pixel_values, output_hidden_states=True, return_dict=True
-            ).hidden_states[1:]
+            backbone_outputs = self.backbone(pixel_values, output_hidden_states=True, return_dict=True).hidden_states[
+                1:
+            ]
             selected_feature_maps = backbone_outputs[-len(self.spatial_adapters) :]
         else:
             selected_feature_maps = self.backbone(pixel_values).feature_maps
@@ -268,8 +267,96 @@ class Deimv2MultiheadAttention(RTDetrMultiheadAttention):
     pass
 
 
-class Deimv2DecoderLayer(RTDetrDecoderLayer):
-    pass
+class Deimv2DecoderLayer(nn.Module):
+    def __init__(self, config: Deimv2Config):
+        super().__init__()
+
+        self.config = config
+        self.dropout = config.dropout
+
+        self.self_attn = Deimv2MultiheadAttention(
+            embed_dim=config.d_model,
+            num_heads=config.decoder_attention_heads,
+            dropout=config.attention_dropout,
+        )
+        self.self_attn_dropout = nn.Dropout(config.dropout)
+        self.self_attn_layer_norm = Deimv2RMSNorm(config.d_model, eps=config.layer_norm_eps)
+
+        self.encoder_attn = Deimv2MultiscaleDeformableAttention(
+            config,
+            num_heads=config.decoder_attention_heads,
+            n_points=config.decoder_n_points,
+        )
+        self.encoder_attn_dropout = nn.Dropout(config.dropout)
+        self.use_gateway = config.use_decoder_gate
+        if self.use_gateway:
+            self.gateway = Deimv2Gate(config.d_model, use_rmsnorm=True)
+            self.encoder_attn_layer_norm = None
+        else:
+            self.gateway = None
+            self.encoder_attn_layer_norm = Deimv2RMSNorm(config.d_model, eps=config.layer_norm_eps)
+
+        hidden_features = max(config.d_model, config.decoder_ffn_dim // 2)
+        self.feedforward = Deimv2SwiGLUFFN(config.d_model, hidden_features, config.d_model)
+        self.feedforward_dropout = nn.Dropout(config.dropout)
+        self.feedforward_layer_norm = Deimv2RMSNorm(config.d_model, eps=config.layer_norm_eps)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        position_embeddings: Optional[torch.Tensor] = None,
+        reference_points: Optional[torch.Tensor] = None,
+        spatial_shapes: Optional[torch.Tensor] = None,
+        spatial_shapes_list: Optional[List[Tuple[int, int]]] = None,
+        level_start_index: Optional[torch.Tensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = False,
+    ) -> tuple[torch.Tensor, ...]:
+        residual = hidden_states
+
+        hidden_states, self_attn_weights = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=encoder_attention_mask,
+            position_embeddings=position_embeddings,
+            output_attentions=output_attentions,
+        )
+
+        hidden_states = self.self_attn_dropout(hidden_states)
+        hidden_states = self.self_attn_layer_norm(residual + hidden_states)
+
+        second_residual = hidden_states
+        cross_attn_weights = None
+
+        cross_hidden_states, cross_attn_weights = self.encoder_attn(
+            hidden_states=hidden_states,
+            encoder_hidden_states=encoder_hidden_states,
+            position_embeddings=position_embeddings,
+            reference_points=reference_points,
+            spatial_shapes=spatial_shapes,
+            spatial_shapes_list=spatial_shapes_list,
+            level_start_index=level_start_index,
+            output_attentions=output_attentions,
+        )
+
+        cross_hidden_states = self.encoder_attn_dropout(cross_hidden_states)
+
+        if self.gateway is not None:
+            hidden_states = self.gateway(second_residual, cross_hidden_states)
+        else:
+            hidden_states = self.encoder_attn_layer_norm(second_residual + cross_hidden_states)
+
+        residual = hidden_states
+        feedforward_hidden_states = self.feedforward(hidden_states)
+        feedforward_hidden_states = self.feedforward_dropout(feedforward_hidden_states)
+        hidden_states = residual + feedforward_hidden_states
+        hidden_states = self.feedforward_layer_norm(hidden_states.clamp(min=-65504, max=65504))
+
+        outputs: tuple[torch.Tensor, ...] = (hidden_states,)
+        if output_attentions:
+            outputs += (self_attn_weights, cross_attn_weights)
+
+        return outputs
 
 
 class Deimv2PreTrainedModel(RTDetrPreTrainedModel):
@@ -284,8 +371,126 @@ class Deimv2HybridEncoder(RTDetrHybridEncoder):
     pass
 
 
-class Deimv2Decoder(RTDetrDecoder):
-    pass
+class Deimv2Decoder(RTDetrPreTrainedModel):
+    def __init__(self, config: Deimv2Config):
+        super().__init__(config)
+
+        self.dropout = config.dropout
+        self.layers = nn.ModuleList([Deimv2DecoderLayer(config) for _ in range(config.decoder_layers)])
+        self.query_pos_head = Deimv2MLPPredictionHead(config, 4, 2 * config.d_model, config.d_model, num_layers=2)
+
+        self.bbox_embed = None
+        self.class_embed = None
+
+        self.post_init()
+
+    def forward(
+        self,
+        inputs_embeds: Optional[torch.Tensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.Tensor] = None,
+        position_embeddings: Optional[torch.Tensor] = None,
+        reference_points: Optional[torch.Tensor] = None,
+        spatial_shapes: Optional[torch.Tensor] = None,
+        spatial_shapes_list: Optional[List[Tuple[int, int]]] = None,
+        level_start_index: Optional[torch.Tensor] = None,
+        valid_ratios: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> RTDetrDecoderOutput | tuple[torch.Tensor, ...]:
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        if inputs_embeds is None:
+            raise ValueError("Decoder requires `inputs_embeds` to be provided.")
+        hidden_states = inputs_embeds
+
+        all_hidden_states = () if output_hidden_states else None
+        all_self_attns = () if output_attentions else None
+        all_cross_attentions = () if (output_attentions and encoder_hidden_states is not None) else None
+        intermediate = ()
+        intermediate_reference_points = ()
+        intermediate_logits = ()
+
+        if reference_points is None:
+            raise ValueError("Decoder expects `reference_points` to be provided.")
+        reference_points = F.sigmoid(reference_points)
+
+        for idx, decoder_layer in enumerate(self.layers):
+            reference_points_input = reference_points.unsqueeze(2)
+            position_embeddings = self.query_pos_head(reference_points)
+
+            if output_hidden_states:
+                all_hidden_states += (hidden_states,)
+
+            layer_outputs = decoder_layer(
+                hidden_states,
+                position_embeddings=position_embeddings,
+                encoder_hidden_states=encoder_hidden_states,
+                reference_points=reference_points_input,
+                spatial_shapes=spatial_shapes,
+                spatial_shapes_list=spatial_shapes_list,
+                level_start_index=level_start_index,
+                encoder_attention_mask=encoder_attention_mask,
+                output_attentions=output_attentions,
+            )
+
+            hidden_states = layer_outputs[0]
+
+            if self.bbox_embed is not None:
+                predicted_corners = self.bbox_embed[idx](hidden_states)
+                new_reference_points = F.sigmoid(predicted_corners + inverse_sigmoid(reference_points))
+                reference_points = new_reference_points.detach()
+
+            intermediate += (hidden_states,)
+            intermediate_reference_points += (
+                (new_reference_points,) if self.bbox_embed is not None else (reference_points,)
+            )
+
+            if self.class_embed is not None:
+                logits = self.class_embed[idx](hidden_states)
+                intermediate_logits += (logits,)
+
+            if output_attentions:
+                all_self_attns += (layer_outputs[1],)
+                if encoder_hidden_states is not None:
+                    all_cross_attentions += (layer_outputs[2],)
+
+        intermediate = torch.stack(intermediate, dim=1)
+        intermediate_reference_points = torch.stack(intermediate_reference_points, dim=1)
+        if self.class_embed is not None:
+            intermediate_logits = torch.stack(intermediate_logits, dim=1)
+
+        if output_hidden_states:
+            all_hidden_states += (hidden_states,)
+
+        if not return_dict:
+            return tuple(
+                v
+                for v in [
+                    hidden_states,
+                    intermediate,
+                    intermediate_logits,
+                    intermediate_reference_points,
+                    all_hidden_states,
+                    all_self_attns,
+                    all_cross_attentions,
+                ]
+                if v is not None
+            )
+        return Deimv2DecoderOutput(
+            last_hidden_state=hidden_states,
+            intermediate_hidden_states=intermediate,
+            intermediate_logits=intermediate_logits,
+            intermediate_reference_points=intermediate_reference_points,
+            hidden_states=all_hidden_states,
+            attentions=all_self_attns,
+            cross_attentions=all_cross_attentions,
+        )
 
 
 class Deimv2MLPPredictionHead(RTDetrMLPPredictionHead):

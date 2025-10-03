@@ -23,7 +23,7 @@ import math
 import warnings
 from dataclasses import dataclass
 from functools import partial
-from typing import Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn.functional as F
@@ -893,65 +893,51 @@ class Deimv2MultiheadAttention(nn.Module):
 class Deimv2DecoderLayer(nn.Module):
     def __init__(self, config: Deimv2Config):
         super().__init__()
-        # self-attention
+
+        self.config = config
+        self.dropout = config.dropout
+
         self.self_attn = Deimv2MultiheadAttention(
             embed_dim=config.d_model,
             num_heads=config.decoder_attention_heads,
             dropout=config.attention_dropout,
         )
-        self.dropout = config.dropout
-        self.activation_fn = ACT2FN[config.decoder_activation_function]
-        self.activation_dropout = config.activation_dropout
+        self.self_attn_dropout = nn.Dropout(config.dropout)
+        self.self_attn_layer_norm = Deimv2RMSNorm(config.d_model, eps=config.layer_norm_eps)
 
-        self.self_attn_layer_norm = nn.LayerNorm(config.d_model, eps=config.layer_norm_eps)
-        # cross-attention
         self.encoder_attn = Deimv2MultiscaleDeformableAttention(
             config,
             num_heads=config.decoder_attention_heads,
             n_points=config.decoder_n_points,
         )
-        self.encoder_attn_layer_norm = nn.LayerNorm(config.d_model, eps=config.layer_norm_eps)
-        # feedforward neural networks
-        self.fc1 = nn.Linear(config.d_model, config.decoder_ffn_dim)
-        self.fc2 = nn.Linear(config.decoder_ffn_dim, config.d_model)
-        self.final_layer_norm = nn.LayerNorm(config.d_model, eps=config.layer_norm_eps)
+        self.encoder_attn_dropout = nn.Dropout(config.dropout)
+        self.use_gateway = config.use_decoder_gate
+        if self.use_gateway:
+            self.gateway = Deimv2Gate(config.d_model, use_rmsnorm=True)
+            self.encoder_attn_layer_norm = None
+        else:
+            self.gateway = None
+            self.encoder_attn_layer_norm = Deimv2RMSNorm(config.d_model, eps=config.layer_norm_eps)
+
+        hidden_features = max(config.d_model, config.decoder_ffn_dim // 2)
+        self.feedforward = Deimv2SwiGLUFFN(config.d_model, hidden_features, config.d_model)
+        self.feedforward_dropout = nn.Dropout(config.dropout)
+        self.feedforward_layer_norm = Deimv2RMSNorm(config.d_model, eps=config.layer_norm_eps)
 
     def forward(
         self,
         hidden_states: torch.Tensor,
         position_embeddings: Optional[torch.Tensor] = None,
-        reference_points=None,
-        spatial_shapes=None,
-        spatial_shapes_list=None,
-        level_start_index=None,
+        reference_points: Optional[torch.Tensor] = None,
+        spatial_shapes: Optional[torch.Tensor] = None,
+        spatial_shapes_list: Optional[List[Tuple[int, int]]] = None,
+        level_start_index: Optional[torch.Tensor] = None,
         encoder_hidden_states: Optional[torch.Tensor] = None,
         encoder_attention_mask: Optional[torch.Tensor] = None,
         output_attentions: Optional[bool] = False,
-    ):
-        """
-        Args:
-            hidden_states (`torch.FloatTensor`):
-                Input to the layer of shape `(seq_len, batch, embed_dim)`.
-            position_embeddings (`torch.FloatTensor`, *optional*):
-                Position embeddings that are added to the queries and keys in the self-attention layer.
-            reference_points (`torch.FloatTensor`, *optional*):
-                Reference points.
-            spatial_shapes (`torch.LongTensor`, *optional*):
-                Spatial shapes.
-            level_start_index (`torch.LongTensor`, *optional*):
-                Level start index.
-            encoder_hidden_states (`torch.FloatTensor`):
-                cross attention input to the layer of shape `(seq_len, batch, embed_dim)`
-            encoder_attention_mask (`torch.FloatTensor`): encoder attention mask of size
-                `(batch, 1, target_len, source_len)` where padding elements are indicated by very large negative
-                values.
-            output_attentions (`bool`, *optional*):
-                Whether or not to return the attentions tensors of all attention layers. See `attentions` under
-                returned tensors for more detail.
-        """
+    ) -> Tuple[torch.Tensor, ...]:
         residual = hidden_states
 
-        # Self Attention
         hidden_states, self_attn_weights = self.self_attn(
             hidden_states=hidden_states,
             attention_mask=encoder_attention_mask,
@@ -959,15 +945,13 @@ class Deimv2DecoderLayer(nn.Module):
             output_attentions=output_attentions,
         )
 
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + hidden_states
-        hidden_states = self.self_attn_layer_norm(hidden_states)
+        hidden_states = self.self_attn_dropout(hidden_states)
+        hidden_states = self.self_attn_layer_norm(residual + hidden_states)
 
         second_residual = hidden_states
-
-        # Cross-Attention
         cross_attn_weights = None
-        hidden_states, cross_attn_weights = self.encoder_attn(
+
+        cross_hidden_states, cross_attn_weights = self.encoder_attn(
             hidden_states=hidden_states,
             encoder_hidden_states=encoder_hidden_states,
             position_embeddings=position_embeddings,
@@ -978,22 +962,20 @@ class Deimv2DecoderLayer(nn.Module):
             output_attentions=output_attentions,
         )
 
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = second_residual + hidden_states
+        cross_hidden_states = self.encoder_attn_dropout(cross_hidden_states)
 
-        hidden_states = self.encoder_attn_layer_norm(hidden_states)
+        if self.gateway is not None:
+            hidden_states = self.gateway(second_residual, cross_hidden_states)
+        else:
+            hidden_states = self.encoder_attn_layer_norm(second_residual + cross_hidden_states)
 
-        # Fully Connected
         residual = hidden_states
-        hidden_states = self.activation_fn(self.fc1(hidden_states))
-        hidden_states = nn.functional.dropout(hidden_states, p=self.activation_dropout, training=self.training)
-        hidden_states = self.fc2(hidden_states)
-        hidden_states = nn.functional.dropout(hidden_states, p=self.dropout, training=self.training)
-        hidden_states = residual + hidden_states
-        hidden_states = self.final_layer_norm(hidden_states)
+        feedforward_hidden_states = self.feedforward(hidden_states)
+        feedforward_hidden_states = self.feedforward_dropout(feedforward_hidden_states)
+        hidden_states = residual + feedforward_hidden_states
+        hidden_states = self.feedforward_layer_norm(hidden_states.clamp(min=-65504, max=65504))
 
-        outputs = (hidden_states,)
-
+        outputs: Tuple[torch.Tensor, ...] = (hidden_states,)
         if output_attentions:
             outputs += (self_attn_weights, cross_attn_weights)
 
@@ -1302,19 +1284,19 @@ class Deimv2Decoder(Deimv2PreTrainedModel):
 
     def forward(
         self,
-        inputs_embeds=None,
-        encoder_hidden_states=None,
-        encoder_attention_mask=None,
-        position_embeddings=None,
-        reference_points=None,
-        spatial_shapes=None,
-        spatial_shapes_list=None,
-        level_start_index=None,
-        valid_ratios=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
+        inputs_embeds: Optional[torch.Tensor] = None,
+        encoder_hidden_states: Optional[torch.Tensor] = None,
+        encoder_attention_mask: Optional[torch.Tensor] = None,
+        position_embeddings: Optional[torch.Tensor] = None,
+        reference_points: Optional[torch.Tensor] = None,
+        spatial_shapes: Optional[torch.Tensor] = None,
+        spatial_shapes_list: Optional[List[Tuple[int, int]]] = None,
+        level_start_index: Optional[torch.Tensor] = None,
+        valid_ratios: Optional[torch.Tensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Deimv2DecoderOutput, Tuple[torch.Tensor, ...]]:
         r"""
         Args:
             inputs_embeds (`torch.FloatTensor` of shape `(batch_size, num_queries, hidden_size)`):
@@ -1353,8 +1335,9 @@ class Deimv2Decoder(Deimv2PreTrainedModel):
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        if inputs_embeds is not None:
-            hidden_states = inputs_embeds
+        if inputs_embeds is None:
+            raise ValueError("Decoder requires `inputs_embeds` to be provided.")
+        hidden_states = inputs_embeds
 
         # decoder layers
         all_hidden_states = () if output_hidden_states else None
@@ -1364,6 +1347,8 @@ class Deimv2Decoder(Deimv2PreTrainedModel):
         intermediate_reference_points = ()
         intermediate_logits = ()
 
+        if reference_points is None:
+            raise ValueError("Decoder expects `reference_points` to be provided.")
         reference_points = F.sigmoid(reference_points)
 
         # https://github.com/lyuwenyu/RT-DETR/blob/94f5e16708329d2f2716426868ec89aa774af016/Deimv2_pytorch/src/zoo/Deimv2/Deimv2_decoder.py#L252

@@ -118,6 +118,9 @@ class Deimv2Config(PretrainedConfig):
         decoder_activation_function (`str`, *optional*, defaults to `"relu"`):
             The non-linear activation function (function or string) in the decoder. If string, `"gelu"`,
             `"relu"`, `"silu"` and `"gelu_new"` are supported.
+        use_decoder_gate (`bool`, *optional*, defaults to `True`):
+            Whether to apply the gated residual fusion used by DEIMv2 decoder layers instead of a simple residual
+            addition after cross-attention.
         attention_dropout (`float`, *optional*, defaults to 0.0):
             The dropout ratio for the attention probabilities.
         num_denoising (`int`, *optional*, defaults to 100):
@@ -225,6 +228,7 @@ class Deimv2Config(PretrainedConfig):
         decoder_layers=6,
         decoder_attention_heads=8,
         decoder_activation_function="relu",
+        use_decoder_gate=True,
         attention_dropout=0.0,
         num_denoising=100,
         label_noise_ratio=0.5,
@@ -308,6 +312,7 @@ class Deimv2Config(PretrainedConfig):
         self.decoder_layers = decoder_layers
         self.decoder_attention_heads = decoder_attention_heads
         self.decoder_activation_function = decoder_activation_function
+        self.use_decoder_gate = use_decoder_gate
         self.attention_dropout = attention_dropout
         self.num_denoising = num_denoising
         self.label_noise_ratio = label_noise_ratio
