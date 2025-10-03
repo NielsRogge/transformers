@@ -332,6 +332,28 @@ def strip_known_prefix(key: str) -> str:
     return key
 
 
+def is_backbone_parameter(key: str) -> bool:
+    base_key = strip_known_prefix(key)
+    return base_key.startswith("stem.") or base_key.startswith("stages.")
+
+
+def extract_backbone_state_dict(state_dict: Mapping[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    backbone_state: Dict[str, torch.Tensor] = {}
+    for key, tensor in state_dict.items():
+        if not is_backbone_parameter(key):
+            continue
+        base_key = strip_known_prefix(key)
+        backbone_state[base_key] = tensor
+
+    if not backbone_state:
+        raise ValueError(
+            "No HGNetV2 backbone weights were found in the provided checkpoint. Ensure the checkpoint contains the "
+            "DEIMv2 backbone parameters."
+        )
+
+    return backbone_state
+
+
 def rename_hgnet_keys(state_dict: MutableMapping[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
     renamed_state_dict: Dict[str, torch.Tensor] = {}
     for key, tensor in state_dict.items():
@@ -470,7 +492,8 @@ def convert_deimv2_backbone(
     backbone = HGNetV2Backbone(config)
 
     state_dict = load_original_state_dict(checkpoint_path)
-    renamed_state_dict = rename_hgnet_keys(state_dict)
+    backbone_state_dict = extract_backbone_state_dict(state_dict)
+    renamed_state_dict = rename_hgnet_keys(backbone_state_dict)
 
     missing, unexpected = backbone.load_state_dict(renamed_state_dict, strict=False)
     if missing:
@@ -507,7 +530,7 @@ def convert_deimv2_backbone(
             freeze_norm=False,
             pretrained=False,
         )
-        load_result = original_model.load_state_dict(state_dict, strict=False)
+        load_result = original_model.load_state_dict(backbone_state_dict, strict=False)
         if load_result.missing_keys:
             preview = ", ".join(load_result.missing_keys[:5])
             logger.warning(
