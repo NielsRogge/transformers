@@ -338,6 +338,70 @@ class Deimv2SpatialTuningAdapter(nn.Module):
         return self.adapter(feature_map)
 
 
+class Deimv2RMSNorm(nn.Module):
+    def __init__(self, hidden_size: int, eps: float = 1e-6) -> None:
+        super().__init__()
+
+        self.weight = nn.Parameter(torch.ones(hidden_size))
+        self.variance_epsilon = eps
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        variance = hidden_states.to(torch.float32).pow(2).mean(dim=-1, keepdim=True)
+        normalized_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
+        return normalized_states * self.weight
+
+
+class Deimv2SwiGLUFFN(nn.Module):
+    def __init__(self, in_features: int, hidden_features: int, out_features: int) -> None:
+        super().__init__()
+
+        out_features = out_features or in_features
+        hidden_features = hidden_features or in_features
+
+        self.w12 = nn.Linear(in_features, 2 * hidden_features)
+        self.w3 = nn.Linear(hidden_features, out_features)
+        self._reset_parameters()
+
+    def _reset_parameters(self) -> None:
+        nn.init.xavier_uniform_(self.w12.weight)
+        nn.init.constant_(self.w12.bias, 0)
+        nn.init.xavier_uniform_(self.w3.weight)
+        nn.init.constant_(self.w3.bias, 0)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        gate_input, linear_input = self.w12(hidden_states).chunk(2, dim=-1)
+        activated = F.silu(gate_input) * linear_input
+        return self.w3(activated)
+
+
+def deimv2_bias_init_with_prob(prior_prob: float = 0.5) -> float:
+    """Initializes bias values according to a target Bernoulli prior probability."""
+
+    if prior_prob <= 0 or prior_prob >= 1:
+        raise ValueError("The prior probability used for bias initialization must be between 0 and 1.")
+
+    return float(-math.log((1 - prior_prob) / prior_prob))
+
+
+class Deimv2Gate(nn.Module):
+    def __init__(self, hidden_size: int, use_rmsnorm: bool = True) -> None:
+        super().__init__()
+
+        self.gate = nn.Linear(2 * hidden_size, 2 * hidden_size)
+        nn.init.constant_(self.gate.weight, 0)
+        nn.init.constant_(self.gate.bias, deimv2_bias_init_with_prob())
+
+        if use_rmsnorm:
+            self.norm = Deimv2RMSNorm(hidden_size)
+        else:
+            self.norm = nn.LayerNorm(hidden_size)
+
+    def forward(self, residual: torch.Tensor, update: torch.Tensor) -> torch.Tensor:
+        gate_input = torch.concat([residual, update], dim=-1)
+        gate1, gate2 = torch.sigmoid(self.gate(gate_input)).chunk(2, dim=-1)
+        return self.norm(gate1 * residual + gate2 * update)
+
+
 def replace_batch_norm(model):
     r"""
     Recursively replace all `torch.nn.BatchNorm2d` with `Deimv2FrozenBatchNorm2d`.
