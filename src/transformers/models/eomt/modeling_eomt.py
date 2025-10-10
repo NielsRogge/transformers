@@ -21,8 +21,9 @@
 
 import collections.abc
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
 import torch
@@ -628,7 +629,7 @@ class EomtLoss(nn.Module):
         """
         Computes the average number of target masks across the batch, for normalization purposes.
         """
-        num_masks = sum([len(classes) for classes in class_labels])
+        num_masks = sum(len(classes) for classes in class_labels)
         num_masks = torch.as_tensor(num_masks, dtype=torch.float, device=device)
         world_size = 1
         if is_accelerate_available():
@@ -689,8 +690,6 @@ class EomtEmbeddings(nn.Module):
 
         self.patch_embeddings = EomtPatchEmbeddings(config)
         num_patches = self.patch_embeddings.num_patches
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.num_prefix_tokens = 1 + config.num_register_tokens  # 1 for [CLS]
         self.position_embeddings = nn.Embedding(num_patches, config.hidden_size)
         self.register_buffer("position_ids", torch.arange(num_patches).expand((1, -1)), persistent=False)
 
@@ -704,8 +703,6 @@ class EomtEmbeddings(nn.Module):
 
         embeddings = embeddings + self.position_embeddings(self.position_ids)
         embeddings = torch.cat([cls_tokens, register_tokens, embeddings], dim=1)
-
-        embeddings = self.dropout(embeddings)
 
         return embeddings
 
@@ -892,6 +889,7 @@ class EomtLayer(GradientCheckpointingLayer):
         self,
         hidden_states: torch.Tensor,
         attention_mask: Optional[torch.Tensor] = None,
+        position_embeddings: Optional[tuple[torch.Tensor, torch.Tensor]] = None,
     ) -> torch.Tensor:
         hidden_states_norm = self.norm1(hidden_states)
         self_attention_output, _ = self.attention(hidden_states_norm, attention_mask)
@@ -1031,7 +1029,11 @@ class EomtForUniversalSegmentation(EomtPreTrainedModel):
         super().__init__(config)
         self.config = config
         self.num_hidden_layers = config.num_hidden_layers
+        self.num_prefix_tokens = 1 + config.num_register_tokens
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+
         self.embeddings = EomtEmbeddings(config)
+        self.embeddings.num_prefix_tokens = self.num_prefix_tokens
         self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         self.query = nn.Embedding(config.num_queries, config.hidden_size)
@@ -1082,7 +1084,7 @@ class EomtForUniversalSegmentation(EomtPreTrainedModel):
     def get_loss(self, loss_dict: dict[str, Tensor]) -> Tensor:
         return sum(loss_dict.values())
 
-    @check_model_inputs
+    @check_model_inputs()
     @auto_docstring
     def forward(
         self,
@@ -1108,7 +1110,8 @@ class EomtForUniversalSegmentation(EomtPreTrainedModel):
         if pixel_values is None:
             raise ValueError("You have to specify pixel_values")
 
-        hidden_states = self.embeddings(pixel_values)
+        hidden_states = self.dropout(self.embeddings(pixel_values))
+        position_embeddings = self.get_position_embeddings(pixel_values)
 
         for idx, layer_module in enumerate(self.layers):
             if idx == self.num_hidden_layers - self.config.num_blocks:
@@ -1138,7 +1141,7 @@ class EomtForUniversalSegmentation(EomtPreTrainedModel):
                 )
 
                 num_query_tokens = self.config.num_queries
-                encoder_start_tokens = num_query_tokens + self.embeddings.num_prefix_tokens
+                encoder_start_tokens = num_query_tokens + self.num_prefix_tokens
 
                 # Set attention mask for queries to focus on encoder tokens based on interpolated logits
                 attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
@@ -1156,7 +1159,11 @@ class EomtForUniversalSegmentation(EomtPreTrainedModel):
                 attention_mask = attention_mask[:, None, ...].expand(-1, self.config.num_attention_heads, -1, -1)
                 attention_mask = attention_mask.float().masked_fill(~attention_mask, -1e9)
 
-            hidden_states = layer_module(hidden_states, attention_mask)
+            hidden_states = layer_module(
+                hidden_states,
+                attention_mask=attention_mask,
+                position_embeddings=position_embeddings,
+            )
 
         sequence_output = self.layernorm(hidden_states)
 
@@ -1190,11 +1197,14 @@ class EomtForUniversalSegmentation(EomtPreTrainedModel):
     def get_input_embeddings(self):
         return self.embeddings.patch_embeddings
 
+    def get_position_embeddings(self, pixel_values: Tensor) -> Optional[tuple[Tensor, Tensor]]:
+        return None
+
     def predict(self, logits: torch.Tensor):
         query_tokens = logits[:, : self.config.num_queries, :]
         class_logits = self.class_predictor(query_tokens)
 
-        prefix_tokens = logits[:, self.config.num_queries + self.embeddings.num_prefix_tokens :, :]
+        prefix_tokens = logits[:, self.config.num_queries + self.num_prefix_tokens :, :]
         prefix_tokens = prefix_tokens.transpose(1, 2)
 
         prefix_tokens = prefix_tokens.reshape(prefix_tokens.shape[0], -1, *self.grid_size)

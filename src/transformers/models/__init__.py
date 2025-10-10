@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from .csm import *
     from .ctrl import *
     from .cvt import *
+    from .cwm import *
     from .d_fine import *
     from .dab_detr import *
     from .dac import *
@@ -116,6 +117,7 @@ if TYPE_CHECKING:
     from .emu3 import *
     from .encodec import *
     from .encoder_decoder import *
+    from .eomt_dinov3 import *
     from .ernie import *
     from .esm import *
     from .evolla import *
@@ -186,6 +188,7 @@ if TYPE_CHECKING:
     from .led import *
     from .levit import *
     from .lfm2 import *
+    from .lfm2_moe import *
     from .lfm2_vl import *
     from .lightglue import *
     from .lilt import *
