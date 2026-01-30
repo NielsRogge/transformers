@@ -393,7 +393,7 @@ def augment_patches_center_coordinates(
 class EomtDinov3RopePositionEmbedding(nn.Module):
     inv_freq: Tensor
 
-    def __init__(self, config: EomtDinov3Config):
+    def __init__(self, config: EomtDinov3Config, device=None):
         super().__init__()
 
         self.config = config
@@ -402,9 +402,9 @@ class EomtDinov3RopePositionEmbedding(nn.Module):
         self.num_patches_h = config.image_size // config.patch_size
         self.num_patches_w = config.image_size // config.patch_size
 
-        inv_freq = 1 / self.base ** torch.arange(0, 1, 4 / self.head_dim, dtype=torch.float32)  # (head_dim / 4,)
+        inv_freq = self.compute_default_rope_parameters(config, device)
         self.register_buffer("inv_freq", inv_freq, persistent=False)
-        self.register_buffer("original_inv_freq", inv_freq.clone(), persistent=False)
+        self.original_inv_freq = inv_freq
 
     def forward(self, pixel_values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         _, _, height, width = pixel_values.shape
@@ -439,6 +439,28 @@ class EomtDinov3RopePositionEmbedding(nn.Module):
 
         dtype = pixel_values.dtype
         return cos.to(dtype=dtype), sin.to(dtype=dtype)
+
+    @staticmethod
+    def compute_default_rope_parameters(
+        config: EomtDinov3Config,
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        """
+        Computes the inverse frequencies for the RoPE embeddings used in EoMT-DINOv3.
+
+        Args:
+            config ([`EomtDinov3Config`]):
+                The model configuration.
+            device (`torch.device`, *optional*):
+                The device to use for initialization of the inverse frequencies.
+
+        Returns:
+            `torch.Tensor`: The inverse frequencies for the RoPE embeddings.
+        """
+        base = config.rope_parameters["rope_theta"]
+        head_dim = config.hidden_size // config.num_attention_heads
+        inv_freq = 1 / base ** torch.arange(0, 1, 4 / head_dim, dtype=torch.float32, device=device)
+        return inv_freq
 
 
 # Adapted from https://github.com/facebookresearch/detectron2/blob/main/projects/PointRend/point_rend/point_features.py
@@ -1068,12 +1090,12 @@ class EomtDinov3PreTrainedModel(PreTrainedModel):
             empty_weight = torch.ones(module.num_labels + 1)
             empty_weight[-1] = module.eos_coef
             init.copy_(module.empty_weight, empty_weight)
-        elif isinstance(module, EomtDinov3RopePositionEmbedding):
-            inv_freq = 1 / module.base ** torch.arange(0, 1, 4 / module.head_dim, dtype=torch.float32)
-            init.copy_(module.inv_freq, inv_freq)
-            init.copy_(module.original_inv_freq, inv_freq.clone())
         elif isinstance(module, EomtDinov3ForUniversalSegmentation):
             init.ones_(module.attn_mask_probs)
+        elif isinstance(module, EomtDinov3RopePositionEmbedding):
+            inv_freq = module.compute_default_rope_parameters(module.config, module.inv_freq.device)
+            init.copy_(module.inv_freq, inv_freq)
+            module.original_inv_freq = module.inv_freq
 
 
 class EomtDinov3LayerNorm2d(nn.LayerNorm):

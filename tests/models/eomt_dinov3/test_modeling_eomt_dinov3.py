@@ -144,6 +144,10 @@ class EomtDinov3ForUniversalSegmentationTest(ModelTesterMixin, PipelineTesterMix
     def test_resize_tokens_embeddings(self):
         pass
 
+    @unittest.skip(reason="Data-dependent branching from training mode in position embedding augmentation")
+    def test_torch_export(self):
+        pass
+
     def test_training(self):
         # We override this test because EoMT requires `mask_labels` and `class_labels` for training,
         # which are not standard labels that `_prepare_for_class` can generate. We can't include
