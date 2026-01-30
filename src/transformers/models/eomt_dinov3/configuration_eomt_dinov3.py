@@ -18,10 +18,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ...configuration_utils import PreTrainedConfig
-from ...modeling_rope_utils import RopeParameters, RotaryEmbeddingConfigMixin
+from ...modeling_rope_utils import RopeParameters
 
 
-class EomtDinov3Config(PreTrainedConfig, RotaryEmbeddingConfigMixin):
+class EomtDinov3Config(PreTrainedConfig):
     r"""
     This is the configuration class to store the configuration of a [`EomtDinov3ForUniversalSegmentation`]. It is used to instantiate an EoMT-DINOv3 model
     according to the specified arguments, defining the model architecture. Instantiating a configuration with the
@@ -148,8 +148,31 @@ class EomtDinov3Config(PreTrainedConfig, RotaryEmbeddingConfigMixin):
         pos_embed_rescale: float | None = 2.0,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-
+        self.intermediate_size = intermediate_size
+        self.attention_dropout = attention_dropout
+        self.layerscale_value = layerscale_value
+        self.drop_path_rate = drop_path_rate
+        self.num_upscale_blocks = num_upscale_blocks
+        self.num_blocks = num_blocks
+        self.no_object_weight = no_object_weight
+        self.class_weight = class_weight
+        self.mask_weight = mask_weight
+        self.dice_weight = dice_weight
+        self.train_num_points = train_num_points
+        self.oversample_ratio = oversample_ratio
+        self.importance_sample_ratio = importance_sample_ratio
+        self.num_queries = num_queries
+        self.num_register_tokens = num_register_tokens
+        self.rope_parameters = rope_parameters
+        self.query_bias = query_bias
+        self.key_bias = key_bias
+        self.value_bias = value_bias
+        self.proj_bias = proj_bias
+        self.mlp_bias = mlp_bias
+        self.use_gated_mlp = use_gated_mlp
+        self.pos_embed_shift = pos_embed_shift
+        self.pos_embed_jitter = pos_embed_jitter
+        self.pos_embed_rescale = pos_embed_rescale
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
@@ -175,17 +198,7 @@ class EomtDinov3Config(PreTrainedConfig, RotaryEmbeddingConfigMixin):
         self.num_queries = num_queries
         self.num_register_tokens = num_register_tokens
 
-        self.intermediate_size = intermediate_size
-        self.rope_parameters = rope_parameters
-        self.query_bias = query_bias
-        self.key_bias = key_bias
-        self.value_bias = value_bias
-        self.proj_bias = proj_bias
-        self.mlp_bias = mlp_bias
-        self.use_gated_mlp = use_gated_mlp
-        self.pos_embed_shift = pos_embed_shift
-        self.pos_embed_jitter = pos_embed_jitter
-        self.pos_embed_rescale = pos_embed_rescale
+        super().__init__(**kwargs)
 
 
 __all__ = ["EomtDinov3Config"]

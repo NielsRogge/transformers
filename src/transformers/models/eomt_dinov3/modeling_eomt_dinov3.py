@@ -17,10 +17,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import torch
@@ -182,7 +182,7 @@ class EomtDinov3Attention(nn.Module):
         return attn_output, attn_weights
 
 
-class EomtDinov3ViTEmbeddings(nn.Module):
+class EomtDinov3Embeddings(nn.Module):
     """
     Construct the CLS token, mask token, position and patch embeddings.
     """
@@ -390,21 +390,21 @@ def augment_patches_center_coordinates(
     return coords
 
 
-class EomtDinov3RopePositionEmbedding(nn.Module):
+class EomtDinov3RotaryEmbedding(nn.Module):
     inv_freq: Tensor
 
     def __init__(self, config: EomtDinov3Config, device=None):
         super().__init__()
-
         self.config = config
-        self.base = config.rope_parameters["rope_theta"]
-        self.head_dim = config.hidden_size // config.num_attention_heads
-        self.num_patches_h = config.image_size // config.patch_size
-        self.num_patches_w = config.image_size // config.patch_size
 
-        inv_freq = self.compute_default_rope_parameters(config, device)
+        self.rope_type = self.config.rope_parameters["rope_type"]
+        rope_init_fn: Callable = self.compute_default_rope_parameters
+        if self.rope_type != "default":
+            raise ValueError("`EomtDinov3` only supports `default` RoPE! Please check your `rope_type`")
+        inv_freq, self.attention_scaling = rope_init_fn(self.config, device)
+
         self.register_buffer("inv_freq", inv_freq, persistent=False)
-        self.original_inv_freq = inv_freq
+        self.register_buffer("original_inv_freq", inv_freq.clone(), persistent=False)
 
     def forward(self, pixel_values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         _, _, height, width = pixel_values.shape
@@ -442,25 +442,31 @@ class EomtDinov3RopePositionEmbedding(nn.Module):
 
     @staticmethod
     def compute_default_rope_parameters(
-        config: EomtDinov3Config,
-        device: torch.device | None = None,
+        config: EomtDinov3Config | None = None,
+        device: Optional["torch.device"] = None,
+        seq_len: int | None = None,
     ) -> torch.Tensor:
         """
-        Computes the inverse frequencies for the RoPE embeddings used in EoMT-DINOv3.
-
+        Computes the inverse frequencies according to the original RoPE implementation
         Args:
-            config ([`EomtDinov3Config`]):
+            config ([`~transformers.PreTrainedConfig`]):
                 The model configuration.
-            device (`torch.device`, *optional*):
+            device (`torch.device`):
                 The device to use for initialization of the inverse frequencies.
-
+            seq_len (`int`, *optional*):
+                The current sequence length. Unused for this type of RoPE.
         Returns:
-            `torch.Tensor`: The inverse frequencies for the RoPE embeddings.
+            Tuple of (`torch.Tensor`, `float`), containing the inverse frequencies for the RoPE embeddings and the
+            post-processing scaling factor applied to the computed cos/sin (unused in this type of RoPE).
         """
         base = config.rope_parameters["rope_theta"]
         head_dim = config.hidden_size // config.num_attention_heads
+
+        attention_factor = 1.0  # Unused in this type of RoPE
+
+        # Compute the inverse frequencies
         inv_freq = 1 / base ** torch.arange(0, 1, 4 / head_dim, dtype=torch.float32, device=device)
-        return inv_freq
+        return inv_freq, attention_factor
 
 
 # Adapted from https://github.com/facebookresearch/detectron2/blob/main/projects/PointRend/point_rend/point_features.py
@@ -1083,7 +1089,7 @@ class EomtDinov3PreTrainedModel(PreTrainedModel):
         if isinstance(module, EomtDinov3LayerScale):
             if hasattr(module, "lambda1"):
                 init.constant_(module.lambda1, self.config.layerscale_value)
-        elif isinstance(module, EomtDinov3ViTEmbeddings):
+        elif isinstance(module, EomtDinov3Embeddings):
             init.trunc_normal_(module.cls_token, mean=0.0, std=std)
             init.zeros_(module.register_tokens)
         elif isinstance(module, EomtDinov3Loss):
@@ -1092,10 +1098,6 @@ class EomtDinov3PreTrainedModel(PreTrainedModel):
             init.copy_(module.empty_weight, empty_weight)
         elif isinstance(module, EomtDinov3ForUniversalSegmentation):
             init.ones_(module.attn_mask_probs)
-        elif isinstance(module, EomtDinov3RopePositionEmbedding):
-            inv_freq = module.compute_default_rope_parameters(module.config, module.inv_freq.device)
-            init.copy_(module.inv_freq, inv_freq)
-            module.original_inv_freq = module.inv_freq
 
 
 class EomtDinov3LayerNorm2d(nn.LayerNorm):
@@ -1175,7 +1177,7 @@ class EomtDinov3ForUniversalSegmentation(EomtDinov3PreTrainedModel):
         super().__init__(config)
         self.config = config
         self.num_hidden_layers = config.num_hidden_layers
-        self.embeddings = EomtDinov3ViTEmbeddings(config)
+        self.embeddings = EomtDinov3Embeddings(config)
         self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         self.query = nn.Embedding(config.num_queries, config.hidden_size)
@@ -1201,7 +1203,7 @@ class EomtDinov3ForUniversalSegmentation(EomtDinov3PreTrainedModel):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.embeddings.register_parameter("mask_token", None)
 
-        self.rope_embeddings = EomtDinov3RopePositionEmbedding(config)
+        self.rope_embeddings = EomtDinov3RotaryEmbedding(config)
 
         self.post_init()
 

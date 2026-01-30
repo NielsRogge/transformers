@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """PyTorch EoMT model backed by DINOv3."""
+from collections.abc import Callable
+from typing import Optional
 
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
 
 from ... import initialization as init
-from ...modeling_rope_utils import RopeParameters, RotaryEmbeddingConfigMixin
+from ...modeling_rope_utils import RopeParameters
 from ...modeling_utils import PreTrainedModel
 from ...processing_utils import Unpack
 from ...utils import (
@@ -42,7 +44,7 @@ from ..eomt.modeling_eomt import (
 )
 
 
-class EomtDinov3Config(EomtConfig, RotaryEmbeddingConfigMixin):
+class EomtDinov3Config(EomtConfig):
     r"""
     This is the configuration class to store the configuration of a [`EomtDinov3ForUniversalSegmentation`]. It is used to instantiate an EoMT-DINOv3 model
     according to the specified arguments, defining the model architecture. Instantiating a configuration with the
@@ -169,28 +171,6 @@ class EomtDinov3Config(EomtConfig, RotaryEmbeddingConfigMixin):
         pos_embed_rescale: float | None = 2.0,
         **kwargs,
     ):
-        super().__init__(
-            hidden_size=hidden_size,
-            num_hidden_layers=num_hidden_layers,
-            num_attention_heads=num_attention_heads,
-            hidden_dropout_prob=hidden_dropout_prob,
-            hidden_act=hidden_act,
-            initializer_range=initializer_range,
-            layer_norm_eps=layer_norm_eps,
-            image_size=image_size,
-            patch_size=patch_size,
-            num_channels=num_channels,
-            **kwargs,
-        )
-
-        del self.qkv_bias
-        del self.pooler_act
-        del self.pooler_output_size
-        del self.encoder_stride
-        del self.attention_probs_dropout_prob
-        del self.mlp_ratio
-        del self.use_swiglu_ffn
-
         self.intermediate_size = intermediate_size
         self.attention_dropout = attention_dropout
         self.layerscale_value = layerscale_value
@@ -217,12 +197,34 @@ class EomtDinov3Config(EomtConfig, RotaryEmbeddingConfigMixin):
         self.pos_embed_jitter = pos_embed_jitter
         self.pos_embed_rescale = pos_embed_rescale
 
+        super().__init__(
+            hidden_size=hidden_size,
+            num_hidden_layers=num_hidden_layers,
+            num_attention_heads=num_attention_heads,
+            hidden_dropout_prob=hidden_dropout_prob,
+            hidden_act=hidden_act,
+            initializer_range=initializer_range,
+            layer_norm_eps=layer_norm_eps,
+            image_size=image_size,
+            patch_size=patch_size,
+            num_channels=num_channels,
+            **kwargs,
+        )
+
+        del self.qkv_bias
+        del self.pooler_act
+        del self.pooler_output_size
+        del self.encoder_stride
+        del self.attention_probs_dropout_prob
+        del self.mlp_ratio
+        del self.use_swiglu_ffn
+
 
 class EomtDinov3Attention(DINOv3ViTAttention):
     pass
 
 
-class EomtDinov3ViTEmbeddings(DINOv3ViTEmbeddings):
+class EomtDinov3Embeddings(DINOv3ViTEmbeddings):
     def __init__(self, config: EomtDinov3Config):
         super().__init__(config)
         self.num_prefix_tokens = 1 + config.num_register_tokens
@@ -236,43 +238,49 @@ class EomtDinov3LayerScale(DINOv3ViTLayerScale):
     pass
 
 
-class EomtDinov3RopePositionEmbedding(DINOv3ViTRopePositionEmbedding):
+class EomtDinov3RotaryEmbedding(DINOv3ViTRopePositionEmbedding):
     inv_freq: Tensor
 
     def __init__(self, config: EomtDinov3Config, device=None):
         nn.Module.__init__(self)
-
         self.config = config
-        self.base = config.rope_parameters["rope_theta"]
-        self.head_dim = config.hidden_size // config.num_attention_heads
-        self.num_patches_h = config.image_size // config.patch_size
-        self.num_patches_w = config.image_size // config.patch_size
 
-        inv_freq = self.compute_default_rope_parameters(config, device)
+        self.rope_type = self.config.rope_parameters["rope_type"]
+        rope_init_fn: Callable = self.compute_default_rope_parameters
+        if self.rope_type != "default":
+            raise ValueError("`EomtDinov3` only supports `default` RoPE! Please check your `rope_type`")
+        inv_freq, self.attention_scaling = rope_init_fn(self.config, device)
+
         self.register_buffer("inv_freq", inv_freq, persistent=False)
-        self.original_inv_freq = inv_freq
+        self.register_buffer("original_inv_freq", inv_freq.clone(), persistent=False)
 
     @staticmethod
     def compute_default_rope_parameters(
-        config: EomtDinov3Config,
-        device: torch.device | None = None,
+        config: EomtDinov3Config | None = None,
+        device: Optional["torch.device"] = None,
+        seq_len: int | None = None,
     ) -> torch.Tensor:
         """
-        Computes the inverse frequencies for the RoPE embeddings used in EoMT-DINOv3.
-
+        Computes the inverse frequencies according to the original RoPE implementation
         Args:
-            config ([`EomtDinov3Config`]):
+            config ([`~transformers.PreTrainedConfig`]):
                 The model configuration.
-            device (`torch.device`, *optional*):
+            device (`torch.device`):
                 The device to use for initialization of the inverse frequencies.
-
+            seq_len (`int`, *optional*):
+                The current sequence length. Unused for this type of RoPE.
         Returns:
-            `torch.Tensor`: The inverse frequencies for the RoPE embeddings.
+            Tuple of (`torch.Tensor`, `float`), containing the inverse frequencies for the RoPE embeddings and the
+            post-processing scaling factor applied to the computed cos/sin (unused in this type of RoPE).
         """
         base = config.rope_parameters["rope_theta"]
         head_dim = config.hidden_size // config.num_attention_heads
+
+        attention_factor = 1.0  # Unused in this type of RoPE
+
+        # Compute the inverse frequencies
         inv_freq = 1 / base ** torch.arange(0, 1, 4 / head_dim, dtype=torch.float32, device=device)
-        return inv_freq
+        return inv_freq, attention_factor
 
 
 class EomtDinov3Loss(EomtLoss):
@@ -298,7 +306,7 @@ class EomtDinov3PreTrainedModel(EomtPreTrainedModel):
         if isinstance(module, EomtDinov3LayerScale):
             if hasattr(module, "lambda1"):
                 init.constant_(module.lambda1, self.config.layerscale_value)
-        elif isinstance(module, EomtDinov3ViTEmbeddings):
+        elif isinstance(module, EomtDinov3Embeddings):
             init.trunc_normal_(module.cls_token, mean=0.0, std=std)
             init.zeros_(module.register_tokens)
         elif isinstance(module, EomtDinov3Loss):
@@ -307,10 +315,6 @@ class EomtDinov3PreTrainedModel(EomtPreTrainedModel):
             init.copy_(module.empty_weight, empty_weight)
         elif isinstance(module, EomtDinov3ForUniversalSegmentation):
             init.ones_(module.attn_mask_probs)
-        elif isinstance(module, EomtDinov3RopePositionEmbedding):
-            inv_freq = module.compute_default_rope_parameters(module.config, module.inv_freq.device)
-            init.copy_(module.inv_freq, inv_freq)
-            module.original_inv_freq = module.inv_freq
 
 
 @auto_docstring(
@@ -324,10 +328,10 @@ class EomtDinov3ForUniversalSegmentation(EomtDinov3PreTrainedModel, EomtForUnive
 
         self.num_prefix_tokens = 1 + config.num_register_tokens
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.embeddings = EomtDinov3ViTEmbeddings(config)
+        self.embeddings = EomtDinov3Embeddings(config)
         self.embeddings.register_parameter("mask_token", None)
 
-        self.rope_embeddings = EomtDinov3RopePositionEmbedding(config)
+        self.rope_embeddings = EomtDinov3RotaryEmbedding(config)
         self.layers = nn.ModuleList([EomtDinov3Layer(config) for _ in range(config.num_hidden_layers)])
 
         self.post_init()

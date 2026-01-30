@@ -133,8 +133,6 @@ class EomtConfig(PreTrainedConfig):
         num_register_tokens=4,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-
         self.hidden_size = hidden_size
         self.num_hidden_layers = num_hidden_layers
         self.num_attention_heads = num_attention_heads
@@ -162,6 +160,8 @@ class EomtConfig(PreTrainedConfig):
         self.importance_sample_ratio = importance_sample_ratio
         self.num_queries = num_queries
         self.num_register_tokens = num_register_tokens
+
+        super().__init__(**kwargs)
 
 
 __all__ = ["EomtConfig"]
