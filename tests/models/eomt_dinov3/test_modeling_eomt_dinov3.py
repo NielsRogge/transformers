@@ -107,6 +107,7 @@ class EomtDinov3ForUniversalSegmentationTest(ModelTesterMixin, PipelineTesterMix
     pipeline_model_mapping = {"image-segmentation": EomtDinov3ForUniversalSegmentation} if is_torch_available() else {}
     is_encoder_decoder = False
     test_missing_keys = False
+    test_torch_exportable = False
 
     def setUp(self):
         self.model_tester = EomtDinov3ForUniversalSegmentationTester(self)
@@ -142,10 +143,6 @@ class EomtDinov3ForUniversalSegmentationTest(ModelTesterMixin, PipelineTesterMix
 
     @unittest.skip(reason="EoMT does not use token embeddings")
     def test_resize_tokens_embeddings(self):
-        pass
-
-    @unittest.skip(reason="Data-dependent branching from training mode in position embedding augmentation")
-    def test_torch_export(self):
         pass
 
     def test_training(self):
