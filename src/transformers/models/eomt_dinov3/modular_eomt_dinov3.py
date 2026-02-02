@@ -361,7 +361,7 @@ class EomtDinov3ForUniversalSegmentation(EomtDinov3PreTrainedModel, EomtForUnive
         masks_queries_logits_per_layer, class_queries_logits_per_layer = (), ()
 
         hidden_states = self.dropout(self.embeddings(pixel_values))
-        position_embeddings = self.rope_embeddings(pixel_values)
+        position_embeddings = self.rope_embeddings(pixel_values.to(hidden_states.dtype))
         attention_mask = None
 
         for idx, layer_module in enumerate(self.layers):
