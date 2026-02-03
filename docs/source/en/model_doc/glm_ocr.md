@@ -50,7 +50,7 @@ model_id = "zai-org/GLM-OCR"
 processor = AutoProcessor.from_pretrained(model_id)
 model = GlmOcrForConditionalGeneration.from_pretrained(
     model_id,
-    torch_dtype=torch.bfloat16,
+    dtype=torch.bfloat16,
     device_map="auto",
 )
 
@@ -89,7 +89,7 @@ model_id = "zai-org/GLM-OCR"
 processor = AutoProcessor.from_pretrained(model_id)
 model = GlmOcrForConditionalGeneration.from_pretrained(
     model_id,
-    torch_dtype=torch.bfloat16,
+    dtype=torch.bfloat16,
     device_map="auto",
 )
 
@@ -146,7 +146,7 @@ import torch
 
 model = GlmOcrForConditionalGeneration.from_pretrained(
     "zai-org/GLM-OCR",
-    torch_dtype=torch.bfloat16,
+    dtype=torch.bfloat16,
     attn_implementation="flash_attention_2",
     device_map="auto",
 )
