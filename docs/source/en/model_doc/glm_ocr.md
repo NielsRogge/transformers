@@ -138,7 +138,7 @@ GLM-OCR supports Flash Attention 2 for faster inference. First, install the late
 pip install -U flash-attn --no-build-isolation
 ```
 
-Then load the model with `attn_implementation="flash_attention_2"`:
+Then load the model with one of the supported kernels of the [kernels-community](https://huggingface.co/kernels-community):
 
 ```python
 from transformers import GlmOcrForConditionalGeneration
@@ -147,7 +147,7 @@ import torch
 model = GlmOcrForConditionalGeneration.from_pretrained(
     "zai-org/GLM-OCR",
     dtype=torch.bfloat16,
-    attn_implementation="flash_attention_2",
+    attn_implementation="kernels-community/flash-attn2",  # other options: kernels-community/vllm-flash-attn3, kernels-community/paged-attention
     device_map="auto",
 )
 ```
