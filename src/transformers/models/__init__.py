@@ -130,6 +130,7 @@ if TYPE_CHECKING:
     from .esm import *
     from .evolla import *
     from .exaone4 import *
+    from .exaone_moe import *
     from .falcon import *
     from .falcon_h1 import *
     from .falcon_mamba import *
@@ -157,6 +158,7 @@ if TYPE_CHECKING:
     from .glm4v_moe import *
     from .glm46v import *
     from .glm_image import *
+    from .glm_moe_dsa import *
     from .glm_ocr import *
     from .glmasr import *
     from .glpn import *
@@ -257,6 +259,7 @@ if TYPE_CHECKING:
     from .modernbert import *
     from .modernbert_decoder import *
     from .moonshine import *
+    from .moonshine_streaming import *
     from .moshi import *
     from .mpnet import *
     from .mpt import *
@@ -319,6 +322,8 @@ if TYPE_CHECKING:
     from .qwen2_moe import *
     from .qwen2_vl import *
     from .qwen3 import *
+    from .qwen3_5 import *
+    from .qwen3_5_moe import *
     from .qwen3_moe import *
     from .qwen3_next import *
     from .qwen3_omni_moe import *
