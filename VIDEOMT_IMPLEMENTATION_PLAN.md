@@ -162,11 +162,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 19 (current)
+### Update 19
 
 - Simplified conversion validation to a **single checkpoint-driven path**: pass `--checkpoint-filename` from `tue-mps/VidEoMT`, map weights into `VideomtForUniversalSegmentation`, and run a dummy forward verification.
 - Conversion status on `yt_2019_vit_small_52.8.pth` currently reports **0 unexpected keys** and only one missing HF key (`criterion.empty_weight`, non-parameter loss buffer).
 - Source keys not yet consumed by conversion mapping are now explicitly reported: `backbone.encoder.backbone.pos_embed` and `backbone.query_updater.{weight,bias}` (plus `criterion.empty_weight` from checkpoint loss state).
+
+
+
+### Update 20 (current)
+
+- Added a `--verify` mode to `convert_videomt_to_hf.py` that validates converted HF outputs against the original GitHub VidEoMT implementation (`tue-mps/videomt`) on the same dummy input video.
+- Verification now loads the reference `VidEoMT_CLASS`, reports reference load-state diagnostics, and prints output max-abs diffs for class/mask predictions.
+- Current status: checkpoint mapping and forward sanity pass are working; `--verify` path runs end-to-end but currently fails parity (`verify_ok=False`) because direct loading into the upstream reference class still has large missing/unexpected key sets and large output diffs.
 
 ## Implemented in this update
 

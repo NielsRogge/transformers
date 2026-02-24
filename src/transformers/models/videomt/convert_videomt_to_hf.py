@@ -16,7 +16,13 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import re
+import subprocess
+import sys
+import tempfile
+import types
+from pathlib import Path
 
 import torch
 from huggingface_hub import hf_hub_download
@@ -65,6 +71,49 @@ def infer_videomt_config(
         num_labels=state_dict["backbone.class_head.weight"].shape[0] - 1,
         num_frames=num_frames,
     )
+
+
+def infer_backbone_model_name(checkpoint_filename: str) -> str:
+    if "vit_small" in checkpoint_filename:
+        return "vit_small_patch16_224"
+    if "vit_base" in checkpoint_filename:
+        return "vit_base_patch16_224"
+    if "vit_large" in checkpoint_filename:
+        return "vit_large_patch16_224"
+    raise ValueError(f"Could not infer timm backbone model from checkpoint name '{checkpoint_filename}'.")
+
+
+def load_reference_videomt_class(reference_repo_path: Path):
+    base_path = reference_repo_path / "videomt" / "modeling" / "backbone"
+
+    detectron2_modeling = types.ModuleType("detectron2.modeling")
+
+    class _Backbone:
+        pass
+
+    class _Registry:
+        def register(self):
+            def _deco(cls):
+                return cls
+
+            return _deco
+
+    detectron2_modeling.Backbone = _Backbone
+    detectron2_modeling.BACKBONE_REGISTRY = _Registry()
+    sys.modules["detectron2.modeling"] = detectron2_modeling
+
+    for module_name in ["scale_block", "vit", "videomt"]:
+        spec = importlib.util.spec_from_file_location(
+            f"hf_videomt_reference.backbone.{module_name}", base_path / f"{module_name}.py"
+        )
+        if spec is None or spec.loader is None:
+            raise ValueError(f"Could not load module '{module_name}' from {base_path}.")
+        module = importlib.util.module_from_spec(spec)
+        module.__package__ = "hf_videomt_reference.backbone"
+        sys.modules[f"hf_videomt_reference.backbone.{module_name}"] = module
+        spec.loader.exec_module(module)
+
+    return sys.modules["hf_videomt_reference.backbone.videomt"].VidEoMT_CLASS
 
 
 def convert_state_dict(
@@ -209,7 +258,12 @@ def validate_qkv_split(
 
 
 def convert_checkpoint(
-    checkpoint_filename: str, image_size: int, num_frames: int, output_dir: str | None = None
+    checkpoint_filename: str,
+    image_size: int,
+    num_frames: int,
+    output_dir: str | None = None,
+    verify: bool = False,
+    reference_repo_path: str | None = None,
 ) -> None:
     checkpoint_path = hf_hub_download(repo_id=MODEL_REPO_ID, filename=checkpoint_filename)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
@@ -262,6 +316,103 @@ def convert_checkpoint(
         config.save_pretrained(output_dir)
         print(f"saved_to={output_dir}")
 
+    if verify:
+        verify_ok = verify_conversion_against_github_reference(
+            hf_model=model,
+            original_state_dict=original_state_dict,
+            checkpoint_filename=checkpoint_filename,
+            image_size=image_size,
+            num_frames=num_frames,
+            reference_repo_path=reference_repo_path,
+        )
+        print(f"verify_ok={verify_ok}")
+
+
+def verify_conversion_against_github_reference(
+    hf_model: VideomtForUniversalSegmentation,
+    original_state_dict: dict[str, torch.Tensor],
+    checkpoint_filename: str,
+    image_size: int,
+    num_frames: int,
+    reference_repo_path: str | None = None,
+) -> bool:
+    with tempfile.TemporaryDirectory(prefix="videomt_ref_") as tmp_dir:
+        repo_path = Path(reference_repo_path) if reference_repo_path is not None else Path(tmp_dir) / "videomt"
+        if reference_repo_path is None:
+            subprocess.run(
+                ["git", "clone", "--depth", "1", "https://github.com/tue-mps/videomt", str(repo_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        try:
+            import timm
+
+            original_create_model = timm.create_model
+
+            def _create_model_no_pretrained(*args, **kwargs):
+                kwargs["pretrained"] = False
+                return original_create_model(*args, **kwargs)
+
+            timm.create_model = _create_model_no_pretrained
+            reference_cls = load_reference_videomt_class(repo_path)
+        finally:
+            if "timm" in locals():
+                timm.create_model = original_create_model
+
+        reference_model = reference_cls(
+            img_size=image_size,
+            num_classes=hf_model.config.num_labels,
+            name=infer_backbone_model_name(checkpoint_filename),
+            num_frames=num_frames,
+            num_q=hf_model.config.num_queries,
+            segmenter_blocks=list(
+                range(
+                    hf_model.config.num_hidden_layers - hf_model.config.num_blocks, hf_model.config.num_hidden_layers
+                )
+            ),
+        ).eval()
+
+        reference_load_info = reference_model.load_state_dict(original_state_dict, strict=False)
+        ignored_missing = {"encoder.backbone.pos_embed"}
+        ignored_unexpected = {"criterion.empty_weight"}
+        ref_missing = set(reference_load_info.missing_keys) - ignored_missing
+        ref_unexpected = set(reference_load_info.unexpected_keys) - ignored_unexpected
+
+        print(f"reference_missing_keys={len(ref_missing)}")
+        print(f"reference_unexpected_keys={len(ref_unexpected)}")
+
+        dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
+        with torch.no_grad():
+            hf_outputs = hf_model(pixel_values=dummy_video)
+            reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
+
+        reference_logits = reference_outputs["pred_logits"].reshape(
+            -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
+        )
+        reference_masks = (
+            reference_outputs["pred_masks"]
+            .permute(0, 2, 1, 3, 4)
+            .reshape(
+                -1,
+                hf_model.config.num_queries,
+                reference_outputs["pred_masks"].shape[-2],
+                reference_outputs["pred_masks"].shape[-1],
+            )
+        )
+
+        logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
+        masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
+
+        print(f"verify_logits_max_abs_diff={logits_diff:.8f}")
+        print(f"verify_masks_max_abs_diff={masks_diff:.8f}")
+
+        outputs_match = torch.allclose(
+            hf_outputs.class_queries_logits, reference_logits, atol=1e-4, rtol=1e-4
+        ) and torch.allclose(hf_outputs.masks_queries_logits, reference_masks, atol=1e-4, rtol=1e-4)
+        return outputs_match and not ref_missing and not ref_unexpected
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert official VidEoMT checkpoints to HF format.")
@@ -269,6 +420,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--image-size", type=int, default=640)
     parser.add_argument("--num-frames", type=int, default=2)
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--verify", action="store_true")
+    parser.add_argument("--reference-repo-path", type=str, default=None)
     return parser.parse_args()
 
 
@@ -279,6 +432,8 @@ def main() -> None:
         image_size=args.image_size,
         num_frames=args.num_frames,
         output_dir=args.output_dir,
+        verify=args.verify,
+        reference_repo_path=args.reference_repo_path,
     )
 
 
