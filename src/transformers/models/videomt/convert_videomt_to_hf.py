@@ -649,6 +649,10 @@ def verify_conversion_against_github_reference(
             with torch.no_grad():
                 hf_hidden_states = hf_model.dropout(hf_model.embeddings(diagnostic_frames))
                 hf_position_embeddings = hf_model.rope_embeddings(diagnostic_frames.to(hf_hidden_states.dtype))
+                hf_position_embeddings_no_rope = (
+                    torch.ones_like(hf_position_embeddings[0]),
+                    torch.zeros_like(hf_position_embeddings[0]),
+                )
 
                 reference_hidden_states = reference_model.encoder.backbone.patch_embed(diagnostic_frames)
                 reference_hidden_states = reference_model.encoder.backbone._pos_embed(reference_hidden_states)
@@ -679,23 +683,32 @@ def verify_conversion_against_github_reference(
                     )
                     reference_qkv = reference_block.attn.qkv(reference_normed_hidden_states)
 
-                    hf_hidden_states = hf_model.layers[layer_idx](
+                    hf_hidden_states_with_rope = hf_layer(
                         hf_hidden_states_input,
                         position_embeddings=hf_position_embeddings,
+                    )
+                    hf_hidden_states_no_rope = hf_layer(
+                        hf_hidden_states_input,
+                        position_embeddings=hf_position_embeddings_no_rope,
                     )
                     reference_hidden_states = reference_model.backbone_patch_token(
                         reference_hidden_states_input,
                         reference_model.encoder.backbone.blocks[layer_idx : layer_idx + 1],
                     )
 
+                hf_hidden_states = hf_hidden_states_with_rope
                 layer_normed_hidden_diff = (
                     (hf_normed_hidden_states - reference_normed_hidden_states).abs().max().item()
                 )
                 layer_qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
-                layer_hidden_diff = (hf_hidden_states - reference_hidden_states).abs().max().item()
+                layer_hidden_diff = (hf_hidden_states_with_rope - reference_hidden_states).abs().max().item()
+                layer_hidden_no_rope_diff = (hf_hidden_states_no_rope - reference_hidden_states).abs().max().item()
                 print(f"verify_pre_query_layer_{layer_idx}_ln1_max_abs_diff={layer_normed_hidden_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_qkv_max_abs_diff={layer_qkv_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
+                print(
+                    f"verify_pre_query_layer_{layer_idx}_hidden_no_rope_max_abs_diff={layer_hidden_no_rope_diff:.8f}"
+                )
 
         with torch.no_grad():
             hf_outputs = hf_model(pixel_values=final_dummy_video)

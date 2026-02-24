@@ -348,3 +348,13 @@ This document tracks the next incremental steps after embedding-level parity.
   - mapping-level parity remains exact (`verify_weight_mapping_ok=True`),
   - full forward parity is still unresolved (`verify_full_forward_ok=False`),
   - bottom-up diagnostics still show first meaningful divergence already in pre-query layer-0 QKV outputs and amplification around layers 4-8.
+
+### Update 37
+
+- Extended bottom-up `--verify` pre-query diagnostics to explicitly test rotary-positional contribution per layer:
+  - added `verify_pre_query_layer_<idx>_hidden_no_rope_max_abs_diff`, computed with a neutralized RoPE tuple (`cos=1`, `sin=0`) while keeping all other layer computations identical.
+- This adds a direct A/B signal for whether RoPE is the dominant source of mismatch in early backbone layers.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - RoPE-on and RoPE-neutralized hidden diffs are very similar across pre-query layers (e.g. layer-0: ~6.44 vs ~6.71, layers 4-8: both around ~29-31),
+  - this indicates the current pre-query divergence is **not primarily driven by RoPE application**,
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while end-to-end parity remains unresolved (`verify_full_forward_ok=False`).
