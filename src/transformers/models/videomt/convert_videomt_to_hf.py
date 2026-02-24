@@ -542,12 +542,14 @@ def verify_conversion_against_github_reference(
 
                     logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
                     masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
-                    score = logits_diff + masks_diff + len(ref_missing) + len(ref_unexpected)
+                    compatibility_penalty = len(ref_missing) + len(ref_unexpected) + len(skipped_reference_keys)
+                    score = logits_diff + masks_diff + compatibility_penalty
 
                     print(f"reference_model_name={candidate_model_name}")
                     print(f"reference_missing_keys={len(ref_missing)}")
                     print(f"reference_unexpected_keys={len(ref_unexpected)}")
                     print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
+                    print(f"reference_compatibility_penalty={compatibility_penalty}")
                     print(f"candidate_verify_logits_max_abs_diff={logits_diff:.8f}")
                     print(f"candidate_verify_masks_max_abs_diff={masks_diff:.8f}")
 

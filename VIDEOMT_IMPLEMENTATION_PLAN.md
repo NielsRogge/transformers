@@ -336,3 +336,15 @@ This document tracks the next incremental steps after embedding-level parity.
   - significant divergence is already visible at layer-0 QKV (`~10.06`) despite exact mapped QKV weights,
   - hidden-state divergence still spikes starting at layer 4 (`~26`),
   - full forward parity remains unresolved (`verify_full_forward_ok=False`) while mapping-level verification still passes.
+
+### Update 36
+
+- Improved `--verify` candidate ranking in `convert_videomt_to_hf.py` by adding a **compatibility penalty** term to the candidate score:
+  - `reference_compatibility_penalty = len(missing) + len(unexpected) + len(skipped_source_keys)`
+  - `score = logits_diff + masks_diff + reference_compatibility_penalty`.
+- Added explicit logging of `reference_compatibility_penalty` per candidate so selection rationale is visible in verify output.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - candidate selection remains on `vit_small_patch16_dinov3_qkvb`, now with transparent ranking signal (`penalty=1` vs `13` / `27` for alternates),
+  - mapping-level parity remains exact (`verify_weight_mapping_ok=True`),
+  - full forward parity is still unresolved (`verify_full_forward_ok=False`),
+  - bottom-up diagnostics still show first meaningful divergence already in pre-query layer-0 QKV outputs and amplification around layers 4-8.
