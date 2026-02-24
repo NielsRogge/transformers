@@ -683,6 +683,27 @@ def verify_conversion_against_github_reference(
                     )
                     reference_qkv = reference_block.attn.qkv(reference_normed_hidden_states)
 
+                    hf_attn_output, _ = hf_layer.attention(
+                        hf_normed_hidden_states,
+                        attention_mask=None,
+                        position_embeddings=hf_position_embeddings,
+                    )
+                    hf_attn_output = hf_layer.layer_scale1(hf_attn_output)
+                    reference_attn_output = reference_block.ls1(
+                        reference_model._attn(reference_block.attn, reference_normed_hidden_states, None)
+                    )
+
+                    hf_hidden_states_after_attn = hf_hidden_states_input + hf_layer.drop_path(hf_attn_output)
+                    reference_hidden_states_after_attn = reference_hidden_states_input + reference_block.drop_path1(
+                        reference_attn_output
+                    )
+
+                    hf_norm2_hidden_states = hf_layer.norm2(hf_hidden_states_after_attn)
+                    reference_norm2_hidden_states = reference_block.norm2(reference_hidden_states_after_attn)
+
+                    hf_mlp_output = hf_layer.layer_scale2(hf_layer.mlp(hf_norm2_hidden_states))
+                    reference_mlp_output = reference_block.ls2(reference_block.mlp(reference_norm2_hidden_states))
+
                     hf_hidden_states_with_rope = hf_layer(
                         hf_hidden_states_input,
                         position_embeddings=hf_position_embeddings,
@@ -701,10 +722,20 @@ def verify_conversion_against_github_reference(
                     (hf_normed_hidden_states - reference_normed_hidden_states).abs().max().item()
                 )
                 layer_qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
+                layer_attn_diff = (hf_attn_output - reference_attn_output).abs().max().item()
+                layer_after_attn_diff = (
+                    (hf_hidden_states_after_attn - reference_hidden_states_after_attn).abs().max().item()
+                )
+                layer_norm2_diff = (hf_norm2_hidden_states - reference_norm2_hidden_states).abs().max().item()
+                layer_mlp_diff = (hf_mlp_output - reference_mlp_output).abs().max().item()
                 layer_hidden_diff = (hf_hidden_states_with_rope - reference_hidden_states).abs().max().item()
                 layer_hidden_no_rope_diff = (hf_hidden_states_no_rope - reference_hidden_states).abs().max().item()
                 print(f"verify_pre_query_layer_{layer_idx}_ln1_max_abs_diff={layer_normed_hidden_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_qkv_max_abs_diff={layer_qkv_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_attn_branch_max_abs_diff={layer_attn_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_after_attn_hidden_max_abs_diff={layer_after_attn_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_ln2_max_abs_diff={layer_norm2_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_mlp_branch_max_abs_diff={layer_mlp_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
                 print(
                     f"verify_pre_query_layer_{layer_idx}_hidden_no_rope_max_abs_diff={layer_hidden_no_rope_diff:.8f}"

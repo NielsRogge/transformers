@@ -358,3 +358,17 @@ This document tracks the next incremental steps after embedding-level parity.
   - RoPE-on and RoPE-neutralized hidden diffs are very similar across pre-query layers (e.g. layer-0: ~6.44 vs ~6.71, layers 4-8: both around ~29-31),
   - this indicates the current pre-query divergence is **not primarily driven by RoPE application**,
   - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while end-to-end parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 38
+
+- Added deeper branch-level pre-query diagnostics in `--verify` for each pre-query layer:
+  - `verify_pre_query_layer_<idx>_attn_branch_max_abs_diff` (post-attention branch, after layer-scale),
+  - `verify_pre_query_layer_<idx>_after_attn_hidden_max_abs_diff` (residual state after attention branch),
+  - `verify_pre_query_layer_<idx>_ln2_max_abs_diff` (MLP input norm state),
+  - `verify_pre_query_layer_<idx>_mlp_branch_max_abs_diff` (post-MLP branch, after layer-scale).
+- This extends bottom-up verify from "where hidden diverges" to "which sub-branch (attention vs MLP) introduces divergence".
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - early layers show moderate mismatch, but the first major spike now localizes to **layer-4 MLP branch** (`verify_pre_query_layer_4_mlp_branch_max_abs_diff ≈ 26.18`) while layer-4 attention branch remains relatively small (~1.85),
+  - subsequent layers carry forward the amplified residual mismatch (~26+),
+  - this narrows the next debugging target to layer-4 MLP execution-path parity (activation / norm / branch composition) rather than attention weights or RoPE,
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
