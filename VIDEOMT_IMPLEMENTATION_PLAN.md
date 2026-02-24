@@ -410,3 +410,25 @@ This document tracks the next incremental steps after embedding-level parity.
   - the layer-4 MLP spike remains and even increases on this seeded run (`mlp_fc1/mlp_act ~38.3`, `mlp_fc2 ~15.4`, `mlp_branch ~30.8`),
   - this confirms the divergence signal is real model behavior (not an artifact of probe decomposition),
   - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 42
+
+- Extended bottom-up pre-query diagnostics to split LN2 and MLP-FC1 divergence by token group (`cls`, `register`, `patch`) using:
+  - `verify_pre_query_layer_<idx>_ln2_cls/register/patch_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_mlp_fc1_cls/register/patch_max_abs_diff`.
+- This adds targeted signal on whether the layer-4 MLP spike is dominated by specific token types.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - layer-4 spike remains strongly MLP-driven,
+  - the largest layer-4 FC1 divergence is concentrated on **register tokens** (`mlp_fc1_register ~28.59`), with patch tokens lower (`~12.76`) and cls much lower (`~2.69`),
+  - LN2 at layer-4 also peaks on patch tokens, but the FC1 jump is register-dominated,
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Next to-dos (bottom-up)
+
+1. Add a focused layer-4 debug print in `--verify` for register-token-only MLP internals after each micro-step (norm2 -> fc1 -> act -> fc2 -> layer-scale) and compare with full-token stats to confirm exact amplification point.
+2. Compare HF vs reference **attention output contribution into register tokens** at layer-4 input (right before norm2), to verify whether upstream residual feeding register tokens differs subtly before FC1 amplification.
+3. Add a temporary verify probe that runs only pre-query layers up to layer 4 with identical input and reports tokenwise top-k indices of largest diffs (register vs patch) to identify whether a small subset of registers drives the blow-up.
+4. After isolating the exact layer-4 register-token mismatch source, implement the minimal behavior fix and keep all new diagnostics for one more run to verify that:
+   - layer-4 MLP register diffs collapse,
+   - downstream layer 5+ residual amplification drops,
+   - final logits/masks diffs improve measurably.

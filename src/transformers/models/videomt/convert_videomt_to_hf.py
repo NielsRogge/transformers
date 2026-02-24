@@ -762,7 +762,41 @@ def verify_conversion_against_github_reference(
                     (hf_hidden_states_after_attn - reference_hidden_states_after_attn).abs().max().item()
                 )
                 layer_norm2_diff = (hf_norm2_hidden_states - reference_norm2_hidden_states).abs().max().item()
+
+                cls_slice = slice(0, 1)
+                register_end = 1 + hf_model.config.num_register_tokens
+                register_slice = slice(1, register_end)
+                patch_slice = slice(register_end, hf_norm2_hidden_states.shape[1])
+
+                layer_norm2_cls_diff = (
+                    (hf_norm2_hidden_states[:, cls_slice] - reference_norm2_hidden_states[:, cls_slice])
+                    .abs()
+                    .max()
+                    .item()
+                )
+                layer_norm2_register_diff = (
+                    (hf_norm2_hidden_states[:, register_slice] - reference_norm2_hidden_states[:, register_slice])
+                    .abs()
+                    .max()
+                    .item()
+                )
+                layer_norm2_patch_diff = (
+                    (hf_norm2_hidden_states[:, patch_slice] - reference_norm2_hidden_states[:, patch_slice])
+                    .abs()
+                    .max()
+                    .item()
+                )
+
                 layer_mlp_fc1_diff = (hf_mlp_fc1 - reference_mlp_fc1).abs().max().item()
+                layer_mlp_fc1_cls_diff = (
+                    (hf_mlp_fc1[:, cls_slice] - reference_mlp_fc1[:, cls_slice]).abs().max().item()
+                )
+                layer_mlp_fc1_register_diff = (
+                    (hf_mlp_fc1[:, register_slice] - reference_mlp_fc1[:, register_slice]).abs().max().item()
+                )
+                layer_mlp_fc1_patch_diff = (
+                    (hf_mlp_fc1[:, patch_slice] - reference_mlp_fc1[:, patch_slice]).abs().max().item()
+                )
                 layer_mlp_act_diff = (hf_mlp_act - reference_mlp_act).abs().max().item()
                 layer_mlp_fc2_diff = (hf_mlp_fc2 - reference_mlp_fc2).abs().max().item()
                 layer_hf_mlp_manual_vs_native_diff = (hf_mlp_output - hf_mlp_output_native).abs().max().item()
@@ -777,7 +811,15 @@ def verify_conversion_against_github_reference(
                 print(f"verify_pre_query_layer_{layer_idx}_attn_branch_max_abs_diff={layer_attn_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_after_attn_hidden_max_abs_diff={layer_after_attn_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_ln2_max_abs_diff={layer_norm2_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_ln2_cls_max_abs_diff={layer_norm2_cls_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_ln2_register_max_abs_diff={layer_norm2_register_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_ln2_patch_max_abs_diff={layer_norm2_patch_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_max_abs_diff={layer_mlp_fc1_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_cls_max_abs_diff={layer_mlp_fc1_cls_diff:.8f}")
+                print(
+                    f"verify_pre_query_layer_{layer_idx}_mlp_fc1_register_max_abs_diff={layer_mlp_fc1_register_diff:.8f}"
+                )
+                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_patch_max_abs_diff={layer_mlp_fc1_patch_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_act_max_abs_diff={layer_mlp_act_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_fc2_max_abs_diff={layer_mlp_fc2_diff:.8f}")
                 print(
