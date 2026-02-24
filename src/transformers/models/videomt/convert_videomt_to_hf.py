@@ -435,6 +435,16 @@ def verify_conversion_against_github_reference(
     num_frames: int,
     reference_repo_path: str | None = None,
 ) -> bool:
+    candidate_dummy_video = torch.randn(
+        1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(0)
+    )
+    diagnostic_video = torch.randn(
+        1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(1)
+    )
+    final_dummy_video = torch.randn(
+        1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(2)
+    )
+
     with tempfile.TemporaryDirectory(prefix="videomt_ref_") as tmp_dir:
         repo_path = Path(reference_repo_path) if reference_repo_path is not None else Path(tmp_dir) / "videomt"
         if reference_repo_path is None:
@@ -511,9 +521,10 @@ def verify_conversion_against_github_reference(
                     _prepare_reference_model_for_verify(reference_model)
 
                     with torch.no_grad():
-                        dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
-                        hf_outputs = hf_model(pixel_values=dummy_video)
-                        reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
+                        hf_outputs = hf_model(pixel_values=candidate_dummy_video)
+                        reference_outputs = reference_model(
+                            candidate_dummy_video.reshape(-1, 3, image_size, image_size)
+                        )
 
                     reference_logits = reference_outputs["pred_logits"].reshape(
                         -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
@@ -631,7 +642,6 @@ def verify_conversion_against_github_reference(
         # Bottom-up diagnostics: compare hidden states before query insertion layer-by-layer.
         query_start_idx = hf_model.config.num_hidden_layers - hf_model.config.num_blocks
         if query_start_idx > 0:
-            diagnostic_video = torch.randn(1, num_frames, 3, image_size, image_size)
             diagnostic_frames = diagnostic_video.reshape(-1, 3, image_size, image_size)
 
             with torch.no_grad():
@@ -648,22 +658,46 @@ def verify_conversion_against_github_reference(
 
             for layer_idx in range(query_start_idx):
                 with torch.no_grad():
+                    hf_hidden_states_input = hf_hidden_states
+                    reference_hidden_states_input = reference_hidden_states
+
+                    hf_layer = hf_model.layers[layer_idx]
+                    reference_block = reference_model.encoder.backbone.blocks[layer_idx]
+
+                    hf_normed_hidden_states = hf_layer.norm1(hf_hidden_states_input)
+                    reference_normed_hidden_states = reference_block.norm1(reference_hidden_states_input)
+
+                    hf_qkv = torch.cat(
+                        [
+                            hf_layer.attention.q_proj(hf_normed_hidden_states),
+                            hf_layer.attention.k_proj(hf_normed_hidden_states),
+                            hf_layer.attention.v_proj(hf_normed_hidden_states),
+                        ],
+                        dim=-1,
+                    )
+                    reference_qkv = reference_block.attn.qkv(reference_normed_hidden_states)
+
                     hf_hidden_states = hf_model.layers[layer_idx](
-                        hf_hidden_states,
+                        hf_hidden_states_input,
                         position_embeddings=hf_position_embeddings,
                     )
                     reference_hidden_states = reference_model.backbone_patch_token(
-                        reference_hidden_states,
+                        reference_hidden_states_input,
                         reference_model.encoder.backbone.blocks[layer_idx : layer_idx + 1],
                     )
 
+                layer_normed_hidden_diff = (
+                    (hf_normed_hidden_states - reference_normed_hidden_states).abs().max().item()
+                )
+                layer_qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
                 layer_hidden_diff = (hf_hidden_states - reference_hidden_states).abs().max().item()
+                print(f"verify_pre_query_layer_{layer_idx}_ln1_max_abs_diff={layer_normed_hidden_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_qkv_max_abs_diff={layer_qkv_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
 
-        dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
         with torch.no_grad():
-            hf_outputs = hf_model(pixel_values=dummy_video)
-            reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
+            hf_outputs = hf_model(pixel_values=final_dummy_video)
+            reference_outputs = reference_model(final_dummy_video.reshape(-1, 3, image_size, image_size))
 
         reference_logits = reference_outputs["pred_logits"].reshape(
             -1, hf_model.config.num_queries, hf_model.config.num_labels + 1

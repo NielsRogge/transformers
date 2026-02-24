@@ -323,3 +323,16 @@ This document tracks the next incremental steps after embedding-level parity.
 - [x] Milestone 1 (mask-layout support + 4D/5D embedding consistency checks, masked and unmasked).
 - [x] Milestone 2 (model-level 5D input adaptation baseline).
 - [ ] Milestone 3+
+
+### Update 35
+
+- Extended `--verify` with deterministic seeded probe inputs for candidate scoring, pre-query diagnostics, and final parity checks (`candidate_dummy_video`, `diagnostic_video`, `final_dummy_video`) so repeated runs are directly comparable and less noisy.
+- Added deeper bottom-up pre-query diagnostics per layer in `convert_videomt_to_hf.py`:
+  - `verify_pre_query_layer_<idx>_ln1_max_abs_diff` (post-`norm1`, pre-attention input),
+  - `verify_pre_query_layer_<idx>_qkv_max_abs_diff` (concatenated QKV projection output),
+  - existing `verify_pre_query_layer_<idx>_hidden_max_abs_diff` (post-block hidden state).
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - embedding boundary still matches exactly (`verify_pre_query_embedding_max_abs_diff=0.0`),
+  - significant divergence is already visible at layer-0 QKV (`~10.06`) despite exact mapped QKV weights,
+  - hidden-state divergence still spikes starting at layer 4 (`~26`),
+  - full forward parity remains unresolved (`verify_full_forward_ok=False`) while mapping-level verification still passes.
