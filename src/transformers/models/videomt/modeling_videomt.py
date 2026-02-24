@@ -200,6 +200,41 @@ class VideomtEmbeddings(nn.Module):
         self.num_prefix_tokens = 1 + config.num_register_tokens
 
     def forward(self, pixel_values: torch.Tensor, bool_masked_pos: torch.Tensor | None = None) -> torch.Tensor:
+        """
+        Args:
+            pixel_values (`torch.Tensor`):
+                Input frames as either `(batch_size, num_frames, num_channels, height, width)` or flattened
+                `(batch_size * num_frames, num_channels, height, width)`.
+            bool_masked_pos (`torch.Tensor`, *optional*):
+                Optional mask for patch replacement.
+        """
+
+        if pixel_values.ndim == 5:
+            batch_size, num_frames, num_channels, height, width = pixel_values.shape
+            pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
+
+            if bool_masked_pos is not None and bool_masked_pos.ndim >= 3:
+                bool_masked_pos = bool_masked_pos.reshape(batch_size * num_frames, -1)
+        elif bool_masked_pos is not None and bool_masked_pos.ndim > 2:
+            bool_masked_pos = bool_masked_pos.reshape(bool_masked_pos.shape[0], -1)
+
+        if bool_masked_pos is not None:
+            if bool_masked_pos.dtype != torch.bool:
+                raise ValueError(f"Expected bool_masked_pos dtype to be torch.bool, but got {bool_masked_pos.dtype}.")
+
+            if bool_masked_pos.shape[0] != pixel_values.shape[0]:
+                raise ValueError(
+                    f"Expected bool_masked_pos batch dimension to match pixel_values batch dimension "
+                    f"({pixel_values.shape[0]}), but got {bool_masked_pos.shape[0]}."
+                )
+
+            patch_size = self.config.patch_size
+            expected_num_patches = (pixel_values.shape[-2] // patch_size) * (pixel_values.shape[-1] // patch_size)
+            if bool_masked_pos.shape[-1] != expected_num_patches:
+                raise ValueError(
+                    f"Expected bool_masked_pos to provide one value per patch ({expected_num_patches}), "
+                    f"but got {bool_masked_pos.shape[-1]}."
+                )
         batch_size = pixel_values.shape[0]
         target_dtype = self.patch_embeddings.weight.dtype
 
@@ -1240,11 +1275,11 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
     @auto_docstring
     def forward(
         self,
-        pixel_values: Tensor,
-        mask_labels: list[Tensor] | None = None,
-        class_labels: list[Tensor] | None = None,
-        patch_offsets: list[Tensor] | None = None,
-        **kwargs: Unpack[TransformersKwargs],
+        pixel_values: torch.Tensor,
+        mask_labels: list[torch.Tensor] | None = None,
+        class_labels: list[torch.Tensor] | None = None,
+        patch_offsets: list[torch.Tensor] | None = None,
+        **kwargs,
     ) -> VideomtForUniversalSegmentationOutput:
         r"""
         mask_labels (`list[torch.Tensor]`, *optional*):
@@ -1255,6 +1290,21 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         patch_offsets (`list[torch.Tensor]`, *optional*):
             list of tuples indicating the image index and start and end positions of patches for semantic segmentation.
         """
+        if pixel_values.ndim == 5:
+            batch_size, num_frames, num_channels, height, width = pixel_values.shape
+            pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
+
+            if mask_labels is not None or class_labels is not None:
+                raise ValueError(
+                    "Video training labels are not supported yet for `VideomtForUniversalSegmentation`; "
+                    "please provide flattened frame batches for training."
+                )
+
+            if patch_offsets is not None:
+                raise ValueError(
+                    "Video-shaped `patch_offsets` are not supported yet for `VideomtForUniversalSegmentation`; "
+                    "please provide flattened frame batches with matching patch offsets."
+                )
         masks_queries_logits_per_layer, class_queries_logits_per_layer = (), ()
 
         hidden_states = self.dropout(self.embeddings(pixel_values))

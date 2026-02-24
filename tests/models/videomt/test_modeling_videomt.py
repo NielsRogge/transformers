@@ -41,6 +41,26 @@ if is_vision_available():
     from PIL import Image
 
 
+def _capture_layer_outputs(model: VideomtForUniversalSegmentation, pixel_values: torch.Tensor):
+    outputs = []
+    hooks = []
+
+    def _hook(_module, _inputs, output):
+        outputs.append(output.detach())
+
+    for layer in model.layers:
+        hooks.append(layer.register_forward_hook(_hook))
+
+    try:
+        with torch.no_grad():
+            _ = model(pixel_values=pixel_values)
+    finally:
+        for hook in hooks:
+            hook.remove()
+
+    return outputs
+
+
 class VideomtForUniversalSegmentationTester:
     def __init__(
         self,
@@ -155,6 +175,139 @@ class VideomtForUniversalSegmentationTest(ModelTesterMixin, PipelineTesterMixin,
     @unittest.skip(reason="EoMT does not use token embeddings")
     def test_resize_tokens_embeddings(self):
         pass
+
+    def test_model_forward_video_input_equivalence(self):
+        config = self.model_tester.get_config()
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        flattened_frames = torch.randn((2, 3, *size), device=torch_device)
+        video_frames = flattened_frames.reshape(1, 2, 3, *size)
+
+        with torch.no_grad():
+            outputs_4d = model(pixel_values=flattened_frames)
+            outputs_5d = model(pixel_values=video_frames)
+
+        torch.testing.assert_close(outputs_5d.class_queries_logits, outputs_4d.class_queries_logits)
+        torch.testing.assert_close(outputs_5d.masks_queries_logits, outputs_4d.masks_queries_logits)
+        torch.testing.assert_close(outputs_5d.last_hidden_state, outputs_4d.last_hidden_state)
+
+    def test_model_forward_video_input_equivalence_with_query_stage(self):
+        config = self.model_tester.get_config()
+        config.num_hidden_layers = 4
+        config.num_blocks = 2
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        flattened_frames = torch.randn((2, 3, *size), device=torch_device)
+        video_frames = flattened_frames.reshape(1, 2, 3, *size)
+
+        with torch.no_grad():
+            outputs_4d = model(pixel_values=flattened_frames)
+            outputs_5d = model(pixel_values=video_frames)
+
+        torch.testing.assert_close(outputs_5d.class_queries_logits, outputs_4d.class_queries_logits)
+        torch.testing.assert_close(outputs_5d.masks_queries_logits, outputs_4d.masks_queries_logits)
+        torch.testing.assert_close(outputs_5d.last_hidden_state, outputs_4d.last_hidden_state)
+
+    def test_query_stage_all_layers_video_input_equivalence(self):
+        config = self.model_tester.get_config()
+        config.num_hidden_layers = 4
+        config.num_blocks = 2
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+
+        for num_frames in [2, 3]:
+            with self.subTest(num_frames=num_frames):
+                flattened_frames = torch.randn((num_frames, 3, *size), device=torch_device)
+                video_frames = flattened_frames.reshape(1, num_frames, 3, *size)
+
+                outputs_5d = _capture_layer_outputs(model, video_frames)
+                outputs_4d = _capture_layer_outputs(model, flattened_frames)
+
+                self.assertEqual(len(outputs_5d), len(outputs_4d))
+                for layer_out_5d, layer_out_4d in zip(outputs_5d, outputs_4d):
+                    torch.testing.assert_close(layer_out_5d, layer_out_4d)
+
+    def test_all_layers_video_input_equivalence(self):
+        config = self.model_tester.get_config()
+        config.num_hidden_layers = 3
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        flattened_frames = torch.randn((2, 3, *size), device=torch_device)
+        video_frames = flattened_frames.reshape(1, 2, 3, *size)
+
+        with torch.no_grad():
+            hidden_5d = model.dropout(model.embeddings(video_frames))
+            hidden_4d = model.dropout(model.embeddings(flattened_frames))
+
+            pos_5d = model.rope_embeddings(video_frames.reshape(-1, *video_frames.shape[2:]).to(hidden_5d.dtype))
+            pos_4d = model.rope_embeddings(flattened_frames.to(hidden_4d.dtype))
+
+            for layer_idx, layer_module in enumerate(model.layers):
+                hidden_5d = layer_module(hidden_5d, position_embeddings=pos_5d)
+                hidden_4d = layer_module(hidden_4d, position_embeddings=pos_4d)
+                torch.testing.assert_close(hidden_5d, hidden_4d, msg=f"Layer {layer_idx} mismatch")
+
+    def test_embedding_video_bad_mask_shape_raises(self):
+        config = self.model_tester.get_config()
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        video_frames = torch.randn((1, 2, 3, *size), device=torch_device)
+        bad_mask = torch.zeros((1, 2, 5), dtype=torch.bool, device=torch_device)
+
+        with self.assertRaisesRegex(ValueError, "Expected bool_masked_pos to provide one value per patch"):
+            _ = model.embeddings(video_frames, bool_masked_pos=bad_mask)
+
+    def test_embedding_video_bad_mask_batch_raises(self):
+        config = self.model_tester.get_config()
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        video_frames = torch.randn((1, 2, 3, *size), device=torch_device)
+        num_patches = (self.model_tester.image_size // self.model_tester.patch_size) ** 2
+        bad_batch_mask = torch.zeros((3, num_patches), dtype=torch.bool, device=torch_device)
+
+        with self.assertRaisesRegex(ValueError, "batch dimension to match pixel_values batch dimension"):
+            _ = model.embeddings(video_frames, bool_masked_pos=bad_batch_mask)
+
+    def test_embedding_video_non_bool_mask_raises(self):
+        config = self.model_tester.get_config()
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        video_frames = torch.randn((1, 2, 3, *size), device=torch_device)
+        num_patches = (self.model_tester.image_size // self.model_tester.patch_size) ** 2
+        non_bool_mask = torch.zeros((2, num_patches), dtype=torch.float, device=torch_device)
+
+        with self.assertRaisesRegex(ValueError, "dtype to be torch.bool"):
+            _ = model.embeddings(video_frames, bool_masked_pos=non_bool_mask)
+
+    def test_model_forward_video_with_labels_raises(self):
+        config = self.model_tester.get_config()
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        video_frames = torch.randn((1, 2, 3, *size), device=torch_device)
+        mask_labels = [torch.randn((2, *size), device=torch_device)]
+        class_labels = [torch.zeros(2, dtype=torch.long, device=torch_device)]
+
+        with self.assertRaisesRegex(ValueError, "Video training labels are not supported yet"):
+            _ = model(pixel_values=video_frames, mask_labels=mask_labels, class_labels=class_labels)
+
+    def test_model_forward_video_with_patch_offsets_raises(self):
+        config = self.model_tester.get_config()
+        model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
+
+        size = (self.model_tester.image_size,) * 2
+        video_frames = torch.randn((1, 2, 3, *size), device=torch_device)
+        patch_offsets = [torch.tensor([[0, 0, 0, 1, 1]], dtype=torch.long, device=torch_device)]
+
+        with self.assertRaisesRegex(ValueError, "Video-shaped `patch_offsets` are not supported yet"):
+            _ = model(pixel_values=video_frames, patch_offsets=patch_offsets)
 
     def test_training(self):
         # We override this test because EoMT requires `mask_labels` and `class_labels` for training,
