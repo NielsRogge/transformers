@@ -471,3 +471,20 @@ This document tracks the next incremental steps after embedding-level parity.
     - overall `verify_masks_max_abs_diff` from `63.2012` -> `37.8023`,
     - frame-0 remains near-equivalent while frame-1 still carries most divergence.
 - Conclusion: conversion quality improved, but full forward parity with upstream is still not reached yet for `yt_2019_vit_small_52.8.pth`.
+
+
+### Update 46
+
+- Refined the HF 5D video forward path again to mirror the upstream execution order more closely:
+  - run pre-segmenter layers once on flattened `(B*T)` frames,
+  - reshape to `(B, T, N, C)`,
+  - run segmenter layers frame-by-frame while propagating queries with `query_updater`.
+- Regenerated `modeling_videomt.py` from modular source and re-ran verify on `yt_2019_vit_small_52.8.pth`.
+- Current status (same dummy video input, selected reference `vit_small_patch14_reg4_dinov2`):
+  - `verify_weight_mapping_ok=True` (weight parity still exact),
+  - `verify_full_forward_ok=False` / `verify_ok=False` (forward still not equivalent),
+  - metrics stayed essentially unchanged vs Update 45:
+    - `verify_logits_max_abs_diff=1.66682911`,
+    - `verify_masks_max_abs_diff=37.80233002`,
+    - frame-0 remains near-equivalent while frame-1 remains the dominant mismatch.
+- Conclusion: this forward-order alignment did not close the remaining temporal parity gap yet.

@@ -1181,7 +1181,14 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
 
         batch_size, num_frames, num_channels, height, width = pixel_values.shape
         flat_pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
-        frame_embeddings = self.embeddings(flat_pixel_values).view(batch_size, num_frames, -1, self.config.hidden_size)
+
+        hidden_states = self.embeddings(flat_pixel_values)
+        query_start_idx = self.num_hidden_layers - self.config.num_blocks
+
+        for layer_module in self.layers[:query_start_idx]:
+            hidden_states = layer_module(hidden_states, attention_mask=None)
+
+        hidden_states = hidden_states.view(batch_size, num_frames, hidden_states.shape[1], hidden_states.shape[2])
 
         all_masks_queries_logits = []
         all_class_queries_logits = []
@@ -1189,57 +1196,18 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         propagated_query = None
 
         for frame_idx in range(num_frames):
-            hidden_states = frame_embeddings[:, frame_idx]
-            attention_mask = None
+            frame_hidden_states = hidden_states[:, frame_idx]
 
-            for layer_idx, layer_module in enumerate(self.layers):
-                if layer_idx == self.num_hidden_layers - self.config.num_blocks:
-                    if propagated_query is None:
-                        query_tokens = self.query.weight[None, :, :].expand(batch_size, -1, -1)
-                    else:
-                        query_tokens = self.query_updater(propagated_query) + self.query.weight[None, :, :]
-                    hidden_states = torch.cat((query_tokens.to(hidden_states.device), hidden_states), dim=1)
+            if propagated_query is None:
+                query_tokens = self.query.weight[None, :, :].expand(batch_size, -1, -1)
+            else:
+                query_tokens = self.query_updater(propagated_query) + self.query.weight[None, :, :]
+            frame_hidden_states = torch.cat((query_tokens.to(frame_hidden_states.device), frame_hidden_states), dim=1)
 
-                if layer_idx >= self.num_hidden_layers - self.config.num_blocks and (
-                    self.training
-                    or self.attn_mask_probs[layer_idx - self.num_hidden_layers + self.config.num_blocks] > 0
-                ):
-                    norm_hidden_states = self.layernorm(hidden_states)
-                    masks_queries_logits, _ = self.predict(norm_hidden_states)
+            for layer_module in self.layers[query_start_idx:]:
+                frame_hidden_states = layer_module(frame_hidden_states, attention_mask=None)
 
-                    attention_mask = torch.ones(
-                        hidden_states.shape[0],
-                        hidden_states.shape[1],
-                        hidden_states.shape[1],
-                        device=hidden_states.device,
-                        dtype=torch.bool,
-                    )
-
-                    interpolated_logits = torch.nn.functional.interpolate(
-                        masks_queries_logits, size=self.grid_size, mode="bilinear"
-                    )
-                    interpolated_logits = interpolated_logits.view(
-                        interpolated_logits.size(0), interpolated_logits.size(1), -1
-                    )
-
-                    num_query_tokens = self.config.num_queries
-                    encoder_start_tokens = num_query_tokens + self.embeddings.num_prefix_tokens
-                    attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
-
-                    attention_mask = self._disable_attention_mask(
-                        attention_mask,
-                        prob=self.attn_mask_probs[layer_idx - self.num_hidden_layers + self.config.num_blocks],
-                        num_query_tokens=num_query_tokens,
-                        encoder_start_tokens=encoder_start_tokens,
-                        device=attention_mask.device,
-                    )
-
-                    attention_mask = attention_mask[:, None, ...].expand(-1, self.config.num_attention_heads, -1, -1)
-                    attention_mask = attention_mask.float().masked_fill(~attention_mask, -1e9)
-
-                hidden_states = layer_module(hidden_states, attention_mask)
-
-            sequence_output = self.layernorm(hidden_states)
+            sequence_output = self.layernorm(frame_hidden_states)
             masks_queries_logits, class_queries_logits = self.predict(sequence_output)
 
             all_masks_queries_logits.append(masks_queries_logits)
