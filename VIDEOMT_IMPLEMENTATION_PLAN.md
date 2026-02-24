@@ -296,6 +296,17 @@ This document tracks the next incremental steps after embedding-level parity.
   - fallback candidate (`vit_small_patch16_224`) remains the operational parity baseline for per-frame diff reporting,
   - mapping-level checks remain exact while full forward parity is still unresolved.
 
+
+### Update 33
+
+- Added another verify-time compatibility adapter in `convert_videomt_to_hf.py` for timm EVA attention modules: if `head_dim` is missing, it is inferred from qkv weight shape and attached to the attention module.
+- This unblocks the previous DINOv3 runtime failure (`EvaAttention` missing `head_dim`) and allows DINOv3 candidates to execute end-to-end in `--verify`.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - best reference candidate now correctly selects a DINOv3 backbone (`vit_small_patch16_dinov3_qkvb`) instead of legacy fallback,
+  - DINOv3 candidate loading diagnostics are clean (`reference_missing_keys=0`, `reference_unexpected_keys=0`, only skipped `pos_embed`),
+  - output diffs improved significantly versus legacy fallback path (`logits` max-abs down to ~5.25 and `masks` max-abs down to ~162),
+  - full forward parity is still not reached, but the verify path is now substantially closer to true apples-to-apples DINOv3 comparison for continued bottom-up debugging.
+
 ## Implemented in this update
 
 - [x] Milestone 1 (mask-layout support + 4D/5D embedding consistency checks, masked and unmasked).
