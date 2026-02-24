@@ -128,11 +128,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 15 (current)
+### Update 15
 
 - Extended query-stage parity coverage to include both 2-frame and 3-frame inputs, still comparing 5D video tensors against flattened 4D frame batches at every layer output.
 - Updated both conversion-time validation and targeted modeling tests to run this all-layer parity check across multiple temporal lengths.
 - **Status:** still in backbone/query-stage verification; no new head architecture changes were implemented in this update.
+
+
+
+### Update 16 (current)
+
+- Added conversion-time **full-model** parity validation between `VideomtForUniversalSegmentation` and the original `EomtDinov3ForUniversalSegmentation` implementation on the same dummy video input.
+- The conversion script now copies the VidEoMT state dict into the reference model and compares class logits, mask logits, and final hidden states.
+- This keeps the work bottom-up but now verifies not only backbone internals, but also the full segmentation head path end-to-end against the original implementation.
 
 ## Implemented in this update
 

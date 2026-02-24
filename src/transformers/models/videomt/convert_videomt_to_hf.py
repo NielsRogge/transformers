@@ -22,7 +22,8 @@ import argparse
 
 import torch
 
-from transformers import VideomtConfig
+from transformers import EomtDinov3Config, VideomtConfig
+from transformers.models.eomt_dinov3.modeling_eomt_dinov3 import EomtDinov3ForUniversalSegmentation
 from transformers.models.videomt.modeling_videomt import VideomtEmbeddings, VideomtForUniversalSegmentation
 
 
@@ -317,6 +318,62 @@ def compare_hf_query_stage_all_layers_5d_vs_4d(num_frames: int, seed: int = 0) -
             raise ValueError(f"HF query-stage layer {layer_idx} outputs differ between 5D and flattened 4D inputs.")
 
 
+def compare_videomt_full_model_against_reference(num_frames: int, seed: int = 0) -> None:
+    """Validate full-model parity between VidEoMT and the original EoMT-DINOv3 implementation."""
+
+    torch.manual_seed(seed)
+
+    common_config_kwargs = {
+        "hidden_size": 64,
+        "num_hidden_layers": 4,
+        "num_attention_heads": 4,
+        "intermediate_size": 256,
+        "image_size": 32,
+        "patch_size": 16,
+        "num_register_tokens": 2,
+        "num_queries": 8,
+        "num_blocks": 2,
+        "num_frames": num_frames,
+        "attention_dropout": 0.0,
+        "hidden_dropout_prob": 0.0,
+        "drop_path_rate": 0.0,
+    }
+    hf_config = VideomtConfig(**common_config_kwargs)
+    reference_config = EomtDinov3Config(**common_config_kwargs)
+
+    hf_model = VideomtForUniversalSegmentation(hf_config).eval()
+    reference_model = EomtDinov3ForUniversalSegmentation(reference_config).eval()
+    reference_model.load_state_dict(hf_model.state_dict(), strict=True)
+
+    dummy_video = torch.randn(1, num_frames, 3, hf_config.image_size, hf_config.image_size)
+    flattened_video = dummy_video.reshape(-1, *dummy_video.shape[2:])
+
+    with torch.no_grad():
+        hf_outputs = hf_model(pixel_values=dummy_video)
+        reference_outputs = reference_model(pixel_values=flattened_video)
+
+    logits_diff = (hf_outputs.class_queries_logits - reference_outputs.class_queries_logits).abs().max().item()
+    masks_diff = (hf_outputs.masks_queries_logits - reference_outputs.masks_queries_logits).abs().max().item()
+    hidden_diff = (hf_outputs.last_hidden_state - reference_outputs.last_hidden_state).abs().max().item()
+
+    print(f"hf_vs_reference_logits_max_abs_diff={logits_diff:.8f}")
+    print(f"hf_vs_reference_masks_max_abs_diff={masks_diff:.8f}")
+    print(f"hf_vs_reference_hidden_max_abs_diff={hidden_diff:.8f}")
+
+    if not torch.allclose(
+        hf_outputs.class_queries_logits, reference_outputs.class_queries_logits, atol=1e-6, rtol=1e-6
+    ):
+        raise ValueError("VidEoMT class logits differ from reference EoMT-DINOv3 on the same dummy video input.")
+
+    if not torch.allclose(
+        hf_outputs.masks_queries_logits, reference_outputs.masks_queries_logits, atol=1e-6, rtol=1e-6
+    ):
+        raise ValueError("VidEoMT mask logits differ from reference EoMT-DINOv3 on the same dummy video input.")
+
+    if not torch.allclose(hf_outputs.last_hidden_state, reference_outputs.last_hidden_state, atol=1e-6, rtol=1e-6):
+        raise ValueError("VidEoMT hidden states differ from reference EoMT-DINOv3 on the same dummy video input.")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate VidEoMT embedding parity against the reference model.")
     parser.add_argument("--model-name", type=str, default="vit_small_patch16_224", help="timm model name")
@@ -342,6 +399,7 @@ def main() -> None:
     for num_frames in sorted({args.num_frames, 3}):
         print(f"hf_query_stage_num_frames={num_frames}")
         compare_hf_query_stage_all_layers_5d_vs_4d(num_frames=num_frames, seed=args.seed)
+        compare_videomt_full_model_against_reference(num_frames=num_frames, seed=args.seed)
 
 
 if __name__ == "__main__":
