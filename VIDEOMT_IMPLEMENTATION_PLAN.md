@@ -432,3 +432,42 @@ This document tracks the next incremental steps after embedding-level parity.
    - layer-4 MLP register diffs collapse,
    - downstream layer 5+ residual amplification drops,
    - final logits/masks diffs improve measurably.
+
+
+### Update 43
+
+- Corrected the backbone baseline assumption across the conversion effort to match released VidEoMT checkpoints: DINOv2 register-token timm backbones (`vit_*_patch14_reg4_dinov2`).
+- Cleaned `convert_videomt_to_hf.py` backbone candidate inference accordingly:
+  - primary candidates now use `patch14_reg4_dinov2`,
+  - fallback candidates are restricted to nearby DINOv2 aliases and legacy `patch16_224` names (removed DINOv3 fallback priority from the candidate list).
+- Started aligning HF VidEoMT modular implementation with the DINOv2 EoMT stack (instead of inheriting from the DINOv3 EoMT variant) to reduce architecture drift from released checkpoints.
+- Legacy note: the earlier DINOv3-focused debug entries above are retained for history, but the active conversion baseline is now explicitly DINOv2-first.
+
+
+### Update 44
+
+- Re-ran conversion + cross-implementation verification for the concrete released checkpoint `yt_2019_vit_small_52.8.pth` with:
+  - `PYTHONPATH=src python src/transformers/models/videomt/convert_videomt_to_hf.py --checkpoint-filename yt_2019_vit_small_52.8.pth --image-size 640 --num-frames 2 --verify`.
+- Verify selected the expected upstream reference backbone `vit_small_patch14_reg4_dinov2` (compatibility penalty `0`, no missing/unexpected keys on reference load).
+- Weight transfer parity is exact for backbone/head mappings (`verify_weight_mapping_ok=True` and all logged `qkv/mlp/ls/head` max-abs diffs are `0.0`).
+- **Forward equivalence is still not achieved** on the same dummy video input (`verify_full_forward_ok=False`, `verify_ok=False`):
+  - overall: `verify_logits_max_abs_diff=2.66142416`, `verify_masks_max_abs_diff=63.20121765`,
+  - per-frame: frame-0 is near-equivalent (`logits ~1.24e-05`, `masks ~2.14e-04`) while frame-1 diverges strongly (`logits ~2.66`, `masks ~63.20`).
+- Conversion still leaves temporal updater parameters unconsumed (`backbone.query_updater.weight/bias`), and the script now explicitly logs this as a likely source of multi-frame forward mismatch (`note=unconverted_query_updater_keys_detected; temporal-frame forward parity may differ`).
+
+
+### Update 45
+
+- Implemented temporal-query updater support in HF VidEoMT modular forward for 5D video input and regenerated modeling files, then re-ran conversion verify on `yt_2019_vit_small_52.8.pth`.
+- Updated conversion mapping to consume temporal updater and positional keys for the DINOv2-backed architecture:
+  - now loads `query_updater.{weight,bias}`,
+  - keeps `backbone.encoder.backbone.pos_embed -> embeddings.position_embeddings.weight`,
+  - keeps projection-key mapping to `embeddings.patch_embeddings.projection.{weight,bias}`.
+- Current verify result on the same dummy video input (reference `vit_small_patch14_reg4_dinov2`):
+  - `verify_weight_mapping_ok=True` (all tracked weight diffs remain zero),
+  - `verify_full_forward_ok=False` / `verify_ok=False` (forward still not equivalent),
+  - improved output deltas vs the previous run:
+    - overall `verify_logits_max_abs_diff` from `2.6614` -> `1.6668`,
+    - overall `verify_masks_max_abs_diff` from `63.2012` -> `37.8023`,
+    - frame-0 remains near-equivalent while frame-1 still carries most divergence.
+- Conclusion: conversion quality improved, but full forward parity with upstream is still not reached yet for `yt_2019_vit_small_52.8.pth`.

@@ -63,7 +63,7 @@ def infer_videomt_config(
     return VideomtConfig(
         hidden_size=hidden_size,
         num_attention_heads=infer_num_attention_heads(checkpoint_filename, hidden_size),
-        intermediate_size=state_dict["backbone.encoder.backbone.blocks.0.mlp.fc1.weight"].shape[0],
+        mlp_ratio=state_dict["backbone.encoder.backbone.blocks.0.mlp.fc1.weight"].shape[0] // hidden_size,
         image_size=image_size,
         patch_size=state_dict["backbone.encoder.backbone.patch_embed.proj.weight"].shape[-1],
         num_register_tokens=state_dict["backbone.encoder.backbone.reg_token"].shape[1],
@@ -72,18 +72,38 @@ def infer_videomt_config(
         num_blocks=state_dict["backbone.attn_mask_probs"].shape[0],
         num_labels=state_dict["backbone.class_head.weight"].shape[0] - 1,
         num_frames=num_frames,
-        key_bias=True,
     )
 
 
 def infer_backbone_model_name(checkpoint_filename: str) -> str:
+    # Official VidEoMT configs point to timm DINOv2 register-token backbones, e.g.
+    # `vit_small_patch14_reg4_dinov2` in `configs/ytvis19/videomt/vit-small/videomt_online_ViTS.yaml`.
     if "vit_small" in checkpoint_filename:
-        return "vit_small_patch16_dinov3_qkvb"
+        return "vit_small_patch14_reg4_dinov2"
     if "vit_base" in checkpoint_filename:
-        return "vit_base_patch16_dinov3_qkvb"
+        return "vit_base_patch14_reg4_dinov2"
     if "vit_large" in checkpoint_filename:
-        return "vit_large_patch16_dinov3_qkvb"
+        return "vit_large_patch14_reg4_dinov2"
     raise ValueError(f"Could not infer timm backbone model from checkpoint name '{checkpoint_filename}'.")
+
+
+def infer_backbone_model_name_candidates(checkpoint_filename: str) -> list[str]:
+    primary_candidate = infer_backbone_model_name(checkpoint_filename)
+    candidates = [primary_candidate]
+
+    # Keep nearby DINOv2 aliases for compatibility with local timm versions.
+    candidates.append(primary_candidate.replace("_reg4", ""))
+    candidates.append(primary_candidate.replace("patch14", "patch16"))
+    candidates.append(primary_candidate.replace("patch14_reg4", "patch16"))
+
+    if "vit_small" in checkpoint_filename:
+        candidates.append("vit_small_patch16_224")
+    elif "vit_base" in checkpoint_filename:
+        candidates.append("vit_base_patch16_224")
+    elif "vit_large" in checkpoint_filename:
+        candidates.append("vit_large_patch16_224")
+
+    return list(dict.fromkeys(candidates))
 
 
 def _build_reference_load_dict(
@@ -224,14 +244,18 @@ def convert_state_dict(
     consumed_keys.add("backbone.encoder.backbone.cls_token")
     converted["embeddings.register_tokens"] = original_state_dict["backbone.encoder.backbone.reg_token"]
     consumed_keys.add("backbone.encoder.backbone.reg_token")
-    converted["embeddings.patch_embeddings.weight"] = original_state_dict[
+    converted["embeddings.patch_embeddings.projection.weight"] = original_state_dict[
         "backbone.encoder.backbone.patch_embed.proj.weight"
     ]
     consumed_keys.add("backbone.encoder.backbone.patch_embed.proj.weight")
-    converted["embeddings.patch_embeddings.bias"] = original_state_dict[
+    converted["embeddings.patch_embeddings.projection.bias"] = original_state_dict[
         "backbone.encoder.backbone.patch_embed.proj.bias"
     ]
     consumed_keys.add("backbone.encoder.backbone.patch_embed.proj.bias")
+    converted["embeddings.position_embeddings.weight"] = original_state_dict[
+        "backbone.encoder.backbone.pos_embed"
+    ].squeeze(0)
+    consumed_keys.add("backbone.encoder.backbone.pos_embed")
     converted["layernorm.weight"] = original_state_dict["backbone.encoder.backbone.norm.weight"]
     consumed_keys.add("backbone.encoder.backbone.norm.weight")
     converted["layernorm.bias"] = original_state_dict["backbone.encoder.backbone.norm.bias"]
@@ -305,18 +329,20 @@ def convert_state_dict(
         converted[f"layers.{layer_idx}.attention.k_proj.bias"] = k_bias
         converted[f"layers.{layer_idx}.attention.v_proj.weight"] = v_weight
         converted[f"layers.{layer_idx}.attention.v_proj.bias"] = v_bias
-        converted[f"layers.{layer_idx}.attention.o_proj.weight"] = original_state_dict[
+        converted[f"layers.{layer_idx}.attention.out_proj.weight"] = original_state_dict[
             f"{layer_prefix}.attn.proj.weight"
         ]
-        converted[f"layers.{layer_idx}.attention.o_proj.bias"] = original_state_dict[f"{layer_prefix}.attn.proj.bias"]
+        converted[f"layers.{layer_idx}.attention.out_proj.bias"] = original_state_dict[
+            f"{layer_prefix}.attn.proj.bias"
+        ]
 
         converted[f"layers.{layer_idx}.layer_scale1.lambda1"] = original_state_dict[f"{layer_prefix}.ls1.gamma"]
         converted[f"layers.{layer_idx}.layer_scale2.lambda1"] = original_state_dict[f"{layer_prefix}.ls2.gamma"]
 
-        converted[f"layers.{layer_idx}.mlp.up_proj.weight"] = original_state_dict[f"{layer_prefix}.mlp.fc1.weight"]
-        converted[f"layers.{layer_idx}.mlp.up_proj.bias"] = original_state_dict[f"{layer_prefix}.mlp.fc1.bias"]
-        converted[f"layers.{layer_idx}.mlp.down_proj.weight"] = original_state_dict[f"{layer_prefix}.mlp.fc2.weight"]
-        converted[f"layers.{layer_idx}.mlp.down_proj.bias"] = original_state_dict[f"{layer_prefix}.mlp.fc2.bias"]
+        converted[f"layers.{layer_idx}.mlp.fc1.weight"] = original_state_dict[f"{layer_prefix}.mlp.fc1.weight"]
+        converted[f"layers.{layer_idx}.mlp.fc1.bias"] = original_state_dict[f"{layer_prefix}.mlp.fc1.bias"]
+        converted[f"layers.{layer_idx}.mlp.fc2.weight"] = original_state_dict[f"{layer_prefix}.mlp.fc2.weight"]
+        converted[f"layers.{layer_idx}.mlp.fc2.bias"] = original_state_dict[f"{layer_prefix}.mlp.fc2.bias"]
         consumed_keys.update(
             {
                 f"{layer_prefix}.norm1.weight",
@@ -410,6 +436,10 @@ def convert_checkpoint(
         for key in unconverted_source_keys:
             print(f"  - {key}")
 
+        query_updater_keys = [key for key in unconverted_source_keys if "query_updater" in key]
+        if query_updater_keys:
+            print("note=unconverted_query_updater_keys_detected; temporal-frame forward parity may differ")
+
     if output_dir is not None:
         model.save_pretrained(output_dir)
         config.save_pretrained(output_dir)
@@ -437,9 +467,6 @@ def verify_conversion_against_github_reference(
 ) -> bool:
     candidate_dummy_video = torch.randn(
         1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(0)
-    )
-    diagnostic_video = torch.randn(
-        1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(1)
     )
     final_dummy_video = torch.randn(
         1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(2)
@@ -482,15 +509,7 @@ def verify_conversion_against_github_reference(
         reference_cls = load_reference_videomt_class(repo_path)
 
         try:
-            candidate_model_names = [infer_backbone_model_name(checkpoint_filename)]
-            if "_qkvb" in candidate_model_names[0]:
-                candidate_model_names.append(candidate_model_names[0].replace("_qkvb", ""))
-            if "vit_small" in checkpoint_filename:
-                candidate_model_names.append("vit_small_patch16_224")
-            elif "vit_base" in checkpoint_filename:
-                candidate_model_names.append("vit_base_patch16_224")
-            elif "vit_large" in checkpoint_filename:
-                candidate_model_names.append("vit_large_patch16_224")
+            candidate_model_names = infer_backbone_model_name_candidates(checkpoint_filename)
 
             best_result = None
             for candidate_model_name in candidate_model_names:
@@ -614,13 +633,16 @@ def verify_conversion_against_github_reference(
             )
             reference_qkv = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.attn.qkv.weight"]
             qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
-            hf_mlp_up = hf_model.state_dict()[f"layers.{layer_idx}.mlp.up_proj.weight"]
+            max_qkv_diff = max(max_qkv_diff, qkv_diff)
+            hf_mlp_up = hf_model.state_dict()[f"layers.{layer_idx}.mlp.fc1.weight"]
             reference_mlp_up = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc1.weight"]
             mlp_up_diff = (hf_mlp_up - reference_mlp_up).abs().max().item()
+            max_mlp_up_diff = max(max_mlp_up_diff, mlp_up_diff)
 
-            hf_mlp_down = hf_model.state_dict()[f"layers.{layer_idx}.mlp.down_proj.weight"]
+            hf_mlp_down = hf_model.state_dict()[f"layers.{layer_idx}.mlp.fc2.weight"]
             reference_mlp_down = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc2.weight"]
             mlp_down_diff = (hf_mlp_down - reference_mlp_down).abs().max().item()
+            max_mlp_down_diff = max(max_mlp_down_diff, mlp_down_diff)
 
             hf_ls1 = hf_model.state_dict()[f"layers.{layer_idx}.layer_scale1.lambda1"]
             hf_ls2 = hf_model.state_dict()[f"layers.{layer_idx}.layer_scale2.lambda1"]
@@ -634,8 +656,8 @@ def verify_conversion_against_github_reference(
             ls2_diff = (hf_ls2 - reference_ls2).abs().max().item()
 
             print(f"verify_layer_{layer_idx}_qkv_weight_max_abs_diff={qkv_diff:.8f}")
-            print(f"verify_layer_{layer_idx}_mlp_up_weight_max_abs_diff={mlp_up_diff:.8f}")
-            print(f"verify_layer_{layer_idx}_mlp_down_weight_max_abs_diff={mlp_down_diff:.8f}")
+            print(f"verify_layer_{layer_idx}_mlp_fc1_weight_max_abs_diff={mlp_up_diff:.8f}")
+            print(f"verify_layer_{layer_idx}_mlp_fc2_weight_max_abs_diff={mlp_down_diff:.8f}")
             print(f"verify_layer_{layer_idx}_ls1_weight_max_abs_diff={ls1_diff:.8f}")
             print(f"verify_layer_{layer_idx}_ls2_weight_max_abs_diff={ls2_diff:.8f}")
 
@@ -653,187 +675,6 @@ def verify_conversion_against_github_reference(
         )
         print(f"verify_head_class_weight_max_abs_diff={head_class_diff:.8f}")
         print(f"verify_head_mask_fc1_weight_max_abs_diff={head_mask_diff:.8f}")
-
-        # Bottom-up diagnostics: compare hidden states before query insertion layer-by-layer.
-        query_start_idx = hf_model.config.num_hidden_layers - hf_model.config.num_blocks
-        if query_start_idx > 0:
-            diagnostic_frames = diagnostic_video.reshape(-1, 3, image_size, image_size)
-
-            with torch.no_grad():
-                hf_hidden_states = hf_model.dropout(hf_model.embeddings(diagnostic_frames))
-                hf_position_embeddings = hf_model.rope_embeddings(diagnostic_frames.to(hf_hidden_states.dtype))
-                hf_position_embeddings_no_rope = (
-                    torch.ones_like(hf_position_embeddings[0]),
-                    torch.zeros_like(hf_position_embeddings[0]),
-                )
-
-                reference_hidden_states = reference_model.encoder.backbone.patch_embed(diagnostic_frames)
-                reference_hidden_states = reference_model.encoder.backbone._pos_embed(reference_hidden_states)
-                reference_hidden_states = reference_model.encoder.backbone.patch_drop(reference_hidden_states)
-                reference_hidden_states = reference_model.encoder.backbone.norm_pre(reference_hidden_states)
-
-            embedding_diff = (hf_hidden_states - reference_hidden_states).abs().max().item()
-            print(f"verify_pre_query_embedding_max_abs_diff={embedding_diff:.8f}")
-
-            for layer_idx in range(query_start_idx):
-                with torch.no_grad():
-                    hf_hidden_states_input = hf_hidden_states
-                    reference_hidden_states_input = reference_hidden_states
-
-                    hf_layer = hf_model.layers[layer_idx]
-                    reference_block = reference_model.encoder.backbone.blocks[layer_idx]
-
-                    hf_normed_hidden_states = hf_layer.norm1(hf_hidden_states_input)
-                    reference_normed_hidden_states = reference_block.norm1(reference_hidden_states_input)
-
-                    hf_qkv = torch.cat(
-                        [
-                            hf_layer.attention.q_proj(hf_normed_hidden_states),
-                            hf_layer.attention.k_proj(hf_normed_hidden_states),
-                            hf_layer.attention.v_proj(hf_normed_hidden_states),
-                        ],
-                        dim=-1,
-                    )
-                    reference_qkv = reference_block.attn.qkv(reference_normed_hidden_states)
-
-                    hf_attn_output, _ = hf_layer.attention(
-                        hf_normed_hidden_states,
-                        attention_mask=None,
-                        position_embeddings=hf_position_embeddings,
-                    )
-                    hf_attn_output = hf_layer.layer_scale1(hf_attn_output)
-                    reference_attn_output = reference_block.ls1(
-                        reference_model._attn(reference_block.attn, reference_normed_hidden_states, None)
-                    )
-
-                    hf_hidden_states_after_attn = hf_hidden_states_input + hf_layer.drop_path(hf_attn_output)
-                    reference_hidden_states_after_attn = reference_hidden_states_input + reference_block.drop_path1(
-                        reference_attn_output
-                    )
-
-                    hf_norm2_hidden_states = hf_layer.norm2(hf_hidden_states_after_attn)
-                    reference_norm2_hidden_states = reference_block.norm2(reference_hidden_states_after_attn)
-
-                    hf_mlp_fc1 = hf_layer.mlp.up_proj(hf_norm2_hidden_states)
-                    reference_mlp_fc1 = reference_block.mlp.fc1(reference_norm2_hidden_states)
-
-                    hf_mlp_act = hf_layer.mlp.act_fn(hf_mlp_fc1)
-                    reference_mlp_act = reference_block.mlp.act(reference_mlp_fc1)
-
-                    if hasattr(reference_block.mlp, "drop1"):
-                        reference_mlp_act = reference_block.mlp.drop1(reference_mlp_act)
-                    if hasattr(reference_block.mlp, "norm"):
-                        reference_mlp_act = reference_block.mlp.norm(reference_mlp_act)
-
-                    hf_mlp_fc2 = hf_layer.mlp.down_proj(hf_mlp_act)
-                    reference_mlp_fc2 = reference_block.mlp.fc2(reference_mlp_act)
-
-                    if hasattr(reference_block.mlp, "drop2"):
-                        reference_mlp_fc2 = reference_block.mlp.drop2(reference_mlp_fc2)
-
-                    hf_mlp_output = hf_layer.layer_scale2(hf_mlp_fc2)
-                    reference_mlp_output = reference_block.ls2(reference_mlp_fc2)
-
-                    hf_mlp_output_native = hf_layer.layer_scale2(hf_layer.mlp(hf_norm2_hidden_states))
-                    reference_mlp_output_native = reference_block.ls2(
-                        reference_block.mlp(reference_norm2_hidden_states)
-                    )
-
-                    hf_hidden_states_with_rope = hf_layer(
-                        hf_hidden_states_input,
-                        position_embeddings=hf_position_embeddings,
-                    )
-                    hf_hidden_states_no_rope = hf_layer(
-                        hf_hidden_states_input,
-                        position_embeddings=hf_position_embeddings_no_rope,
-                    )
-                    reference_hidden_states = reference_model.backbone_patch_token(
-                        reference_hidden_states_input,
-                        reference_model.encoder.backbone.blocks[layer_idx : layer_idx + 1],
-                    )
-
-                hf_hidden_states = hf_hidden_states_with_rope
-                layer_normed_hidden_diff = (
-                    (hf_normed_hidden_states - reference_normed_hidden_states).abs().max().item()
-                )
-                layer_qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
-                layer_attn_diff = (hf_attn_output - reference_attn_output).abs().max().item()
-                layer_after_attn_diff = (
-                    (hf_hidden_states_after_attn - reference_hidden_states_after_attn).abs().max().item()
-                )
-                layer_norm2_diff = (hf_norm2_hidden_states - reference_norm2_hidden_states).abs().max().item()
-
-                cls_slice = slice(0, 1)
-                register_end = 1 + hf_model.config.num_register_tokens
-                register_slice = slice(1, register_end)
-                patch_slice = slice(register_end, hf_norm2_hidden_states.shape[1])
-
-                layer_norm2_cls_diff = (
-                    (hf_norm2_hidden_states[:, cls_slice] - reference_norm2_hidden_states[:, cls_slice])
-                    .abs()
-                    .max()
-                    .item()
-                )
-                layer_norm2_register_diff = (
-                    (hf_norm2_hidden_states[:, register_slice] - reference_norm2_hidden_states[:, register_slice])
-                    .abs()
-                    .max()
-                    .item()
-                )
-                layer_norm2_patch_diff = (
-                    (hf_norm2_hidden_states[:, patch_slice] - reference_norm2_hidden_states[:, patch_slice])
-                    .abs()
-                    .max()
-                    .item()
-                )
-
-                layer_mlp_fc1_diff = (hf_mlp_fc1 - reference_mlp_fc1).abs().max().item()
-                layer_mlp_fc1_cls_diff = (
-                    (hf_mlp_fc1[:, cls_slice] - reference_mlp_fc1[:, cls_slice]).abs().max().item()
-                )
-                layer_mlp_fc1_register_diff = (
-                    (hf_mlp_fc1[:, register_slice] - reference_mlp_fc1[:, register_slice]).abs().max().item()
-                )
-                layer_mlp_fc1_patch_diff = (
-                    (hf_mlp_fc1[:, patch_slice] - reference_mlp_fc1[:, patch_slice]).abs().max().item()
-                )
-                layer_mlp_act_diff = (hf_mlp_act - reference_mlp_act).abs().max().item()
-                layer_mlp_fc2_diff = (hf_mlp_fc2 - reference_mlp_fc2).abs().max().item()
-                layer_hf_mlp_manual_vs_native_diff = (hf_mlp_output - hf_mlp_output_native).abs().max().item()
-                layer_reference_mlp_manual_vs_native_diff = (
-                    (reference_mlp_output - reference_mlp_output_native).abs().max().item()
-                )
-                layer_mlp_diff = (hf_mlp_output_native - reference_mlp_output_native).abs().max().item()
-                layer_hidden_diff = (hf_hidden_states_with_rope - reference_hidden_states).abs().max().item()
-                layer_hidden_no_rope_diff = (hf_hidden_states_no_rope - reference_hidden_states).abs().max().item()
-                print(f"verify_pre_query_layer_{layer_idx}_ln1_max_abs_diff={layer_normed_hidden_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_qkv_max_abs_diff={layer_qkv_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_attn_branch_max_abs_diff={layer_attn_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_after_attn_hidden_max_abs_diff={layer_after_attn_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_ln2_max_abs_diff={layer_norm2_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_ln2_cls_max_abs_diff={layer_norm2_cls_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_ln2_register_max_abs_diff={layer_norm2_register_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_ln2_patch_max_abs_diff={layer_norm2_patch_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_max_abs_diff={layer_mlp_fc1_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_cls_max_abs_diff={layer_mlp_fc1_cls_diff:.8f}")
-                print(
-                    f"verify_pre_query_layer_{layer_idx}_mlp_fc1_register_max_abs_diff={layer_mlp_fc1_register_diff:.8f}"
-                )
-                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_patch_max_abs_diff={layer_mlp_fc1_patch_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_mlp_act_max_abs_diff={layer_mlp_act_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc2_max_abs_diff={layer_mlp_fc2_diff:.8f}")
-                print(
-                    f"verify_pre_query_layer_{layer_idx}_hf_mlp_manual_vs_native_max_abs_diff={layer_hf_mlp_manual_vs_native_diff:.8f}"
-                )
-                print(
-                    "verify_pre_query_layer_"
-                    f"{layer_idx}_reference_mlp_manual_vs_native_max_abs_diff={layer_reference_mlp_manual_vs_native_diff:.8f}"
-                )
-                print(f"verify_pre_query_layer_{layer_idx}_mlp_branch_max_abs_diff={layer_mlp_diff:.8f}")
-                print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
-                print(
-                    f"verify_pre_query_layer_{layer_idx}_hidden_no_rope_max_abs_diff={layer_hidden_no_rope_diff:.8f}"
-                )
 
         with torch.no_grad():
             hf_outputs = hf_model(pixel_values=final_dummy_video)
@@ -904,7 +745,7 @@ def verify_conversion_against_github_reference(
         )
         print(f"verify_weight_mapping_ok={weight_mapping_ok}")
         print(f"verify_full_forward_ok={outputs_match}")
-        return weight_mapping_ok
+        return outputs_match
 
 
 def parse_args() -> argparse.Namespace:
