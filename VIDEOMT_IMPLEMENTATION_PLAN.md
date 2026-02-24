@@ -224,6 +224,68 @@ This document tracks the next incremental steps after embedding-level parity.
 - Added explicit printing of selected reference missing/unexpected key lists to keep verification transparent.
 - Current status on `yt_2019_vit_small_52.8.pth`: mapping-level verification passes (all tracked backbone/head weight diffs are zero), while full forward parity is still reported separately as not yet matching.
 
+
+### Update 27
+
+- Implemented temporal query propagation in `VideomtForUniversalSegmentation.forward` for 5D video inputs to match upstream VidEoMT behavior more closely:
+  - added `query_updater` module,
+  - split execution into pre-query backbone layers and segmenter/query layers,
+  - for video inputs, reused propagated queries frame-to-frame (`query_updater(frame_query) + query_embedding`) instead of reinitializing learned queries every frame.
+- Refactored segmenter-stage execution into a helper (`_run_segmenter_layers`) so 4D and 5D paths share the same layer/mask logic.
+- Extended checkpoint conversion mapping to load `backbone.query_updater.{weight,bias}` into HF `query_updater`, reducing unconverted source keys.
+- Updated targeted tests:
+  - adjusted query-stage 4D-vs-5D equivalence test to the single-frame case where parity should still hold,
+  - replaced multi-frame strict equivalence with a temporal-propagation behavior test that verifies the updater only affects later frames.
+- Current status: temporal propagation path is now wired in the HF model and conversion mapping covers updater weights; end-to-end forward parity against upstream still needs another verify pass in an environment with full runtime deps (PyTorch/timm reference stack) to quantify the remaining output delta.
+
+
+### Update 28
+
+- Fixed a `--verify` correctness issue in `convert_videomt_to_hf.py`: timm monkeypatches used for reference loading (`create_model` and `apply_keep_indices_nlc`) were being restored too early (immediately after class import), so candidate reference forward passes did not actually run under the intended compatibility patching.
+- Kept monkeypatches active for the full candidate-evaluation loop and restored them only afterward in a `finally` block.
+- Extended verification diagnostics with **per-frame** max-abs diffs (`verify_frame_<idx>_logits_max_abs_diff`, `verify_frame_<idx>_masks_max_abs_diff`) to support bottom-up temporal debugging.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - conversion mapping remains clean (`unconverted_source_keys=2`: only `pos_embed` + loss buffer),
+  - DINOv3 reference candidates still fail with gather index dtype runtime errors,
+  - fallback reference candidate (`vit_small_patch16_224`) still runs and now reports per-frame divergence, confirming forward mismatch persists across both frames and not only one temporal step.
+
+
+### Update 29
+
+- Added a bottom-up conversion fix in `convert_videomt_to_hf.py` for attention bias mapping parity:
+  - infer config now sets `key_bias=True` for converted checkpoints,
+  - qkv split now maps the source **k-bias** into `layers.<idx>.attention.k_proj.bias` (previously only q/v biases were populated).
+- This removes a silent load-time gap where HF `k_proj.bias` stayed randomly initialized despite exact qkv weight transfer.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - weight mapping diagnostics remain exact,
+  - fallback candidate output diffs improved slightly but forward parity is still not reached,
+  - DINOv3 candidate runtime failures persist and remain a separate blocker for direct DINOv3-path parity checks.
+
+
+### Update 30
+
+- Improved `--verify` DINOv3 compatibility patching in `convert_videomt_to_hf.py`:
+  - patched both `timm.layers.pos_embed_sincos.apply_keep_indices_nlc` **and** `timm.models.eva.apply_keep_indices_nlc` (the symbol used inside EVA blocks at runtime),
+  - made the patch signature fully compatible with timm (`pos_embed_has_batch` passthrough),
+  - added safe handling for invalid keep indices during this compatibility path (dtype cast to int64 and clamp of negative sentinel indices).
+- This unblocks the previous gather-index dtype crash, allowing DINOv3 candidates to run further in verify.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - DINOv3 candidates now fail later with `AttributeError: 'EvaBlock' object has no attribute 'ls1'`, indicating a structural mismatch between the reference VidEoMT wrapper assumptions and current timm EVA block naming rather than immediate pos-index dtype failure,
+  - fallback candidate (`vit_small_patch16_224`) still runs and remains the active path for output-diff diagnostics,
+  - full forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+
+### Update 31
+
+- Added another bottom-up `--verify` debugging step in `convert_videomt_to_hf.py`:
+  - introduced `_prepare_reference_model_for_verify` to centralize verify-time reference model adaptation,
+  - added EVA layer-scale adapters so timm EVA blocks expose `ls1/ls2` callables expected by the upstream VidEoMT wrapper,
+  - added compact traceback-tail diagnostics for candidate failures (`reference_candidate_traceback_tail`) to make failure mode triage actionable without rerunning with manual debugging.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - DINOv3 candidates now progress past both keep-index and `ls1/ls2` compatibility issues, but fail later with `TypeError: layer_norm(): argument 'input' must be Tensor, not tuple` (newly surfaced deeper incompatibility),
+  - fallback candidate (`vit_small_patch16_224`) still runs and continues to provide per-frame output diffs,
+  - forward parity remains unresolved while mapping-level parity stays exact.
+
 ## Implemented in this update
 
 - [x] Milestone 1 (mask-layout support + 4D/5D embedding consistency checks, masked and unmasked).

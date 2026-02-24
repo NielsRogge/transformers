@@ -21,6 +21,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import traceback
 import types
 from pathlib import Path
 
@@ -71,6 +72,7 @@ def infer_videomt_config(
         num_blocks=state_dict["backbone.attn_mask_probs"].shape[0],
         num_labels=state_dict["backbone.class_head.weight"].shape[0] - 1,
         num_frames=num_frames,
+        key_bias=True,
     )
 
 
@@ -132,6 +134,27 @@ def _build_reference_load_dict(
     return loadable_reference_state_dict, skipped_reference_keys
 
 
+class _ReferenceLayerScaleAdapter(nn.Module):
+    def __init__(self, gamma: torch.Tensor):
+        super().__init__()
+        self.gamma = gamma
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        return hidden_states * self.gamma
+
+
+def _prepare_reference_model_for_verify(reference_model: nn.Module) -> None:
+    # Keep verification deterministic and avoid timm patch-drop index path differences across backbones.
+    reference_model.encoder.backbone.patch_drop = nn.Identity()
+
+    # timm EVA blocks expose gamma_1/gamma_2, while the VidEoMT wrapper calls ls1/ls2 modules.
+    for block in reference_model.encoder.backbone.blocks:
+        if not hasattr(block, "ls1") and hasattr(block, "gamma_1"):
+            block.ls1 = _ReferenceLayerScaleAdapter(block.gamma_1)
+        if not hasattr(block, "ls2") and hasattr(block, "gamma_2"):
+            block.ls2 = _ReferenceLayerScaleAdapter(block.gamma_2)
+
+
 def load_reference_videomt_class(reference_repo_path: Path):
     base_path = reference_repo_path / "videomt" / "modeling" / "backbone"
 
@@ -190,7 +213,9 @@ def convert_state_dict(
     converted["layernorm.bias"] = original_state_dict["backbone.encoder.backbone.norm.bias"]
     consumed_keys.add("backbone.encoder.backbone.norm.bias")
     converted["query.weight"] = original_state_dict["backbone.q.weight"]
-    consumed_keys.add("backbone.q.weight")
+    converted["query_updater.weight"] = original_state_dict["backbone.query_updater.weight"]
+    converted["query_updater.bias"] = original_state_dict["backbone.query_updater.bias"]
+    consumed_keys.update({"backbone.q.weight", "backbone.query_updater.weight", "backbone.query_updater.bias"})
 
     converted["class_predictor.weight"] = original_state_dict["backbone.class_head.weight"]
     consumed_keys.add("backbone.class_head.weight")
@@ -248,11 +273,12 @@ def convert_state_dict(
         qkv_weight = original_state_dict[f"{layer_prefix}.attn.qkv.weight"]
         qkv_bias = original_state_dict[f"{layer_prefix}.attn.qkv.bias"]
         q_weight, k_weight, v_weight = qkv_weight.chunk(3, dim=0)
-        q_bias, _k_bias, v_bias = qkv_bias.chunk(3, dim=0)
+        q_bias, k_bias, v_bias = qkv_bias.chunk(3, dim=0)
 
         converted[f"layers.{layer_idx}.attention.q_proj.weight"] = q_weight
         converted[f"layers.{layer_idx}.attention.q_proj.bias"] = q_bias
         converted[f"layers.{layer_idx}.attention.k_proj.weight"] = k_weight
+        converted[f"layers.{layer_idx}.attention.k_proj.bias"] = k_bias
         converted[f"layers.{layer_idx}.attention.v_proj.weight"] = v_weight
         converted[f"layers.{layer_idx}.attention.v_proj.bias"] = v_bias
         converted[f"layers.{layer_idx}.attention.o_proj.weight"] = original_state_dict[
@@ -395,113 +421,122 @@ def verify_conversion_against_github_reference(
                 text=True,
             )
 
+        import timm
+        from timm.layers import pos_embed_sincos
+        from timm.models import eva as timm_eva
+
+        original_create_model = timm.create_model
+        original_apply_keep_indices_nlc = pos_embed_sincos.apply_keep_indices_nlc
+        original_eva_apply_keep_indices_nlc = timm_eva.apply_keep_indices_nlc
+
+        def _create_model_no_pretrained(*args, **kwargs):
+            kwargs["pretrained"] = False
+            return original_create_model(*args, **kwargs)
+
+        def _safe_apply_keep_indices_nlc(x, pos_embed, keep_indices, pos_embed_has_batch: bool = False):
+            if keep_indices.dtype not in (torch.int32, torch.int64):
+                keep_indices = keep_indices.to(dtype=torch.int64)
+
+            if torch.any(keep_indices < 0):
+                keep_indices = keep_indices.clamp_min(0)
+
+            return original_apply_keep_indices_nlc(x, pos_embed, keep_indices, pos_embed_has_batch=pos_embed_has_batch)
+
+        timm.create_model = _create_model_no_pretrained
+        pos_embed_sincos.apply_keep_indices_nlc = _safe_apply_keep_indices_nlc
+        timm_eva.apply_keep_indices_nlc = _safe_apply_keep_indices_nlc
+        reference_cls = load_reference_videomt_class(repo_path)
+
         try:
-            import timm
-            from timm.layers import pos_embed_sincos
+            candidate_model_names = [infer_backbone_model_name(checkpoint_filename)]
+            if "_qkvb" in candidate_model_names[0]:
+                candidate_model_names.append(candidate_model_names[0].replace("_qkvb", ""))
+            if "vit_small" in checkpoint_filename:
+                candidate_model_names.append("vit_small_patch16_224")
+            elif "vit_base" in checkpoint_filename:
+                candidate_model_names.append("vit_base_patch16_224")
+            elif "vit_large" in checkpoint_filename:
+                candidate_model_names.append("vit_large_patch16_224")
 
-            original_create_model = timm.create_model
-            original_apply_keep_indices_nlc = pos_embed_sincos.apply_keep_indices_nlc
+            best_result = None
+            for candidate_model_name in candidate_model_names:
+                try:
+                    reference_model = reference_cls(
+                        img_size=image_size,
+                        num_classes=hf_model.config.num_labels,
+                        name=candidate_model_name,
+                        num_frames=num_frames,
+                        num_q=hf_model.config.num_queries,
+                        segmenter_blocks=list(
+                            range(
+                                hf_model.config.num_hidden_layers - hf_model.config.num_blocks,
+                                hf_model.config.num_hidden_layers,
+                            )
+                        ),
+                    ).eval()
 
-            def _create_model_no_pretrained(*args, **kwargs):
-                kwargs["pretrained"] = False
-                return original_create_model(*args, **kwargs)
-
-            def _safe_apply_keep_indices_nlc(x, pos_embed, keep_indices=None):
-                if keep_indices is not None and keep_indices.dtype not in (torch.int32, torch.int64):
-                    keep_indices = keep_indices.to(dtype=torch.int64)
-                return original_apply_keep_indices_nlc(x, pos_embed, keep_indices)
-
-            timm.create_model = _create_model_no_pretrained
-            pos_embed_sincos.apply_keep_indices_nlc = _safe_apply_keep_indices_nlc
-            reference_cls = load_reference_videomt_class(repo_path)
-        finally:
-            if "timm" in locals():
-                timm.create_model = original_create_model
-                pos_embed_sincos.apply_keep_indices_nlc = original_apply_keep_indices_nlc
-
-        candidate_model_names = [infer_backbone_model_name(checkpoint_filename)]
-        if "_qkvb" in candidate_model_names[0]:
-            candidate_model_names.append(candidate_model_names[0].replace("_qkvb", ""))
-        if "vit_small" in checkpoint_filename:
-            candidate_model_names.append("vit_small_patch16_224")
-        elif "vit_base" in checkpoint_filename:
-            candidate_model_names.append("vit_base_patch16_224")
-        elif "vit_large" in checkpoint_filename:
-            candidate_model_names.append("vit_large_patch16_224")
-
-        best_result = None
-        for candidate_model_name in candidate_model_names:
-            try:
-                reference_model = reference_cls(
-                    img_size=image_size,
-                    num_classes=hf_model.config.num_labels,
-                    name=candidate_model_name,
-                    num_frames=num_frames,
-                    num_q=hf_model.config.num_queries,
-                    segmenter_blocks=list(
-                        range(
-                            hf_model.config.num_hidden_layers - hf_model.config.num_blocks,
-                            hf_model.config.num_hidden_layers,
-                        )
-                    ),
-                ).eval()
-
-                reference_state_dict = reference_model.state_dict()
-                loadable_reference_state_dict, skipped_reference_keys = _build_reference_load_dict(
-                    original_state_dict, reference_state_dict
-                )
-
-                reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
-                ref_missing = set(reference_load_info.missing_keys)
-                ref_unexpected = set(reference_load_info.unexpected_keys)
-
-                # Keep verification deterministic and avoid timm patch-drop index path differences across backbones.
-                reference_model.encoder.backbone.patch_drop = nn.Identity()
-
-                with torch.no_grad():
-                    dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
-                    hf_outputs = hf_model(pixel_values=dummy_video)
-                    reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
-
-                reference_logits = reference_outputs["pred_logits"].reshape(
-                    -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
-                )
-                reference_masks = (
-                    reference_outputs["pred_masks"]
-                    .permute(0, 2, 1, 3, 4)
-                    .reshape(
-                        -1,
-                        hf_model.config.num_queries,
-                        reference_outputs["pred_masks"].shape[-2],
-                        reference_outputs["pred_masks"].shape[-1],
+                    reference_state_dict = reference_model.state_dict()
+                    loadable_reference_state_dict, skipped_reference_keys = _build_reference_load_dict(
+                        original_state_dict, reference_state_dict
                     )
-                )
 
-                logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
-                masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
-                score = logits_diff + masks_diff + len(ref_missing) + len(ref_unexpected)
+                    reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
+                    ref_missing = set(reference_load_info.missing_keys)
+                    ref_unexpected = set(reference_load_info.unexpected_keys)
 
-                print(f"reference_model_name={candidate_model_name}")
-                print(f"reference_missing_keys={len(ref_missing)}")
-                print(f"reference_unexpected_keys={len(ref_unexpected)}")
-                print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
-                print(f"candidate_verify_logits_max_abs_diff={logits_diff:.8f}")
-                print(f"candidate_verify_masks_max_abs_diff={masks_diff:.8f}")
+                    _prepare_reference_model_for_verify(reference_model)
 
-                if best_result is None or score < best_result["score"]:
-                    best_result = {
-                        "reference_model": reference_model,
-                        "name": candidate_model_name,
-                        "missing": ref_missing,
-                        "unexpected": ref_unexpected,
-                        "skipped": skipped_reference_keys,
-                        "logits_diff": logits_diff,
-                        "masks_diff": masks_diff,
-                        "score": score,
-                    }
-            except Exception as e:
-                print(f"reference_model_name={candidate_model_name}")
-                print(f"reference_candidate_error={type(e).__name__}: {e}")
+                    with torch.no_grad():
+                        dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
+                        hf_outputs = hf_model(pixel_values=dummy_video)
+                        reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
+
+                    reference_logits = reference_outputs["pred_logits"].reshape(
+                        -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
+                    )
+                    reference_masks = (
+                        reference_outputs["pred_masks"]
+                        .permute(0, 2, 1, 3, 4)
+                        .reshape(
+                            -1,
+                            hf_model.config.num_queries,
+                            reference_outputs["pred_masks"].shape[-2],
+                            reference_outputs["pred_masks"].shape[-1],
+                        )
+                    )
+
+                    logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
+                    masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
+                    score = logits_diff + masks_diff + len(ref_missing) + len(ref_unexpected)
+
+                    print(f"reference_model_name={candidate_model_name}")
+                    print(f"reference_missing_keys={len(ref_missing)}")
+                    print(f"reference_unexpected_keys={len(ref_unexpected)}")
+                    print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
+                    print(f"candidate_verify_logits_max_abs_diff={logits_diff:.8f}")
+                    print(f"candidate_verify_masks_max_abs_diff={masks_diff:.8f}")
+
+                    if best_result is None or score < best_result["score"]:
+                        best_result = {
+                            "reference_model": reference_model,
+                            "name": candidate_model_name,
+                            "missing": ref_missing,
+                            "unexpected": ref_unexpected,
+                            "skipped": skipped_reference_keys,
+                            "logits_diff": logits_diff,
+                            "masks_diff": masks_diff,
+                            "score": score,
+                        }
+                except Exception as e:
+                    print(f"reference_model_name={candidate_model_name}")
+                    print(f"reference_candidate_error={type(e).__name__}: {e}")
+                    print("reference_candidate_traceback_tail=")
+                    for line in traceback.format_exc().strip().splitlines()[-6:]:
+                        print(f"  {line}")
+        finally:
+            timm.create_model = original_create_model
+            pos_embed_sincos.apply_keep_indices_nlc = original_apply_keep_indices_nlc
+            timm_eva.apply_keep_indices_nlc = original_eva_apply_keep_indices_nlc
 
         if best_result is None:
             return False
@@ -590,6 +625,37 @@ def verify_conversion_against_github_reference(
 
         logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
         masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
+
+        if num_frames > 1:
+            hf_logits_by_frame = hf_outputs.class_queries_logits.view(
+                -1, num_frames, hf_model.config.num_queries, hf_model.config.num_labels + 1
+            )
+            hf_masks_by_frame = hf_outputs.masks_queries_logits.view(
+                -1,
+                num_frames,
+                hf_model.config.num_queries,
+                hf_outputs.masks_queries_logits.shape[-2],
+                hf_outputs.masks_queries_logits.shape[-1],
+            )
+            reference_logits_by_frame = reference_logits.view(
+                -1, num_frames, hf_model.config.num_queries, hf_model.config.num_labels + 1
+            )
+            reference_masks_by_frame = reference_masks.view(
+                -1,
+                num_frames,
+                hf_model.config.num_queries,
+                reference_masks.shape[-2],
+                reference_masks.shape[-1],
+            )
+            for frame_idx in range(num_frames):
+                frame_logits_diff = (
+                    (hf_logits_by_frame[:, frame_idx] - reference_logits_by_frame[:, frame_idx]).abs().max().item()
+                )
+                frame_masks_diff = (
+                    (hf_masks_by_frame[:, frame_idx] - reference_masks_by_frame[:, frame_idx]).abs().max().item()
+                )
+                print(f"verify_frame_{frame_idx}_logits_max_abs_diff={frame_logits_diff:.8f}")
+                print(f"verify_frame_{frame_idx}_masks_max_abs_diff={frame_masks_diff:.8f}")
 
         print(f"verify_logits_max_abs_diff={logits_diff:.8f}")
         print(f"verify_masks_max_abs_diff={masks_diff:.8f}")

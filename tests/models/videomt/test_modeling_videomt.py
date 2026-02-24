@@ -199,8 +199,8 @@ class VideomtForUniversalSegmentationTest(ModelTesterMixin, PipelineTesterMixin,
         model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
 
         size = (self.model_tester.image_size,) * 2
-        flattened_frames = torch.randn((2, 3, *size), device=torch_device)
-        video_frames = flattened_frames.reshape(1, 2, 3, *size)
+        flattened_frames = torch.randn((1, 3, *size), device=torch_device)
+        video_frames = flattened_frames.reshape(1, 1, 3, *size)
 
         with torch.no_grad():
             outputs_4d = model(pixel_values=flattened_frames)
@@ -217,18 +217,29 @@ class VideomtForUniversalSegmentationTest(ModelTesterMixin, PipelineTesterMixin,
         model = VideomtForUniversalSegmentation(config).to(torch_device).eval()
 
         size = (self.model_tester.image_size,) * 2
+        video_frames = torch.randn((1, 2, 3, *size), device=torch_device)
 
-        for num_frames in [2, 3]:
-            with self.subTest(num_frames=num_frames):
-                flattened_frames = torch.randn((num_frames, 3, *size), device=torch_device)
-                video_frames = flattened_frames.reshape(1, num_frames, 3, *size)
+        with torch.no_grad():
+            baseline_outputs = model(pixel_values=video_frames)
 
-                outputs_5d = _capture_layer_outputs(model, video_frames)
-                outputs_4d = _capture_layer_outputs(model, flattened_frames)
+            saved_weight = model.query_updater.weight.detach().clone()
+            saved_bias = model.query_updater.bias.detach().clone()
+            model.query_updater.weight.zero_()
+            model.query_updater.bias.zero_()
+            zero_updater_outputs = model(pixel_values=video_frames)
+            model.query_updater.weight.copy_(saved_weight)
+            model.query_updater.bias.copy_(saved_bias)
 
-                self.assertEqual(len(outputs_5d), len(outputs_4d))
-                for layer_out_5d, layer_out_4d in zip(outputs_5d, outputs_4d):
-                    torch.testing.assert_close(layer_out_5d, layer_out_4d)
+        torch.testing.assert_close(
+            baseline_outputs.class_queries_logits[0],
+            zero_updater_outputs.class_queries_logits[0],
+            msg="First frame should not depend on query_updater.",
+        )
+
+        frame_1_max_abs_diff = (
+            (baseline_outputs.class_queries_logits[1] - zero_updater_outputs.class_queries_logits[1]).abs().max()
+        )
+        self.assertGreater(frame_1_max_abs_diff.item(), 1e-8)
 
     def test_all_layers_video_input_equivalence(self):
         config = self.model_tester.get_config()
