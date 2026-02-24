@@ -178,11 +178,27 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 21 (current)
+### Update 21
 
 - Improved `--verify` loading logic to map upstream checkpoint keys into the reference model namespace (`backbone.` prefix stripping) and skip only non-loadable keys (missing names or shape mismatch), instead of blindly loading the raw checkpoint dict.
 - Added explicit verification diagnostics for skipped reference keys and per-layer qkv weight parity (`verify_layer_<idx>_qkv_weight_max_abs_diff`) to support bottom-up debugging.
 - Current status: verification now reaches deeper diagnostics layer-by-layer, but full output parity still does not pass yet.
+
+
+
+### Update 22
+
+- Extended `--verify` to evaluate multiple candidate reference backbone names (`*_dinov3_qkvb` and fallback without `_qkvb`) and select the best candidate by combined output-diff/load-quality score.
+- Added key-level remapping for upstream-to-reference differences during verify loading (`ls1/ls2` -> `gamma_1/gamma_2`, qkv bias split into q/v bias keys, optional `reg_token` -> `register_tokens`).
+- Current status: verification diagnostics are substantially improved and now report candidate-by-candidate results plus selected reference model, but full output parity is still not yet passing.
+
+
+
+### Update 23 (current)
+
+- Extended verify-time reference backbone candidate search with a legacy fallback (`vit_*_patch16_224`) when DINOv3 variants fail at runtime.
+- Current status on `yt_2019_vit_small_52.8.pth`: DINOv3 candidates fail during reference forward (`gather(): Expected dtype int32/int64 for index`), while fallback candidate can be evaluated and keeps the verify pipeline alive for continued layer-by-layer debugging.
+- Next debugging focus: identify why DINOv3 reference path hits positional embedding gather/index incompatibility in this minimal standalone loading setup.
 
 ## Implemented in this update
 

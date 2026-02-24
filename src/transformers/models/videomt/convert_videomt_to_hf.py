@@ -25,6 +25,7 @@ import types
 from pathlib import Path
 
 import torch
+import torch.nn as nn
 from huggingface_hub import hf_hub_download
 
 from transformers import VideomtConfig, VideomtForUniversalSegmentation
@@ -75,12 +76,56 @@ def infer_videomt_config(
 
 def infer_backbone_model_name(checkpoint_filename: str) -> str:
     if "vit_small" in checkpoint_filename:
-        return "vit_small_patch16_224"
+        return "vit_small_patch16_dinov3_qkvb"
     if "vit_base" in checkpoint_filename:
-        return "vit_base_patch16_224"
+        return "vit_base_patch16_dinov3_qkvb"
     if "vit_large" in checkpoint_filename:
-        return "vit_large_patch16_224"
+        return "vit_large_patch16_dinov3_qkvb"
     raise ValueError(f"Could not infer timm backbone model from checkpoint name '{checkpoint_filename}'.")
+
+
+def _build_reference_load_dict(
+    original_state_dict: dict[str, torch.Tensor], reference_state_dict: dict[str, torch.Tensor]
+) -> tuple[dict[str, torch.Tensor], list[str]]:
+    loadable_reference_state_dict = {}
+    skipped_reference_keys = []
+
+    for key, value in original_state_dict.items():
+        if not key.startswith("backbone."):
+            continue
+
+        stripped_key = key[len("backbone.") :]
+        candidate_key = stripped_key
+
+        if candidate_key.endswith(".ls1.gamma"):
+            candidate_key = candidate_key.replace(".ls1.gamma", ".gamma_1")
+        elif candidate_key.endswith(".ls2.gamma"):
+            candidate_key = candidate_key.replace(".ls2.gamma", ".gamma_2")
+        elif (
+            candidate_key.endswith(".reg_token")
+            and candidate_key.replace(".reg_token", ".register_tokens") in reference_state_dict
+        ):
+            candidate_key = candidate_key.replace(".reg_token", ".register_tokens")
+
+        if candidate_key.endswith(".attn.qkv.bias"):
+            base_key = candidate_key[: -len(".qkv.bias")]
+            hidden_size = value.shape[0] // 3
+            q_bias, _k_bias, v_bias = value.split(hidden_size, dim=0)
+            q_bias_key = f"{base_key}.q_bias"
+            v_bias_key = f"{base_key}.v_bias"
+            if q_bias_key in reference_state_dict and v_bias_key in reference_state_dict:
+                loadable_reference_state_dict[q_bias_key] = q_bias
+                loadable_reference_state_dict[v_bias_key] = v_bias
+                continue
+
+        if candidate_key in reference_state_dict and tuple(reference_state_dict[candidate_key].shape) == tuple(
+            value.shape
+        ):
+            loadable_reference_state_dict[candidate_key] = value
+        else:
+            skipped_reference_keys.append(stripped_key)
+
+    return loadable_reference_state_dict, skipped_reference_keys
 
 
 def load_reference_videomt_class(reference_repo_path: Path):
@@ -361,41 +406,102 @@ def verify_conversion_against_github_reference(
             if "timm" in locals():
                 timm.create_model = original_create_model
 
-        reference_model = reference_cls(
-            img_size=image_size,
-            num_classes=hf_model.config.num_labels,
-            name=infer_backbone_model_name(checkpoint_filename),
-            num_frames=num_frames,
-            num_q=hf_model.config.num_queries,
-            segmenter_blocks=list(
-                range(
-                    hf_model.config.num_hidden_layers - hf_model.config.num_blocks, hf_model.config.num_hidden_layers
+        candidate_model_names = [infer_backbone_model_name(checkpoint_filename)]
+        if "_qkvb" in candidate_model_names[0]:
+            candidate_model_names.append(candidate_model_names[0].replace("_qkvb", ""))
+        if "vit_small" in checkpoint_filename:
+            candidate_model_names.append("vit_small_patch16_224")
+        elif "vit_base" in checkpoint_filename:
+            candidate_model_names.append("vit_base_patch16_224")
+        elif "vit_large" in checkpoint_filename:
+            candidate_model_names.append("vit_large_patch16_224")
+
+        best_result = None
+        for candidate_model_name in candidate_model_names:
+            try:
+                reference_model = reference_cls(
+                    img_size=image_size,
+                    num_classes=hf_model.config.num_labels,
+                    name=candidate_model_name,
+                    num_frames=num_frames,
+                    num_q=hf_model.config.num_queries,
+                    segmenter_blocks=list(
+                        range(
+                            hf_model.config.num_hidden_layers - hf_model.config.num_blocks,
+                            hf_model.config.num_hidden_layers,
+                        )
+                    ),
+                ).eval()
+
+                reference_state_dict = reference_model.state_dict()
+                loadable_reference_state_dict, skipped_reference_keys = _build_reference_load_dict(
+                    original_state_dict, reference_state_dict
                 )
-            ),
-        ).eval()
 
-        reference_state_dict = reference_model.state_dict()
-        loadable_reference_state_dict = {}
-        skipped_reference_keys = []
-        for key, value in original_state_dict.items():
-            if not key.startswith("backbone."):
-                continue
-            stripped_key = key[len("backbone.") :]
-            if stripped_key in reference_state_dict and tuple(reference_state_dict[stripped_key].shape) == tuple(
-                value.shape
-            ):
-                loadable_reference_state_dict[stripped_key] = value
-            else:
-                skipped_reference_keys.append(stripped_key)
+                reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
+                ref_missing = set(reference_load_info.missing_keys)
+                ref_unexpected = set(reference_load_info.unexpected_keys)
 
-        reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
-        ref_missing = set(reference_load_info.missing_keys)
-        ref_unexpected = set(reference_load_info.unexpected_keys)
+                if getattr(reference_model.encoder.backbone, "patch_drop", None) is None:
+                    reference_model.encoder.backbone.patch_drop = nn.Identity()
 
+                with torch.no_grad():
+                    dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
+                    hf_outputs = hf_model(pixel_values=dummy_video)
+                    reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
+
+                reference_logits = reference_outputs["pred_logits"].reshape(
+                    -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
+                )
+                reference_masks = (
+                    reference_outputs["pred_masks"]
+                    .permute(0, 2, 1, 3, 4)
+                    .reshape(
+                        -1,
+                        hf_model.config.num_queries,
+                        reference_outputs["pred_masks"].shape[-2],
+                        reference_outputs["pred_masks"].shape[-1],
+                    )
+                )
+
+                logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
+                masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
+                score = logits_diff + masks_diff + len(ref_missing) + len(ref_unexpected)
+
+                print(f"reference_model_name={candidate_model_name}")
+                print(f"reference_missing_keys={len(ref_missing)}")
+                print(f"reference_unexpected_keys={len(ref_unexpected)}")
+                print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
+                print(f"candidate_verify_logits_max_abs_diff={logits_diff:.8f}")
+                print(f"candidate_verify_masks_max_abs_diff={masks_diff:.8f}")
+
+                if best_result is None or score < best_result["score"]:
+                    best_result = {
+                        "reference_model": reference_model,
+                        "name": candidate_model_name,
+                        "missing": ref_missing,
+                        "unexpected": ref_unexpected,
+                        "skipped": skipped_reference_keys,
+                        "logits_diff": logits_diff,
+                        "masks_diff": masks_diff,
+                        "score": score,
+                    }
+            except Exception as e:
+                print(f"reference_model_name={candidate_model_name}")
+                print(f"reference_candidate_error={type(e).__name__}: {e}")
+
+        if best_result is None:
+            return False
+
+        reference_model = best_result["reference_model"]
+        ref_missing = best_result["missing"]
+        ref_unexpected = best_result["unexpected"]
+        skipped_reference_keys = best_result["skipped"]
+
+        print(f"selected_reference_model_name={best_result['name']}")
         print(f"reference_missing_keys={len(ref_missing)}")
         print(f"reference_unexpected_keys={len(ref_unexpected)}")
         print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
-
         if skipped_reference_keys:
             print("reference_skipped_source_key_list=")
             for key in sorted(skipped_reference_keys):
