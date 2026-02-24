@@ -622,9 +622,22 @@ def verify_conversion_against_github_reference(
             reference_mlp_down = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc2.weight"]
             mlp_down_diff = (hf_mlp_down - reference_mlp_down).abs().max().item()
 
+            hf_ls1 = hf_model.state_dict()[f"layers.{layer_idx}.layer_scale1.lambda1"]
+            hf_ls2 = hf_model.state_dict()[f"layers.{layer_idx}.layer_scale2.lambda1"]
+            if f"encoder.backbone.blocks.{layer_idx}.ls1.gamma" in reference_model.state_dict():
+                reference_ls1 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.ls1.gamma"]
+                reference_ls2 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.ls2.gamma"]
+            else:
+                reference_ls1 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.gamma_1"]
+                reference_ls2 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.gamma_2"]
+            ls1_diff = (hf_ls1 - reference_ls1).abs().max().item()
+            ls2_diff = (hf_ls2 - reference_ls2).abs().max().item()
+
             print(f"verify_layer_{layer_idx}_qkv_weight_max_abs_diff={qkv_diff:.8f}")
             print(f"verify_layer_{layer_idx}_mlp_up_weight_max_abs_diff={mlp_up_diff:.8f}")
             print(f"verify_layer_{layer_idx}_mlp_down_weight_max_abs_diff={mlp_down_diff:.8f}")
+            print(f"verify_layer_{layer_idx}_ls1_weight_max_abs_diff={ls1_diff:.8f}")
+            print(f"verify_layer_{layer_idx}_ls2_weight_max_abs_diff={ls2_diff:.8f}")
 
         head_class_diff = (
             (hf_model.state_dict()["class_predictor.weight"] - reference_model.state_dict()["class_head.weight"])

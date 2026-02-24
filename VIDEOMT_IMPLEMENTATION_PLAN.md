@@ -386,3 +386,15 @@ This document tracks the next incremental steps after embedding-level parity.
   - layer-4 attention-side metrics remain much smaller (`attn_branch ~1.88`, `after_attn_hidden ~3.09`),
   - this strongly points to layer-4 MLP input/activation-path parity as the dominant mismatch source for continued debugging,
   - mapping-level checks still pass (`verify_weight_mapping_ok=True`) while full forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 40
+
+- Added explicit layer-scale weight-parity checks to `--verify` for every backbone block:
+  - `verify_layer_<idx>_ls1_weight_max_abs_diff`
+  - `verify_layer_<idx>_ls2_weight_max_abs_diff`
+- This closes a remaining blind spot in mapping-level diagnostics: previously qkv/MLP/head were checked, but layer-scale (`ls1/ls2` / `gamma_1/gamma_2`) weights were not explicitly verified.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - all new layer-scale mapping checks are exact (`0.0` for all layers),
+  - this rules out layer-scale conversion as the source of the layer-4 MLP amplification,
+  - bottom-up diagnostics continue to localize first major divergence to layer-4 MLP internals,
+  - mapping-level verification remains clean (`verify_weight_mapping_ok=True`) while full-forward parity is still unresolved (`verify_full_forward_ok=False`).
