@@ -194,11 +194,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 23 (current)
+### Update 23
 
 - Extended verify-time reference backbone candidate search with a legacy fallback (`vit_*_patch16_224`) when DINOv3 variants fail at runtime.
 - Current status on `yt_2019_vit_small_52.8.pth`: DINOv3 candidates fail during reference forward (`gather(): Expected dtype int32/int64 for index`), while fallback candidate can be evaluated and keeps the verify pipeline alive for continued layer-by-layer debugging.
 - Next debugging focus: identify why DINOv3 reference path hits positional embedding gather/index incompatibility in this minimal standalone loading setup.
+
+
+
+### Update 24 (current)
+
+- Added a verify-time compatibility patch for timm DINOv3 positional indexing (`apply_keep_indices_nlc`) so non-int keep indices are cast to `int64` before gather.
+- This unblocks the DINOv3 candidate execution path from immediate runtime failure and allows deeper comparison work under `--verify`.
+- Current status: DINOv3 candidates can now run further, but full end-to-end parity is still not achieved yet.
 
 ## Implemented in this update
 

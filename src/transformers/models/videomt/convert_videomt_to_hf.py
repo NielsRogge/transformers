@@ -98,9 +98,13 @@ def _build_reference_load_dict(
         candidate_key = stripped_key
 
         if candidate_key.endswith(".ls1.gamma"):
-            candidate_key = candidate_key.replace(".ls1.gamma", ".gamma_1")
+            gamma_key = candidate_key.replace(".ls1.gamma", ".gamma_1")
+            if gamma_key in reference_state_dict:
+                candidate_key = gamma_key
         elif candidate_key.endswith(".ls2.gamma"):
-            candidate_key = candidate_key.replace(".ls2.gamma", ".gamma_2")
+            gamma_key = candidate_key.replace(".ls2.gamma", ".gamma_2")
+            if gamma_key in reference_state_dict:
+                candidate_key = gamma_key
         elif (
             candidate_key.endswith(".reg_token")
             and candidate_key.replace(".reg_token", ".register_tokens") in reference_state_dict
@@ -393,18 +397,27 @@ def verify_conversion_against_github_reference(
 
         try:
             import timm
+            from timm.layers import pos_embed_sincos
 
             original_create_model = timm.create_model
+            original_apply_keep_indices_nlc = pos_embed_sincos.apply_keep_indices_nlc
 
             def _create_model_no_pretrained(*args, **kwargs):
                 kwargs["pretrained"] = False
                 return original_create_model(*args, **kwargs)
 
+            def _safe_apply_keep_indices_nlc(x, pos_embed, keep_indices=None):
+                if keep_indices is not None and keep_indices.dtype not in (torch.int32, torch.int64):
+                    keep_indices = keep_indices.to(dtype=torch.int64)
+                return original_apply_keep_indices_nlc(x, pos_embed, keep_indices)
+
             timm.create_model = _create_model_no_pretrained
+            pos_embed_sincos.apply_keep_indices_nlc = _safe_apply_keep_indices_nlc
             reference_cls = load_reference_videomt_class(repo_path)
         finally:
             if "timm" in locals():
                 timm.create_model = original_create_model
+                pos_embed_sincos.apply_keep_indices_nlc = original_apply_keep_indices_nlc
 
         candidate_model_names = [infer_backbone_model_name(checkpoint_filename)]
         if "_qkvb" in candidate_model_names[0]:
