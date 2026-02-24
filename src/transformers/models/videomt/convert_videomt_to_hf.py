@@ -455,8 +455,8 @@ def verify_conversion_against_github_reference(
                 ref_missing = set(reference_load_info.missing_keys)
                 ref_unexpected = set(reference_load_info.unexpected_keys)
 
-                if getattr(reference_model.encoder.backbone, "patch_drop", None) is None:
-                    reference_model.encoder.backbone.patch_drop = nn.Identity()
+                # Keep verification deterministic and avoid timm patch-drop index path differences across backbones.
+                reference_model.encoder.backbone.patch_drop = nn.Identity()
 
                 with torch.no_grad():
                     dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
@@ -531,7 +531,32 @@ def verify_conversion_against_github_reference(
             )
             reference_qkv = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.attn.qkv.weight"]
             qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
+            hf_mlp_up = hf_model.state_dict()[f"layers.{layer_idx}.mlp.up_proj.weight"]
+            reference_mlp_up = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc1.weight"]
+            mlp_up_diff = (hf_mlp_up - reference_mlp_up).abs().max().item()
+
+            hf_mlp_down = hf_model.state_dict()[f"layers.{layer_idx}.mlp.down_proj.weight"]
+            reference_mlp_down = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc2.weight"]
+            mlp_down_diff = (hf_mlp_down - reference_mlp_down).abs().max().item()
+
             print(f"verify_layer_{layer_idx}_qkv_weight_max_abs_diff={qkv_diff:.8f}")
+            print(f"verify_layer_{layer_idx}_mlp_up_weight_max_abs_diff={mlp_up_diff:.8f}")
+            print(f"verify_layer_{layer_idx}_mlp_down_weight_max_abs_diff={mlp_down_diff:.8f}")
+
+        head_class_diff = (
+            (hf_model.state_dict()["class_predictor.weight"] - reference_model.state_dict()["class_head.weight"])
+            .abs()
+            .max()
+            .item()
+        )
+        head_mask_diff = (
+            (hf_model.state_dict()["mask_head.fc1.weight"] - reference_model.state_dict()["mask_head.0.weight"])
+            .abs()
+            .max()
+            .item()
+        )
+        print(f"verify_head_class_weight_max_abs_diff={head_class_diff:.8f}")
+        print(f"verify_head_mask_fc1_weight_max_abs_diff={head_mask_diff:.8f}")
 
         dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
         with torch.no_grad():

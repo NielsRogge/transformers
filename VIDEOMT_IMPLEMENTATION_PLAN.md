@@ -202,11 +202,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 24 (current)
+### Update 24
 
 - Added a verify-time compatibility patch for timm DINOv3 positional indexing (`apply_keep_indices_nlc`) so non-int keep indices are cast to `int64` before gather.
 - This unblocks the DINOv3 candidate execution path from immediate runtime failure and allows deeper comparison work under `--verify`.
 - Current status: DINOv3 candidates can now run further, but full end-to-end parity is still not achieved yet.
+
+
+
+### Update 25 (current)
+
+- Extended layer-by-layer verify diagnostics beyond qkv to include MLP weights (`mlp.fc1`/`mlp.fc2`) for every backbone layer and added direct head-weight diagnostics (`class_head`, `mask_head.fc1`).
+- This provides a clearer bottom-up signal that core backbone/head weight transfer is exact while output-level mismatches persist, narrowing the debugging scope to execution-path behavior differences.
+- Current status: qkv/MLP/head weight parity metrics are now explicit and expected to be near-zero; end-to-end output parity still fails.
 
 ## Implemented in this update
 
