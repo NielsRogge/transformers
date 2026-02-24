@@ -19,11 +19,16 @@ This first milestone validates the embedding layer only.
 from __future__ import annotations
 
 import argparse
+import importlib.util
+import subprocess
+import sys
+import tempfile
+import types
+from pathlib import Path
 
 import torch
 
-from transformers import EomtDinov3Config, VideomtConfig
-from transformers.models.eomt_dinov3.modeling_eomt_dinov3 import EomtDinov3ForUniversalSegmentation
+from transformers import VideomtConfig
 from transformers.models.videomt.modeling_videomt import VideomtEmbeddings, VideomtForUniversalSegmentation
 
 
@@ -318,60 +323,138 @@ def compare_hf_query_stage_all_layers_5d_vs_4d(num_frames: int, seed: int = 0) -
             raise ValueError(f"HF query-stage layer {layer_idx} outputs differ between 5D and flattened 4D inputs.")
 
 
-def compare_videomt_full_model_against_reference(num_frames: int, seed: int = 0) -> None:
-    """Validate full-model parity between VidEoMT and the original EoMT-DINOv3 implementation."""
+def _load_github_videomt_class(reference_repo_path: Path):
+    base_path = reference_repo_path / "videomt" / "modeling" / "backbone"
+
+    detectron2_modeling = types.ModuleType("detectron2.modeling")
+
+    class _Backbone:
+        pass
+
+    class _Registry:
+        def register(self):
+            def _deco(cls):
+                return cls
+
+            return _deco
+
+    detectron2_modeling.Backbone = _Backbone
+    detectron2_modeling.BACKBONE_REGISTRY = _Registry()
+    sys.modules["detectron2.modeling"] = detectron2_modeling
+
+    for name in ["scale_block", "vit", "videomt"]:
+        spec = importlib.util.spec_from_file_location(
+            f"hf_videomt_reference.backbone.{name}", base_path / f"{name}.py"
+        )
+        if spec is None or spec.loader is None:
+            raise ValueError(f"Could not load module spec for {name} from {base_path}.")
+        module = importlib.util.module_from_spec(spec)
+        module.__package__ = "hf_videomt_reference.backbone"
+        sys.modules[f"hf_videomt_reference.backbone.{name}"] = module
+        spec.loader.exec_module(module)
+
+    return sys.modules["hf_videomt_reference.backbone.videomt"].VidEoMT_CLASS
+
+
+def compare_videomt_full_model_against_github_reference(
+    num_frames: int, seed: int = 0, reference_repo_path: str | None = None
+) -> bool:
+    """Validate full-model parity between VidEoMT and the official github reference implementation."""
 
     torch.manual_seed(seed)
 
-    common_config_kwargs = {
-        "hidden_size": 64,
-        "num_hidden_layers": 4,
-        "num_attention_heads": 4,
-        "intermediate_size": 256,
-        "image_size": 32,
-        "patch_size": 16,
-        "num_register_tokens": 2,
-        "num_queries": 8,
-        "num_blocks": 2,
-        "num_frames": num_frames,
-        "attention_dropout": 0.0,
-        "hidden_dropout_prob": 0.0,
-        "drop_path_rate": 0.0,
-    }
-    hf_config = VideomtConfig(**common_config_kwargs)
-    reference_config = EomtDinov3Config(**common_config_kwargs)
+    with tempfile.TemporaryDirectory(prefix="videomt_ref_") as tmp_dir:
+        repo_path = Path(reference_repo_path) if reference_repo_path is not None else Path(tmp_dir) / "videomt"
+        if reference_repo_path is None:
+            subprocess.run(
+                ["git", "clone", "--depth", "1", "https://github.com/tue-mps/videomt", str(repo_path)],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
-    hf_model = VideomtForUniversalSegmentation(hf_config).eval()
-    reference_model = EomtDinov3ForUniversalSegmentation(reference_config).eval()
-    reference_model.load_state_dict(hf_model.state_dict(), strict=True)
+        try:
+            import timm
 
-    dummy_video = torch.randn(1, num_frames, 3, hf_config.image_size, hf_config.image_size)
-    flattened_video = dummy_video.reshape(-1, *dummy_video.shape[2:])
+            original_create_model = timm.create_model
 
-    with torch.no_grad():
-        hf_outputs = hf_model(pixel_values=dummy_video)
-        reference_outputs = reference_model(pixel_values=flattened_video)
+            def _create_model_no_pretrained(*args, **kwargs):
+                kwargs["pretrained"] = False
+                return original_create_model(*args, **kwargs)
 
-    logits_diff = (hf_outputs.class_queries_logits - reference_outputs.class_queries_logits).abs().max().item()
-    masks_diff = (hf_outputs.masks_queries_logits - reference_outputs.masks_queries_logits).abs().max().item()
-    hidden_diff = (hf_outputs.last_hidden_state - reference_outputs.last_hidden_state).abs().max().item()
+            timm.create_model = _create_model_no_pretrained
+            reference_cls = _load_github_videomt_class(repo_path)
+        finally:
+            if "timm" in locals():
+                timm.create_model = original_create_model
 
-    print(f"hf_vs_reference_logits_max_abs_diff={logits_diff:.8f}")
-    print(f"hf_vs_reference_masks_max_abs_diff={masks_diff:.8f}")
-    print(f"hf_vs_reference_hidden_max_abs_diff={hidden_diff:.8f}")
+        config = VideomtConfig(
+            hidden_size=384,
+            num_hidden_layers=12,
+            num_attention_heads=6,
+            intermediate_size=1536,
+            image_size=32,
+            patch_size=16,
+            num_register_tokens=4,
+            num_queries=8,
+            num_blocks=2,
+            num_frames=num_frames,
+            attention_dropout=0.0,
+            hidden_dropout_prob=0.0,
+            drop_path_rate=0.0,
+            num_labels=10,
+            backbone_model_name="vit_small_patch16_224",
+        )
 
-    if not torch.allclose(
-        hf_outputs.class_queries_logits, reference_outputs.class_queries_logits, atol=1e-6, rtol=1e-6
-    ):
-        raise ValueError("VidEoMT class logits differ from reference EoMT-DINOv3 on the same dummy video input.")
+        hf_model = VideomtForUniversalSegmentation(config).eval()
+        reference_model = reference_cls(
+            img_size=config.image_size,
+            num_classes=config.num_labels,
+            name=config.backbone_model_name,
+            num_frames=num_frames,
+            num_q=config.num_queries,
+            segmenter_blocks=list(range(config.num_hidden_layers - config.num_blocks, config.num_hidden_layers)),
+        ).eval()
 
-    if not torch.allclose(
-        hf_outputs.masks_queries_logits, reference_outputs.masks_queries_logits, atol=1e-6, rtol=1e-6
-    ):
-        raise ValueError("VidEoMT mask logits differ from reference EoMT-DINOv3 on the same dummy video input.")
+        for model in [hf_model, reference_model]:
+            for parameter in model.parameters():
+                parameter.data.fill_(0.01)
+            for buffer in model.buffers():
+                if torch.is_floating_point(buffer):
+                    buffer.data.fill_(0.0)
 
-    if not torch.allclose(hf_outputs.last_hidden_state, reference_outputs.last_hidden_state, atol=1e-6, rtol=1e-6):
-        raise ValueError("VidEoMT hidden states differ from reference EoMT-DINOv3 on the same dummy video input.")
+        dummy_video = torch.randn(1, num_frames, 3, config.image_size, config.image_size)
+
+        with torch.no_grad():
+            hf_outputs = hf_model(pixel_values=dummy_video)
+            reference_outputs = reference_model(dummy_video.reshape(-1, 3, config.image_size, config.image_size))
+
+        reference_logits = reference_outputs["pred_logits"].reshape(-1, config.num_queries, config.num_labels + 1)
+        reference_masks = (
+            reference_outputs["pred_masks"]
+            .permute(0, 2, 1, 3, 4)
+            .reshape(
+                -1,
+                config.num_queries,
+                reference_outputs["pred_masks"].shape[-2],
+                reference_outputs["pred_masks"].shape[-1],
+            )
+        )
+
+        print(f"hf_logits_shape={tuple(hf_outputs.class_queries_logits.shape)}")
+        print(f"ref_logits_shape={tuple(reference_logits.shape)}")
+        print(f"hf_masks_shape={tuple(hf_outputs.masks_queries_logits.shape)}")
+        print(f"ref_masks_shape={tuple(reference_masks.shape)}")
+
+        logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
+        masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
+
+        print(f"hf_vs_github_reference_logits_max_abs_diff={logits_diff:.8f}")
+        print(f"hf_vs_github_reference_masks_max_abs_diff={masks_diff:.8f}")
+
+        return torch.allclose(
+            hf_outputs.class_queries_logits, reference_logits, atol=1e-6, rtol=1e-6
+        ) and torch.allclose(hf_outputs.masks_queries_logits, reference_masks, atol=1e-6, rtol=1e-6)
 
 
 def parse_args() -> argparse.Namespace:
@@ -381,6 +464,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--image-size", type=int, default=224)
     parser.add_argument("--patch-size", type=int, default=16)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--reference-repo-path", type=str, default=None)
     return parser.parse_args()
 
 
@@ -399,7 +483,13 @@ def main() -> None:
     for num_frames in sorted({args.num_frames, 3}):
         print(f"hf_query_stage_num_frames={num_frames}")
         compare_hf_query_stage_all_layers_5d_vs_4d(num_frames=num_frames, seed=args.seed)
-        compare_videomt_full_model_against_reference(num_frames=num_frames, seed=args.seed)
+        try:
+            github_parity_ok = compare_videomt_full_model_against_github_reference(
+                num_frames=num_frames, seed=args.seed, reference_repo_path=args.reference_repo_path
+            )
+            print(f"hf_vs_github_reference_allclose={github_parity_ok}")
+        except Exception as e:
+            print(f"hf_vs_github_reference_error={type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":

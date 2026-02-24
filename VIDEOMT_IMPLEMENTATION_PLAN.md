@@ -136,11 +136,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 16 (current)
+### Update 16
 
 - Added conversion-time **full-model** parity validation between `VideomtForUniversalSegmentation` and the original `EomtDinov3ForUniversalSegmentation` implementation on the same dummy video input.
 - The conversion script now copies the VidEoMT state dict into the reference model and compares class logits, mask logits, and final hidden states.
 - This keeps the work bottom-up but now verifies not only backbone internals, but also the full segmentation head path end-to-end against the original implementation.
+
+
+
+### Update 17 (current)
+
+- Replaced the temporary EoMT-DINOv3 comparator with a comparator targeting the **official VidEoMT GitHub reference** (`tue-mps/videomt`) inside the conversion script.
+- Added automated reference-repo loading (clone or user-provided checkout path), and explicit status printing for GitHub-reference parity (`hf_vs_github_reference_allclose` or `hf_vs_github_reference_error`).
+- Current status from local run: all HF-only 5D/4D parity checks pass; GitHub-reference comparator runs successfully and reports allclose parity for both 2-frame and 3-frame dummy videos under controlled (constant) weights.
 
 ## Implemented in this update
 
