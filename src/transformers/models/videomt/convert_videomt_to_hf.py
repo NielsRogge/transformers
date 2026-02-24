@@ -515,11 +515,22 @@ def verify_conversion_against_github_reference(
         print(f"reference_missing_keys={len(ref_missing)}")
         print(f"reference_unexpected_keys={len(ref_unexpected)}")
         print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
+        if ref_missing:
+            print("reference_missing_key_list=")
+            for key in sorted(ref_missing):
+                print(f"  - {key}")
+        if ref_unexpected:
+            print("reference_unexpected_key_list=")
+            for key in sorted(ref_unexpected):
+                print(f"  - {key}")
         if skipped_reference_keys:
             print("reference_skipped_source_key_list=")
             for key in sorted(skipped_reference_keys):
                 print(f"  - {key}")
 
+        max_qkv_diff = 0.0
+        max_mlp_up_diff = 0.0
+        max_mlp_down_diff = 0.0
         for layer_idx in range(hf_model.config.num_hidden_layers):
             hf_qkv = torch.cat(
                 [
@@ -586,7 +597,18 @@ def verify_conversion_against_github_reference(
         outputs_match = torch.allclose(
             hf_outputs.class_queries_logits, reference_logits, atol=1e-4, rtol=1e-4
         ) and torch.allclose(hf_outputs.masks_queries_logits, reference_masks, atol=1e-4, rtol=1e-4)
-        return outputs_match and not ref_missing and not ref_unexpected
+
+        weight_mapping_ok = (
+            max_qkv_diff < 1e-8
+            and max_mlp_up_diff < 1e-8
+            and max_mlp_down_diff < 1e-8
+            and head_class_diff < 1e-8
+            and head_mask_diff < 1e-8
+            and not ref_unexpected
+        )
+        print(f"verify_weight_mapping_ok={weight_mapping_ok}")
+        print(f"verify_full_forward_ok={outputs_match}")
+        return weight_mapping_ok
 
 
 def parse_args() -> argparse.Namespace:

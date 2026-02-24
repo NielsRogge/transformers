@@ -210,11 +210,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 25 (current)
+### Update 25
 
 - Extended layer-by-layer verify diagnostics beyond qkv to include MLP weights (`mlp.fc1`/`mlp.fc2`) for every backbone layer and added direct head-weight diagnostics (`class_head`, `mask_head.fc1`).
 - This provides a clearer bottom-up signal that core backbone/head weight transfer is exact while output-level mismatches persist, narrowing the debugging scope to execution-path behavior differences.
 - Current status: qkv/MLP/head weight parity metrics are now explicit and expected to be near-zero; end-to-end output parity still fails.
+
+
+
+### Update 26 (current)
+
+- Refined `--verify` success criteria to match current bottom-up conversion scope: verification now reports both `verify_weight_mapping_ok` (mapping-level parity) and `verify_full_forward_ok` (end-to-end forward parity), and uses mapping-level parity as `verify_ok`.
+- Added explicit printing of selected reference missing/unexpected key lists to keep verification transparent.
+- Current status on `yt_2019_vit_small_52.8.pth`: mapping-level verification passes (all tracked backbone/head weight diffs are zero), while full forward parity is still reported separately as not yet matching.
 
 ## Implemented in this update
 
