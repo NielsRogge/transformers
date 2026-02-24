@@ -170,11 +170,19 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 20 (current)
+### Update 20
 
 - Added a `--verify` mode to `convert_videomt_to_hf.py` that validates converted HF outputs against the original GitHub VidEoMT implementation (`tue-mps/videomt`) on the same dummy input video.
 - Verification now loads the reference `VidEoMT_CLASS`, reports reference load-state diagnostics, and prints output max-abs diffs for class/mask predictions.
 - Current status: checkpoint mapping and forward sanity pass are working; `--verify` path runs end-to-end but currently fails parity (`verify_ok=False`) because direct loading into the upstream reference class still has large missing/unexpected key sets and large output diffs.
+
+
+
+### Update 21 (current)
+
+- Improved `--verify` loading logic to map upstream checkpoint keys into the reference model namespace (`backbone.` prefix stripping) and skip only non-loadable keys (missing names or shape mismatch), instead of blindly loading the raw checkpoint dict.
+- Added explicit verification diagnostics for skipped reference keys and per-layer qkv weight parity (`verify_layer_<idx>_qkv_weight_max_abs_diff`) to support bottom-up debugging.
+- Current status: verification now reaches deeper diagnostics layer-by-layer, but full output parity still does not pass yet.
 
 ## Implemented in this update
 

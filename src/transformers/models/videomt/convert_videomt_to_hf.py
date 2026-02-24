@@ -374,14 +374,45 @@ def verify_conversion_against_github_reference(
             ),
         ).eval()
 
-        reference_load_info = reference_model.load_state_dict(original_state_dict, strict=False)
-        ignored_missing = {"encoder.backbone.pos_embed"}
-        ignored_unexpected = {"criterion.empty_weight"}
-        ref_missing = set(reference_load_info.missing_keys) - ignored_missing
-        ref_unexpected = set(reference_load_info.unexpected_keys) - ignored_unexpected
+        reference_state_dict = reference_model.state_dict()
+        loadable_reference_state_dict = {}
+        skipped_reference_keys = []
+        for key, value in original_state_dict.items():
+            if not key.startswith("backbone."):
+                continue
+            stripped_key = key[len("backbone.") :]
+            if stripped_key in reference_state_dict and tuple(reference_state_dict[stripped_key].shape) == tuple(
+                value.shape
+            ):
+                loadable_reference_state_dict[stripped_key] = value
+            else:
+                skipped_reference_keys.append(stripped_key)
+
+        reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
+        ref_missing = set(reference_load_info.missing_keys)
+        ref_unexpected = set(reference_load_info.unexpected_keys)
 
         print(f"reference_missing_keys={len(ref_missing)}")
         print(f"reference_unexpected_keys={len(ref_unexpected)}")
+        print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
+
+        if skipped_reference_keys:
+            print("reference_skipped_source_key_list=")
+            for key in sorted(skipped_reference_keys):
+                print(f"  - {key}")
+
+        for layer_idx in range(hf_model.config.num_hidden_layers):
+            hf_qkv = torch.cat(
+                [
+                    hf_model.state_dict()[f"layers.{layer_idx}.attention.q_proj.weight"],
+                    hf_model.state_dict()[f"layers.{layer_idx}.attention.k_proj.weight"],
+                    hf_model.state_dict()[f"layers.{layer_idx}.attention.v_proj.weight"],
+                ],
+                dim=0,
+            )
+            reference_qkv = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.attn.qkv.weight"]
+            qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
+            print(f"verify_layer_{layer_idx}_qkv_weight_max_abs_diff={qkv_diff:.8f}")
 
         dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
         with torch.no_grad():
