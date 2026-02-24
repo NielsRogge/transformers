@@ -144,11 +144,29 @@ This document tracks the next incremental steps after embedding-level parity.
 
 
 
-### Update 17 (current)
+### Update 17
 
 - Replaced the temporary EoMT-DINOv3 comparator with a comparator targeting the **official VidEoMT GitHub reference** (`tue-mps/videomt`) inside the conversion script.
 - Added automated reference-repo loading (clone or user-provided checkout path), and explicit status printing for GitHub-reference parity (`hf_vs_github_reference_allclose` or `hf_vs_github_reference_error`).
 - Current status from local run: all HF-only 5D/4D parity checks pass; GitHub-reference comparator runs successfully and reports allclose parity for both 2-frame and 3-frame dummy videos under controlled (constant) weights.
+
+
+
+### Update 18
+
+- Simplified `convert_videomt_to_hf.py` to a checkpoint-driven conversion flow matching standard Transformers conversion scripts: pass a checkpoint filename from `tue-mps/VidEoMT`, download with `hf_hub_download`, map weights into `VideomtForUniversalSegmentation`, and run a dummy forward verification.
+- Removed the previous GitHub source-loader comparator logic and replaced it with direct checkpoint conversion diagnostics (`missing_keys`, `unexpected_keys`, output tensor shapes, finite-output check).
+- Current conversion coverage:
+  - Converted successfully: embeddings, encoder layers (including qkv split into q/k/v projections), class head, mask head, upscale blocks, query embeddings, and attention-mask probabilities.
+  - Not converted yet: upstream `query_updater` weights and positional embedding tensor from the original checkpoint (they are currently reported as unexpected/missing because the current HF architecture path does not consume them directly).
+
+
+
+### Update 19 (current)
+
+- Simplified conversion validation to a **single checkpoint-driven path**: pass `--checkpoint-filename` from `tue-mps/VidEoMT`, map weights into `VideomtForUniversalSegmentation`, and run a dummy forward verification.
+- Conversion status on `yt_2019_vit_small_52.8.pth` currently reports **0 unexpected keys** and only one missing HF key (`criterion.empty_weight`, non-parameter loss buffer).
+- Source keys not yet consumed by conversion mapping are now explicitly reported: `backbone.encoder.backbone.pos_embed` and `backbone.query_updater.{weight,bias}` (plus `criterion.empty_weight` from checkpoint loss state).
 
 ## Implemented in this update
 
