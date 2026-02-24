@@ -372,3 +372,17 @@ This document tracks the next incremental steps after embedding-level parity.
   - subsequent layers carry forward the amplified residual mismatch (~26+),
   - this narrows the next debugging target to layer-4 MLP execution-path parity (activation / norm / branch composition) rather than attention weights or RoPE,
   - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 39
+
+- Extended pre-query branch diagnostics in `--verify` to break down the MLP path into finer-grained steps per layer:
+  - `verify_pre_query_layer_<idx>_mlp_fc1_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_mlp_act_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_mlp_fc2_max_abs_diff`
+  - while retaining `mlp_branch`, `attn_branch`, and full hidden-state metrics.
+- This provides true bottom-up attribution inside the MLP branch instead of only branch-level aggregates.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - the first large amplification is now clearly localized to **layer 4 MLP internals**, with a sharp jump already at FC1/activation (`mlp_fc1 ~31.1`, `mlp_act ~31.1`, `mlp_fc2 ~12.8`),
+  - layer-4 attention-side metrics remain much smaller (`attn_branch ~1.88`, `after_attn_hidden ~3.09`),
+  - this strongly points to layer-4 MLP input/activation-path parity as the dominant mismatch source for continued debugging,
+  - mapping-level checks still pass (`verify_weight_mapping_ok=True`) while full forward parity remains unresolved (`verify_full_forward_ok=False`).

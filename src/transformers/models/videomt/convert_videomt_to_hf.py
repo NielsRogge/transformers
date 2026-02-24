@@ -701,8 +701,25 @@ def verify_conversion_against_github_reference(
                     hf_norm2_hidden_states = hf_layer.norm2(hf_hidden_states_after_attn)
                     reference_norm2_hidden_states = reference_block.norm2(reference_hidden_states_after_attn)
 
-                    hf_mlp_output = hf_layer.layer_scale2(hf_layer.mlp(hf_norm2_hidden_states))
-                    reference_mlp_output = reference_block.ls2(reference_block.mlp(reference_norm2_hidden_states))
+                    hf_mlp_fc1 = hf_layer.mlp.up_proj(hf_norm2_hidden_states)
+                    reference_mlp_fc1 = reference_block.mlp.fc1(reference_norm2_hidden_states)
+
+                    hf_mlp_act = hf_layer.mlp.act_fn(hf_mlp_fc1)
+                    reference_mlp_act = reference_block.mlp.act(reference_mlp_fc1)
+
+                    if hasattr(reference_block.mlp, "drop1"):
+                        reference_mlp_act = reference_block.mlp.drop1(reference_mlp_act)
+                    if hasattr(reference_block.mlp, "norm"):
+                        reference_mlp_act = reference_block.mlp.norm(reference_mlp_act)
+
+                    hf_mlp_fc2 = hf_layer.mlp.down_proj(hf_mlp_act)
+                    reference_mlp_fc2 = reference_block.mlp.fc2(reference_mlp_act)
+
+                    if hasattr(reference_block.mlp, "drop2"):
+                        reference_mlp_fc2 = reference_block.mlp.drop2(reference_mlp_fc2)
+
+                    hf_mlp_output = hf_layer.layer_scale2(hf_mlp_fc2)
+                    reference_mlp_output = reference_block.ls2(reference_mlp_fc2)
 
                     hf_hidden_states_with_rope = hf_layer(
                         hf_hidden_states_input,
@@ -727,6 +744,9 @@ def verify_conversion_against_github_reference(
                     (hf_hidden_states_after_attn - reference_hidden_states_after_attn).abs().max().item()
                 )
                 layer_norm2_diff = (hf_norm2_hidden_states - reference_norm2_hidden_states).abs().max().item()
+                layer_mlp_fc1_diff = (hf_mlp_fc1 - reference_mlp_fc1).abs().max().item()
+                layer_mlp_act_diff = (hf_mlp_act - reference_mlp_act).abs().max().item()
+                layer_mlp_fc2_diff = (hf_mlp_fc2 - reference_mlp_fc2).abs().max().item()
                 layer_mlp_diff = (hf_mlp_output - reference_mlp_output).abs().max().item()
                 layer_hidden_diff = (hf_hidden_states_with_rope - reference_hidden_states).abs().max().item()
                 layer_hidden_no_rope_diff = (hf_hidden_states_no_rope - reference_hidden_states).abs().max().item()
@@ -735,6 +755,9 @@ def verify_conversion_against_github_reference(
                 print(f"verify_pre_query_layer_{layer_idx}_attn_branch_max_abs_diff={layer_attn_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_after_attn_hidden_max_abs_diff={layer_after_attn_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_ln2_max_abs_diff={layer_norm2_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_max_abs_diff={layer_mlp_fc1_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_mlp_act_max_abs_diff={layer_mlp_act_diff:.8f}")
+                print(f"verify_pre_query_layer_{layer_idx}_mlp_fc2_max_abs_diff={layer_mlp_fc2_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_branch_max_abs_diff={layer_mlp_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
                 print(
