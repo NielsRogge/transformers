@@ -628,6 +628,38 @@ def verify_conversion_against_github_reference(
         print(f"verify_head_class_weight_max_abs_diff={head_class_diff:.8f}")
         print(f"verify_head_mask_fc1_weight_max_abs_diff={head_mask_diff:.8f}")
 
+        # Bottom-up diagnostics: compare hidden states before query insertion layer-by-layer.
+        query_start_idx = hf_model.config.num_hidden_layers - hf_model.config.num_blocks
+        if query_start_idx > 0:
+            diagnostic_video = torch.randn(1, num_frames, 3, image_size, image_size)
+            diagnostic_frames = diagnostic_video.reshape(-1, 3, image_size, image_size)
+
+            with torch.no_grad():
+                hf_hidden_states = hf_model.dropout(hf_model.embeddings(diagnostic_frames))
+                hf_position_embeddings = hf_model.rope_embeddings(diagnostic_frames.to(hf_hidden_states.dtype))
+
+                reference_hidden_states = reference_model.encoder.backbone.patch_embed(diagnostic_frames)
+                reference_hidden_states = reference_model.encoder.backbone._pos_embed(reference_hidden_states)
+                reference_hidden_states = reference_model.encoder.backbone.patch_drop(reference_hidden_states)
+                reference_hidden_states = reference_model.encoder.backbone.norm_pre(reference_hidden_states)
+
+            embedding_diff = (hf_hidden_states - reference_hidden_states).abs().max().item()
+            print(f"verify_pre_query_embedding_max_abs_diff={embedding_diff:.8f}")
+
+            for layer_idx in range(query_start_idx):
+                with torch.no_grad():
+                    hf_hidden_states = hf_model.layers[layer_idx](
+                        hf_hidden_states,
+                        position_embeddings=hf_position_embeddings,
+                    )
+                    reference_hidden_states = reference_model.backbone_patch_token(
+                        reference_hidden_states,
+                        reference_model.encoder.backbone.blocks[layer_idx : layer_idx + 1],
+                    )
+
+                layer_hidden_diff = (hf_hidden_states - reference_hidden_states).abs().max().item()
+                print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
+
         dummy_video = torch.randn(1, num_frames, 3, image_size, image_size)
         with torch.no_grad():
             hf_outputs = hf_model(pixel_values=dummy_video)

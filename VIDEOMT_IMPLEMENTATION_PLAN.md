@@ -307,6 +307,17 @@ This document tracks the next incremental steps after embedding-level parity.
   - output diffs improved significantly versus legacy fallback path (`logits` max-abs down to ~5.25 and `masks` max-abs down to ~162),
   - full forward parity is still not reached, but the verify path is now substantially closer to true apples-to-apples DINOv3 comparison for continued bottom-up debugging.
 
+
+### Update 34
+
+- Added bottom-up pre-query hidden-state diagnostics to `--verify` in `convert_videomt_to_hf.py`:
+  - logs embedding-boundary max-abs diff (`verify_pre_query_embedding_max_abs_diff`),
+  - logs per-layer max-abs diffs before query insertion (`verify_pre_query_layer_<idx>_hidden_max_abs_diff`).
+- Current diagnostic signal on `yt_2019_vit_small_52.8.pth` with DINOv3 reference candidate:
+  - embedding boundary is exact (`0.0`),
+  - pre-query hidden diffs start moderate in early layers and then jump sharply around layers 4-8 (up to ~27.8),
+  - this narrows remaining forward mismatch scope to pre-query backbone execution behavior (attention/normalization/rope path), not weight loading.
+
 ## Implemented in this update
 
 - [x] Milestone 1 (mask-layout support + 4D/5D embedding consistency checks, masked and unmasked).
