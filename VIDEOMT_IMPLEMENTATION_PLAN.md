@@ -286,6 +286,16 @@ This document tracks the next incremental steps after embedding-level parity.
   - fallback candidate (`vit_small_patch16_224`) still runs and continues to provide per-frame output diffs,
   - forward parity remains unresolved while mapping-level parity stays exact.
 
+
+### Update 32
+
+- Extended verify-time DINOv3 compatibility adaptation in `convert_videomt_to_hf.py` by wrapping reference backbone `_pos_embed` so tuple returns from newer timm EVA paths are normalized back to token tensors, matching the expectations of the upstream VidEoMT wrapper.
+- Re-ran `--verify` and surfaced the next deeper DINOv3 failure with traceback-tail diagnostics: candidates now fail at `ValueError: not enough values to unpack (expected 3, got 2)` in the wrapper `_attn` path (input rank mismatch), indicating an additional block-level API mismatch after `_pos_embed`.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - DINOv3 candidates continue to progress deeper as compatibility layers are added,
+  - fallback candidate (`vit_small_patch16_224`) remains the operational parity baseline for per-frame diff reporting,
+  - mapping-level checks remain exact while full forward parity is still unresolved.
+
 ## Implemented in this update
 
 - [x] Milestone 1 (mask-layout support + 4D/5D embedding consistency checks, masked and unmasked).
