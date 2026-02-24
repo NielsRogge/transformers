@@ -398,3 +398,15 @@ This document tracks the next incremental steps after embedding-level parity.
   - this rules out layer-scale conversion as the source of the layer-4 MLP amplification,
   - bottom-up diagnostics continue to localize first major divergence to layer-4 MLP internals,
   - mapping-level verification remains clean (`verify_weight_mapping_ok=True`) while full-forward parity is still unresolved (`verify_full_forward_ok=False`).
+
+### Update 41
+
+- Added a verify-time **diagnostic-consistency guard** for the MLP-path decomposition by computing both manual and native branch outputs in HF and reference blocks, and logging:
+  - `verify_pre_query_layer_<idx>_hf_mlp_manual_vs_native_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_reference_mlp_manual_vs_native_max_abs_diff`.
+- Also switched the reported `verify_pre_query_layer_<idx>_mlp_branch_max_abs_diff` to compare **native** branch outputs (`ls2(mlp(norm2(...)))`) for both HF and reference, avoiding any potential bias from diagnostic decomposition itself.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - manual-vs-native diffs are exactly `0.0` for both HF and reference across pre-query layers, validating diagnostic correctness,
+  - the layer-4 MLP spike remains and even increases on this seeded run (`mlp_fc1/mlp_act ~38.3`, `mlp_fc2 ~15.4`, `mlp_branch ~30.8`),
+  - this confirms the divergence signal is real model behavior (not an artifact of probe decomposition),
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).

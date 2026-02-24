@@ -734,6 +734,11 @@ def verify_conversion_against_github_reference(
                     hf_mlp_output = hf_layer.layer_scale2(hf_mlp_fc2)
                     reference_mlp_output = reference_block.ls2(reference_mlp_fc2)
 
+                    hf_mlp_output_native = hf_layer.layer_scale2(hf_layer.mlp(hf_norm2_hidden_states))
+                    reference_mlp_output_native = reference_block.ls2(
+                        reference_block.mlp(reference_norm2_hidden_states)
+                    )
+
                     hf_hidden_states_with_rope = hf_layer(
                         hf_hidden_states_input,
                         position_embeddings=hf_position_embeddings,
@@ -760,7 +765,11 @@ def verify_conversion_against_github_reference(
                 layer_mlp_fc1_diff = (hf_mlp_fc1 - reference_mlp_fc1).abs().max().item()
                 layer_mlp_act_diff = (hf_mlp_act - reference_mlp_act).abs().max().item()
                 layer_mlp_fc2_diff = (hf_mlp_fc2 - reference_mlp_fc2).abs().max().item()
-                layer_mlp_diff = (hf_mlp_output - reference_mlp_output).abs().max().item()
+                layer_hf_mlp_manual_vs_native_diff = (hf_mlp_output - hf_mlp_output_native).abs().max().item()
+                layer_reference_mlp_manual_vs_native_diff = (
+                    (reference_mlp_output - reference_mlp_output_native).abs().max().item()
+                )
+                layer_mlp_diff = (hf_mlp_output_native - reference_mlp_output_native).abs().max().item()
                 layer_hidden_diff = (hf_hidden_states_with_rope - reference_hidden_states).abs().max().item()
                 layer_hidden_no_rope_diff = (hf_hidden_states_no_rope - reference_hidden_states).abs().max().item()
                 print(f"verify_pre_query_layer_{layer_idx}_ln1_max_abs_diff={layer_normed_hidden_diff:.8f}")
@@ -771,6 +780,13 @@ def verify_conversion_against_github_reference(
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_fc1_max_abs_diff={layer_mlp_fc1_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_act_max_abs_diff={layer_mlp_act_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_fc2_max_abs_diff={layer_mlp_fc2_diff:.8f}")
+                print(
+                    f"verify_pre_query_layer_{layer_idx}_hf_mlp_manual_vs_native_max_abs_diff={layer_hf_mlp_manual_vs_native_diff:.8f}"
+                )
+                print(
+                    "verify_pre_query_layer_"
+                    f"{layer_idx}_reference_mlp_manual_vs_native_max_abs_diff={layer_reference_mlp_manual_vs_native_diff:.8f}"
+                )
                 print(f"verify_pre_query_layer_{layer_idx}_mlp_branch_max_abs_diff={layer_mlp_diff:.8f}")
                 print(f"verify_pre_query_layer_{layer_idx}_hidden_max_abs_diff={layer_hidden_diff:.8f}")
                 print(
