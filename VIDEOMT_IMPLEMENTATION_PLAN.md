@@ -224,8 +224,211 @@ This document tracks the next incremental steps after embedding-level parity.
 - Added explicit printing of selected reference missing/unexpected key lists to keep verification transparent.
 - Current status on `yt_2019_vit_small_52.8.pth`: mapping-level verification passes (all tracked backbone/head weight diffs are zero), while full forward parity is still reported separately as not yet matching.
 
+
+### Update 27
+
+- Implemented temporal query propagation in `VideomtForUniversalSegmentation.forward` for 5D video inputs to match upstream VidEoMT behavior more closely:
+  - added `query_updater` module,
+  - split execution into pre-query backbone layers and segmenter/query layers,
+  - for video inputs, reused propagated queries frame-to-frame (`query_updater(frame_query) + query_embedding`) instead of reinitializing learned queries every frame.
+- Refactored segmenter-stage execution into a helper (`_run_segmenter_layers`) so 4D and 5D paths share the same layer/mask logic.
+- Extended checkpoint conversion mapping to load `backbone.query_updater.{weight,bias}` into HF `query_updater`, reducing unconverted source keys.
+- Updated targeted tests:
+  - adjusted query-stage 4D-vs-5D equivalence test to the single-frame case where parity should still hold,
+  - replaced multi-frame strict equivalence with a temporal-propagation behavior test that verifies the updater only affects later frames.
+- Current status: temporal propagation path is now wired in the HF model and conversion mapping covers updater weights; end-to-end forward parity against upstream still needs another verify pass in an environment with full runtime deps (PyTorch/timm reference stack) to quantify the remaining output delta.
+
+
+### Update 28
+
+- Fixed a `--verify` correctness issue in `convert_videomt_to_hf.py`: timm monkeypatches used for reference loading (`create_model` and `apply_keep_indices_nlc`) were being restored too early (immediately after class import), so candidate reference forward passes did not actually run under the intended compatibility patching.
+- Kept monkeypatches active for the full candidate-evaluation loop and restored them only afterward in a `finally` block.
+- Extended verification diagnostics with **per-frame** max-abs diffs (`verify_frame_<idx>_logits_max_abs_diff`, `verify_frame_<idx>_masks_max_abs_diff`) to support bottom-up temporal debugging.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - conversion mapping remains clean (`unconverted_source_keys=2`: only `pos_embed` + loss buffer),
+  - DINOv3 reference candidates still fail with gather index dtype runtime errors,
+  - fallback reference candidate (`vit_small_patch16_224`) still runs and now reports per-frame divergence, confirming forward mismatch persists across both frames and not only one temporal step.
+
+
+### Update 29
+
+- Added a bottom-up conversion fix in `convert_videomt_to_hf.py` for attention bias mapping parity:
+  - infer config now sets `key_bias=True` for converted checkpoints,
+  - qkv split now maps the source **k-bias** into `layers.<idx>.attention.k_proj.bias` (previously only q/v biases were populated).
+- This removes a silent load-time gap where HF `k_proj.bias` stayed randomly initialized despite exact qkv weight transfer.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - weight mapping diagnostics remain exact,
+  - fallback candidate output diffs improved slightly but forward parity is still not reached,
+  - DINOv3 candidate runtime failures persist and remain a separate blocker for direct DINOv3-path parity checks.
+
+
+### Update 30
+
+- Improved `--verify` DINOv3 compatibility patching in `convert_videomt_to_hf.py`:
+  - patched both `timm.layers.pos_embed_sincos.apply_keep_indices_nlc` **and** `timm.models.eva.apply_keep_indices_nlc` (the symbol used inside EVA blocks at runtime),
+  - made the patch signature fully compatible with timm (`pos_embed_has_batch` passthrough),
+  - added safe handling for invalid keep indices during this compatibility path (dtype cast to int64 and clamp of negative sentinel indices).
+- This unblocks the previous gather-index dtype crash, allowing DINOv3 candidates to run further in verify.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - DINOv3 candidates now fail later with `AttributeError: 'EvaBlock' object has no attribute 'ls1'`, indicating a structural mismatch between the reference VidEoMT wrapper assumptions and current timm EVA block naming rather than immediate pos-index dtype failure,
+  - fallback candidate (`vit_small_patch16_224`) still runs and remains the active path for output-diff diagnostics,
+  - full forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+
+### Update 31
+
+- Added another bottom-up `--verify` debugging step in `convert_videomt_to_hf.py`:
+  - introduced `_prepare_reference_model_for_verify` to centralize verify-time reference model adaptation,
+  - added EVA layer-scale adapters so timm EVA blocks expose `ls1/ls2` callables expected by the upstream VidEoMT wrapper,
+  - added compact traceback-tail diagnostics for candidate failures (`reference_candidate_traceback_tail`) to make failure mode triage actionable without rerunning with manual debugging.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - DINOv3 candidates now progress past both keep-index and `ls1/ls2` compatibility issues, but fail later with `TypeError: layer_norm(): argument 'input' must be Tensor, not tuple` (newly surfaced deeper incompatibility),
+  - fallback candidate (`vit_small_patch16_224`) still runs and continues to provide per-frame output diffs,
+  - forward parity remains unresolved while mapping-level parity stays exact.
+
+
+### Update 32
+
+- Extended verify-time DINOv3 compatibility adaptation in `convert_videomt_to_hf.py` by wrapping reference backbone `_pos_embed` so tuple returns from newer timm EVA paths are normalized back to token tensors, matching the expectations of the upstream VidEoMT wrapper.
+- Re-ran `--verify` and surfaced the next deeper DINOv3 failure with traceback-tail diagnostics: candidates now fail at `ValueError: not enough values to unpack (expected 3, got 2)` in the wrapper `_attn` path (input rank mismatch), indicating an additional block-level API mismatch after `_pos_embed`.
+- Current status on `yt_2019_vit_small_52.8.pth`:
+  - DINOv3 candidates continue to progress deeper as compatibility layers are added,
+  - fallback candidate (`vit_small_patch16_224`) remains the operational parity baseline for per-frame diff reporting,
+  - mapping-level checks remain exact while full forward parity is still unresolved.
+
+
+### Update 33
+
+- Added another verify-time compatibility adapter in `convert_videomt_to_hf.py` for timm EVA attention modules: if `head_dim` is missing, it is inferred from qkv weight shape and attached to the attention module.
+- This unblocks the previous DINOv3 runtime failure (`EvaAttention` missing `head_dim`) and allows DINOv3 candidates to execute end-to-end in `--verify`.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - best reference candidate now correctly selects a DINOv3 backbone (`vit_small_patch16_dinov3_qkvb`) instead of legacy fallback,
+  - DINOv3 candidate loading diagnostics are clean (`reference_missing_keys=0`, `reference_unexpected_keys=0`, only skipped `pos_embed`),
+  - output diffs improved significantly versus legacy fallback path (`logits` max-abs down to ~5.25 and `masks` max-abs down to ~162),
+  - full forward parity is still not reached, but the verify path is now substantially closer to true apples-to-apples DINOv3 comparison for continued bottom-up debugging.
+
+
+### Update 34
+
+- Added bottom-up pre-query hidden-state diagnostics to `--verify` in `convert_videomt_to_hf.py`:
+  - logs embedding-boundary max-abs diff (`verify_pre_query_embedding_max_abs_diff`),
+  - logs per-layer max-abs diffs before query insertion (`verify_pre_query_layer_<idx>_hidden_max_abs_diff`).
+- Current diagnostic signal on `yt_2019_vit_small_52.8.pth` with DINOv3 reference candidate:
+  - embedding boundary is exact (`0.0`),
+  - pre-query hidden diffs start moderate in early layers and then jump sharply around layers 4-8 (up to ~27.8),
+  - this narrows remaining forward mismatch scope to pre-query backbone execution behavior (attention/normalization/rope path), not weight loading.
+
 ## Implemented in this update
 
 - [x] Milestone 1 (mask-layout support + 4D/5D embedding consistency checks, masked and unmasked).
 - [x] Milestone 2 (model-level 5D input adaptation baseline).
 - [ ] Milestone 3+
+
+### Update 35
+
+- Extended `--verify` with deterministic seeded probe inputs for candidate scoring, pre-query diagnostics, and final parity checks (`candidate_dummy_video`, `diagnostic_video`, `final_dummy_video`) so repeated runs are directly comparable and less noisy.
+- Added deeper bottom-up pre-query diagnostics per layer in `convert_videomt_to_hf.py`:
+  - `verify_pre_query_layer_<idx>_ln1_max_abs_diff` (post-`norm1`, pre-attention input),
+  - `verify_pre_query_layer_<idx>_qkv_max_abs_diff` (concatenated QKV projection output),
+  - existing `verify_pre_query_layer_<idx>_hidden_max_abs_diff` (post-block hidden state).
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - embedding boundary still matches exactly (`verify_pre_query_embedding_max_abs_diff=0.0`),
+  - significant divergence is already visible at layer-0 QKV (`~10.06`) despite exact mapped QKV weights,
+  - hidden-state divergence still spikes starting at layer 4 (`~26`),
+  - full forward parity remains unresolved (`verify_full_forward_ok=False`) while mapping-level verification still passes.
+
+### Update 36
+
+- Improved `--verify` candidate ranking in `convert_videomt_to_hf.py` by adding a **compatibility penalty** term to the candidate score:
+  - `reference_compatibility_penalty = len(missing) + len(unexpected) + len(skipped_source_keys)`
+  - `score = logits_diff + masks_diff + reference_compatibility_penalty`.
+- Added explicit logging of `reference_compatibility_penalty` per candidate so selection rationale is visible in verify output.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - candidate selection remains on `vit_small_patch16_dinov3_qkvb`, now with transparent ranking signal (`penalty=1` vs `13` / `27` for alternates),
+  - mapping-level parity remains exact (`verify_weight_mapping_ok=True`),
+  - full forward parity is still unresolved (`verify_full_forward_ok=False`),
+  - bottom-up diagnostics still show first meaningful divergence already in pre-query layer-0 QKV outputs and amplification around layers 4-8.
+
+### Update 37
+
+- Extended bottom-up `--verify` pre-query diagnostics to explicitly test rotary-positional contribution per layer:
+  - added `verify_pre_query_layer_<idx>_hidden_no_rope_max_abs_diff`, computed with a neutralized RoPE tuple (`cos=1`, `sin=0`) while keeping all other layer computations identical.
+- This adds a direct A/B signal for whether RoPE is the dominant source of mismatch in early backbone layers.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - RoPE-on and RoPE-neutralized hidden diffs are very similar across pre-query layers (e.g. layer-0: ~6.44 vs ~6.71, layers 4-8: both around ~29-31),
+  - this indicates the current pre-query divergence is **not primarily driven by RoPE application**,
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while end-to-end parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 38
+
+- Added deeper branch-level pre-query diagnostics in `--verify` for each pre-query layer:
+  - `verify_pre_query_layer_<idx>_attn_branch_max_abs_diff` (post-attention branch, after layer-scale),
+  - `verify_pre_query_layer_<idx>_after_attn_hidden_max_abs_diff` (residual state after attention branch),
+  - `verify_pre_query_layer_<idx>_ln2_max_abs_diff` (MLP input norm state),
+  - `verify_pre_query_layer_<idx>_mlp_branch_max_abs_diff` (post-MLP branch, after layer-scale).
+- This extends bottom-up verify from "where hidden diverges" to "which sub-branch (attention vs MLP) introduces divergence".
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - early layers show moderate mismatch, but the first major spike now localizes to **layer-4 MLP branch** (`verify_pre_query_layer_4_mlp_branch_max_abs_diff ≈ 26.18`) while layer-4 attention branch remains relatively small (~1.85),
+  - subsequent layers carry forward the amplified residual mismatch (~26+),
+  - this narrows the next debugging target to layer-4 MLP execution-path parity (activation / norm / branch composition) rather than attention weights or RoPE,
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 39
+
+- Extended pre-query branch diagnostics in `--verify` to break down the MLP path into finer-grained steps per layer:
+  - `verify_pre_query_layer_<idx>_mlp_fc1_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_mlp_act_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_mlp_fc2_max_abs_diff`
+  - while retaining `mlp_branch`, `attn_branch`, and full hidden-state metrics.
+- This provides true bottom-up attribution inside the MLP branch instead of only branch-level aggregates.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - the first large amplification is now clearly localized to **layer 4 MLP internals**, with a sharp jump already at FC1/activation (`mlp_fc1 ~31.1`, `mlp_act ~31.1`, `mlp_fc2 ~12.8`),
+  - layer-4 attention-side metrics remain much smaller (`attn_branch ~1.88`, `after_attn_hidden ~3.09`),
+  - this strongly points to layer-4 MLP input/activation-path parity as the dominant mismatch source for continued debugging,
+  - mapping-level checks still pass (`verify_weight_mapping_ok=True`) while full forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 40
+
+- Added explicit layer-scale weight-parity checks to `--verify` for every backbone block:
+  - `verify_layer_<idx>_ls1_weight_max_abs_diff`
+  - `verify_layer_<idx>_ls2_weight_max_abs_diff`
+- This closes a remaining blind spot in mapping-level diagnostics: previously qkv/MLP/head were checked, but layer-scale (`ls1/ls2` / `gamma_1/gamma_2`) weights were not explicitly verified.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - all new layer-scale mapping checks are exact (`0.0` for all layers),
+  - this rules out layer-scale conversion as the source of the layer-4 MLP amplification,
+  - bottom-up diagnostics continue to localize first major divergence to layer-4 MLP internals,
+  - mapping-level verification remains clean (`verify_weight_mapping_ok=True`) while full-forward parity is still unresolved (`verify_full_forward_ok=False`).
+
+### Update 41
+
+- Added a verify-time **diagnostic-consistency guard** for the MLP-path decomposition by computing both manual and native branch outputs in HF and reference blocks, and logging:
+  - `verify_pre_query_layer_<idx>_hf_mlp_manual_vs_native_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_reference_mlp_manual_vs_native_max_abs_diff`.
+- Also switched the reported `verify_pre_query_layer_<idx>_mlp_branch_max_abs_diff` to compare **native** branch outputs (`ls2(mlp(norm2(...)))`) for both HF and reference, avoiding any potential bias from diagnostic decomposition itself.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - manual-vs-native diffs are exactly `0.0` for both HF and reference across pre-query layers, validating diagnostic correctness,
+  - the layer-4 MLP spike remains and even increases on this seeded run (`mlp_fc1/mlp_act ~38.3`, `mlp_fc2 ~15.4`, `mlp_branch ~30.8`),
+  - this confirms the divergence signal is real model behavior (not an artifact of probe decomposition),
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Update 42
+
+- Extended bottom-up pre-query diagnostics to split LN2 and MLP-FC1 divergence by token group (`cls`, `register`, `patch`) using:
+  - `verify_pre_query_layer_<idx>_ln2_cls/register/patch_max_abs_diff`
+  - `verify_pre_query_layer_<idx>_mlp_fc1_cls/register/patch_max_abs_diff`.
+- This adds targeted signal on whether the layer-4 MLP spike is dominated by specific token types.
+- Current status on `yt_2019_vit_small_52.8.pth` after re-running `--verify`:
+  - layer-4 spike remains strongly MLP-driven,
+  - the largest layer-4 FC1 divergence is concentrated on **register tokens** (`mlp_fc1_register ~28.59`), with patch tokens lower (`~12.76`) and cls much lower (`~2.69`),
+  - LN2 at layer-4 also peaks on patch tokens, but the FC1 jump is register-dominated,
+  - mapping-level parity still passes (`verify_weight_mapping_ok=True`) while full-forward parity remains unresolved (`verify_full_forward_ok=False`).
+
+### Next to-dos (bottom-up)
+
+1. Add a focused layer-4 debug print in `--verify` for register-token-only MLP internals after each micro-step (norm2 -> fc1 -> act -> fc2 -> layer-scale) and compare with full-token stats to confirm exact amplification point.
+2. Compare HF vs reference **attention output contribution into register tokens** at layer-4 input (right before norm2), to verify whether upstream residual feeding register tokens differs subtly before FC1 amplification.
+3. Add a temporary verify probe that runs only pre-query layers up to layer 4 with identical input and reports tokenwise top-k indices of largest diffs (register vs patch) to identify whether a small subset of registers drives the blow-up.
+4. After isolating the exact layer-4 register-token mismatch source, implement the minimal behavior fix and keep all new diagnostics for one more run to verify that:
+   - layer-4 MLP register diffs collapse,
+   - downstream layer 5+ residual amplification drops,
+   - final logits/masks diffs improve measurably.

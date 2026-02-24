@@ -209,7 +209,8 @@ class VideomtEmbeddings(nn.Module):
                 Optional mask for patch replacement.
         """
 
-        if pixel_values.ndim == 5:
+        is_video_input = pixel_values.ndim == 5
+        if is_video_input:
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
 
@@ -1217,6 +1218,7 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         self.query = nn.Embedding(config.num_queries, config.hidden_size)
+        self.query_updater = nn.Linear(config.hidden_size, config.hidden_size, bias=config.query_bias)
         self.layers = nn.ModuleList([VideomtLayer(config) for _ in range(config.num_hidden_layers)])
 
         self.upscale_block = VideomtScaleBlock(config)
@@ -1290,7 +1292,8 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         patch_offsets (`list[torch.Tensor]`, *optional*):
             list of tuples indicating the image index and start and end positions of patches for semantic segmentation.
         """
-        if pixel_values.ndim == 5:
+        is_video_input = pixel_values.ndim == 5
+        if is_video_input:
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
 
@@ -1309,60 +1312,57 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
 
         hidden_states = self.dropout(self.embeddings(pixel_values))
         position_embeddings = self.rope_embeddings(pixel_values.to(hidden_states.dtype))
-        attention_mask = None
+        query_start_idx = self.num_hidden_layers - self.config.num_blocks
 
-        for idx, layer_module in enumerate(self.layers):
-            if idx == self.num_hidden_layers - self.config.num_blocks:
+        for layer_module in self.layers[:query_start_idx]:
+            hidden_states = layer_module(hidden_states, position_embeddings=position_embeddings)
+
+        if self.config.num_blocks > 0:
+            if is_video_input:
+                hidden_states = hidden_states.view(
+                    batch_size, num_frames, hidden_states.shape[1], hidden_states.shape[2]
+                )
+                frame_outputs = []
+                propagated_query = None
+
+                for frame_idx in range(num_frames):
+                    if frame_idx == 0:
+                        query = self.query.weight[None, :, :].expand(batch_size, -1, -1).to(hidden_states.device)
+                    else:
+                        query = propagated_query
+
+                    frame_hidden_states = torch.cat((query, hidden_states[:, frame_idx]), dim=1)
+                    frame_hidden_states, masks_queries_logits_per_layer, class_queries_logits_per_layer = (
+                        self._run_segmenter_layers(
+                            hidden_states=frame_hidden_states,
+                            position_embeddings=position_embeddings,
+                            start_layer_idx=query_start_idx,
+                            masks_queries_logits_per_layer=masks_queries_logits_per_layer,
+                            class_queries_logits_per_layer=class_queries_logits_per_layer,
+                        )
+                    )
+
+                    frame_outputs.append(frame_hidden_states)
+                    propagated_query = self.query_updater(
+                        frame_hidden_states[:, : self.config.num_queries, :]
+                    ) + self.query.weight[None, :, :].to(frame_hidden_states.device)
+
+                hidden_states = torch.stack(frame_outputs, dim=1)
+                hidden_states = hidden_states.reshape(
+                    batch_size * num_frames, frame_outputs[0].shape[1], frame_outputs[0].shape[2]
+                )
+            else:
                 query = self.query.weight[None, :, :].expand(hidden_states.shape[0], -1, -1).to(hidden_states.device)
                 hidden_states = torch.cat((query, hidden_states), dim=1)
-
-            if idx >= self.num_hidden_layers - self.config.num_blocks and (
-                self.training or self.attn_mask_probs[idx - self.num_hidden_layers + self.config.num_blocks] > 0
-            ):
-                norm_hidden_states = self.layernorm(hidden_states)
-                masks_queries_logits, class_queries_logits = self.predict(norm_hidden_states)
-
-                masks_queries_logits_per_layer += (masks_queries_logits,)
-                class_queries_logits_per_layer += (class_queries_logits,)
-
-                attention_mask = torch.ones(
-                    hidden_states.shape[0],
-                    hidden_states.shape[1],
-                    hidden_states.shape[1],
-                    device=hidden_states.device,
-                    dtype=torch.bool,
+                hidden_states, masks_queries_logits_per_layer, class_queries_logits_per_layer = (
+                    self._run_segmenter_layers(
+                        hidden_states=hidden_states,
+                        position_embeddings=position_embeddings,
+                        start_layer_idx=query_start_idx,
+                        masks_queries_logits_per_layer=masks_queries_logits_per_layer,
+                        class_queries_logits_per_layer=class_queries_logits_per_layer,
+                    )
                 )
-
-                interpolated_logits = F.interpolate(masks_queries_logits, size=self.grid_size, mode="bilinear")
-                interpolated_logits = interpolated_logits.view(
-                    interpolated_logits.size(0), interpolated_logits.size(1), -1
-                )
-
-                num_query_tokens = self.config.num_queries
-                encoder_start_tokens = num_query_tokens + self.num_prefix_tokens
-
-                # Set attention mask for queries to focus on encoder tokens based on interpolated logits
-                attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
-
-                # Disable attention mask for random query tokens.
-                attention_mask = self._disable_attention_mask(
-                    attention_mask,
-                    prob=self.attn_mask_probs[idx - self.num_hidden_layers + self.config.num_blocks],
-                    num_query_tokens=num_query_tokens,
-                    encoder_start_tokens=encoder_start_tokens,
-                    device=attention_mask.device,
-                )
-
-                # Expand attention mask to 4d mask.
-                attention_mask = attention_mask[:, None, ...].expand(-1, self.config.num_attention_heads, -1, -1)
-                dtype_min = torch.finfo(hidden_states.dtype).min
-                attention_mask = attention_mask.to(hidden_states.dtype).masked_fill(~attention_mask, dtype_min)
-
-            hidden_states = layer_module(
-                hidden_states,
-                attention_mask=attention_mask,
-                position_embeddings=position_embeddings,
-            )
 
         sequence_output = self.layernorm(hidden_states)
 
@@ -1395,6 +1395,61 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
 
     def get_input_embeddings(self):
         return self.embeddings.patch_embeddings
+
+    def _run_segmenter_layers(
+        self,
+        hidden_states: torch.Tensor,
+        position_embeddings: tuple[torch.Tensor, torch.Tensor],
+        start_layer_idx: int,
+        masks_queries_logits_per_layer: tuple[torch.Tensor, ...],
+        class_queries_logits_per_layer: tuple[torch.Tensor, ...],
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...], tuple[torch.Tensor, ...]]:
+        for idx, layer_module in enumerate(self.layers[start_layer_idx:]):
+            layer_idx = start_layer_idx + idx
+            attention_mask = None
+            if self.training:
+                norm_hidden_states = self.layernorm(hidden_states)
+                masks_queries_logits, class_queries_logits = self.predict(norm_hidden_states)
+
+                masks_queries_logits_per_layer += (masks_queries_logits,)
+                class_queries_logits_per_layer += (class_queries_logits,)
+
+                attention_mask = torch.ones(
+                    hidden_states.shape[0],
+                    hidden_states.shape[1],
+                    hidden_states.shape[1],
+                    device=hidden_states.device,
+                    dtype=torch.bool,
+                )
+
+                interpolated_logits = F.interpolate(masks_queries_logits, size=self.grid_size, mode="bilinear")
+                interpolated_logits = interpolated_logits.view(
+                    interpolated_logits.size(0), interpolated_logits.size(1), -1
+                )
+
+                num_query_tokens = self.config.num_queries
+                encoder_start_tokens = num_query_tokens + self.num_prefix_tokens
+
+                attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
+                attention_mask = self._disable_attention_mask(
+                    attention_mask,
+                    prob=self.attn_mask_probs[layer_idx - start_layer_idx],
+                    num_query_tokens=num_query_tokens,
+                    encoder_start_tokens=encoder_start_tokens,
+                    device=attention_mask.device,
+                )
+
+                attention_mask = attention_mask[:, None, ...].expand(-1, self.config.num_attention_heads, -1, -1)
+                dtype_min = torch.finfo(hidden_states.dtype).min
+                attention_mask = attention_mask.to(hidden_states.dtype).masked_fill(~attention_mask, dtype_min)
+
+            hidden_states = layer_module(
+                hidden_states,
+                attention_mask=attention_mask,
+                position_embeddings=position_embeddings,
+            )
+
+        return hidden_states, masks_queries_logits_per_layer, class_queries_logits_per_layer
 
     def predict(self, logits: torch.Tensor):
         query_tokens = logits[:, : self.config.num_queries, :]
