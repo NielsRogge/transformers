@@ -11,7 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Convert official VidEoMT checkpoints from https://huggingface.co/tue-mps/VidEoMT to HF format."""
+"""Convert official VidEoMT checkpoints from https://huggingface.co/tue-mps/VidEoMT to HF format.
+
+URL of the original Github implementation: https://github.com/tue-mps/VidEoMT. We have cloned it locally at /Users/nielsrogge/Documents/python_projecten/videomt.
+
+The easiest way to verify conversion is by using print statements within both the original implementation and within the converted model.
+
+To run:
+
+```bash
+# Single checkpoint (image-size and num-frames auto-derived from registry)
+python src/transformers/models/videomt/convert_videomt_to_hf.py --checkpoint-filename yt_2019_vit_small_52.8.pth --verify
+
+# All supported DINOv2 checkpoints
+python src/transformers/models/videomt/convert_videomt_to_hf.py --all --push-to-hub
+```
+"""
 
 from __future__ import annotations
 
@@ -21,7 +36,6 @@ import re
 import subprocess
 import sys
 import tempfile
-import traceback
 import types
 from pathlib import Path
 
@@ -33,6 +47,19 @@ from transformers import VideomtConfig, VideomtForUniversalSegmentation
 
 
 MODEL_REPO_ID = "tue-mps/VidEoMT"
+
+# fmt: off
+CHECKPOINT_CONFIGS = {
+    "yt_2019_vit_small_52.8.pth":   {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-small-ytvis2019"},
+    "yt_2019_vit_base_58.2.pth":    {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-base-ytvis2019"},
+    "yt_2019_vit_large_68.6.pth":   {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-large-ytvis2019"},
+    "yt_2021_vit_large_63.1.pth":   {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-large-ytvis2021"},
+    "yt_2022_vit_large_42.6.pth":   {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-large-ytvis2022"},
+    "ovis_vit_large_52.5.pth":      {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-large-ovis"},
+    "vipseg_vit_large_55.2.pth":    {"image_size": 640,  "num_frames": 2, "hub_name": "videomt-dinov2-large-vipseg"},
+    "vspw_vit_large_95.0_64.9.pth": {"image_size": 1280, "num_frames": 2, "hub_name": "videomt-dinov2-large-vspw"},
+}
+# fmt: on
 
 
 def infer_num_attention_heads(checkpoint_filename: str, hidden_size: int) -> int:
@@ -85,25 +112,6 @@ def infer_backbone_model_name(checkpoint_filename: str) -> str:
     if "vit_large" in checkpoint_filename:
         return "vit_large_patch14_reg4_dinov2"
     raise ValueError(f"Could not infer timm backbone model from checkpoint name '{checkpoint_filename}'.")
-
-
-def infer_backbone_model_name_candidates(checkpoint_filename: str) -> list[str]:
-    primary_candidate = infer_backbone_model_name(checkpoint_filename)
-    candidates = [primary_candidate]
-
-    # Keep nearby DINOv2 aliases for compatibility with local timm versions.
-    candidates.append(primary_candidate.replace("_reg4", ""))
-    candidates.append(primary_candidate.replace("patch14", "patch16"))
-    candidates.append(primary_candidate.replace("patch14_reg4", "patch16"))
-
-    if "vit_small" in checkpoint_filename:
-        candidates.append("vit_small_patch16_224")
-    elif "vit_base" in checkpoint_filename:
-        candidates.append("vit_base_patch16_224")
-    elif "vit_large" in checkpoint_filename:
-        candidates.append("vit_large_patch16_224")
-
-    return list(dict.fromkeys(candidates))
 
 
 def _build_reference_load_dict(
@@ -232,154 +240,66 @@ def load_reference_videomt_class(reference_repo_path: Path):
     return sys.modules["hf_videomt_reference.backbone.videomt"].VidEoMT_CLASS
 
 
-def convert_state_dict(
-    original_state_dict: dict[str, torch.Tensor], config: VideomtConfig
-) -> tuple[dict[str, torch.Tensor], set[str]]:
+# fmt: off
+MAPPINGS = {
+    r"backbone\.encoder\.backbone\.cls_token":                       r"embeddings.cls_token",
+    r"backbone\.encoder\.backbone\.reg_token":                       r"embeddings.register_tokens",
+    r"backbone\.encoder\.backbone\.pos_embed":                       r"embeddings.position_embeddings.weight",
+    r"backbone\.encoder\.backbone\.patch_embed\.proj":               r"embeddings.patch_embeddings.projection",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.norm1":            r"layers.\1.norm1",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.attn\.proj":       r"layers.\1.attention.out_proj",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.ls1\.gamma":       r"layers.\1.layer_scale1.lambda1",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.norm2":            r"layers.\1.norm2",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.ls2\.gamma":       r"layers.\1.layer_scale2.lambda1",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.attn":             r"layers.\1.attention",
+    r"backbone\.encoder\.backbone\.blocks\.(\d+)\.mlp":              r"layers.\1.mlp",
+    r"backbone\.encoder\.backbone\.norm":                            r"layernorm",
+    r"backbone\.q\.weight":                                          r"query.weight",
+    r"backbone\.query_updater":                                      r"query_updater",
+    r"backbone\.class_head":                                         r"class_predictor",
+    r"backbone\.upscale\.(\d+)\.conv1":                              r"upscale_block.block.\1.conv1",
+    r"backbone\.upscale\.(\d+)\.conv2":                              r"upscale_block.block.\1.conv2",
+    r"backbone\.upscale\.(\d+)\.norm":                               r"upscale_block.block.\1.layernorm2d",
+    r"backbone\.mask_head\.0":                                       r"mask_head.fc1",
+    r"backbone\.mask_head\.2":                                       r"mask_head.fc2",
+    r"backbone\.mask_head\.4":                                       r"mask_head.fc3",
+    r"backbone\.attn_mask_probs":                                    r"attn_mask_probs",
+}
+# fmt: on
+
+
+def _rename_key(key: str) -> str | None:
+    for pattern, replacement in MAPPINGS.items():
+        new_key = re.sub(pattern, replacement, key)
+        if new_key != key:
+            return new_key
+    return None
+
+
+def _split_qkv(key: str, tensor: torch.Tensor) -> dict[str, torch.Tensor]:
+    split_tensors = torch.split(tensor, tensor.shape[0] // 3, dim=0)
+    return {key.replace("qkv", proj): t for proj, t in zip(["q_proj", "k_proj", "v_proj"], split_tensors)}
+
+
+def convert_state_dict(state_dict: dict[str, torch.Tensor]) -> tuple[dict[str, torch.Tensor], set[str]]:
     converted = {}
     consumed_keys = set()
 
-    converted["attn_mask_probs"] = original_state_dict["backbone.attn_mask_probs"]
-    consumed_keys.add("backbone.attn_mask_probs")
-    converted["embeddings.cls_token"] = original_state_dict["backbone.encoder.backbone.cls_token"]
-    consumed_keys.add("backbone.encoder.backbone.cls_token")
-    converted["embeddings.register_tokens"] = original_state_dict["backbone.encoder.backbone.reg_token"]
-    consumed_keys.add("backbone.encoder.backbone.reg_token")
-    converted["embeddings.patch_embeddings.projection.weight"] = original_state_dict[
-        "backbone.encoder.backbone.patch_embed.proj.weight"
-    ]
-    consumed_keys.add("backbone.encoder.backbone.patch_embed.proj.weight")
-    converted["embeddings.patch_embeddings.projection.bias"] = original_state_dict[
-        "backbone.encoder.backbone.patch_embed.proj.bias"
-    ]
-    consumed_keys.add("backbone.encoder.backbone.patch_embed.proj.bias")
-    converted["embeddings.position_embeddings.weight"] = original_state_dict[
-        "backbone.encoder.backbone.pos_embed"
-    ].squeeze(0)
-    consumed_keys.add("backbone.encoder.backbone.pos_embed")
-    converted["layernorm.weight"] = original_state_dict["backbone.encoder.backbone.norm.weight"]
-    consumed_keys.add("backbone.encoder.backbone.norm.weight")
-    converted["layernorm.bias"] = original_state_dict["backbone.encoder.backbone.norm.bias"]
-    consumed_keys.add("backbone.encoder.backbone.norm.bias")
-    converted["query.weight"] = original_state_dict["backbone.q.weight"]
-    converted["query_updater.weight"] = original_state_dict["backbone.query_updater.weight"]
-    converted["query_updater.bias"] = original_state_dict["backbone.query_updater.bias"]
-    consumed_keys.update({"backbone.q.weight", "backbone.query_updater.weight", "backbone.query_updater.bias"})
+    for old_key, value in state_dict.items():
+        new_key = _rename_key(old_key)
+        if new_key is None:
+            continue
+        consumed_keys.add(old_key)
+        if "qkv" in new_key:
+            converted.update(_split_qkv(new_key, value))
+        else:
+            converted[new_key] = value
 
-    converted["class_predictor.weight"] = original_state_dict["backbone.class_head.weight"]
-    consumed_keys.add("backbone.class_head.weight")
-    converted["class_predictor.bias"] = original_state_dict["backbone.class_head.bias"]
-    consumed_keys.add("backbone.class_head.bias")
-
-    converted["mask_head.fc1.weight"] = original_state_dict["backbone.mask_head.0.weight"]
-    converted["mask_head.fc1.bias"] = original_state_dict["backbone.mask_head.0.bias"]
-    converted["mask_head.fc2.weight"] = original_state_dict["backbone.mask_head.2.weight"]
-    converted["mask_head.fc2.bias"] = original_state_dict["backbone.mask_head.2.bias"]
-    converted["mask_head.fc3.weight"] = original_state_dict["backbone.mask_head.4.weight"]
-    converted["mask_head.fc3.bias"] = original_state_dict["backbone.mask_head.4.bias"]
-    consumed_keys.update(
-        {
-            "backbone.mask_head.0.weight",
-            "backbone.mask_head.0.bias",
-            "backbone.mask_head.2.weight",
-            "backbone.mask_head.2.bias",
-            "backbone.mask_head.4.weight",
-            "backbone.mask_head.4.bias",
-        }
-    )
-
-    for idx in range(2):
-        converted[f"upscale_block.block.{idx}.conv1.weight"] = original_state_dict[
-            f"backbone.upscale.{idx}.conv1.weight"
-        ]
-        converted[f"upscale_block.block.{idx}.conv1.bias"] = original_state_dict[f"backbone.upscale.{idx}.conv1.bias"]
-        converted[f"upscale_block.block.{idx}.conv2.weight"] = original_state_dict[
-            f"backbone.upscale.{idx}.conv2.weight"
-        ]
-        converted[f"upscale_block.block.{idx}.layernorm2d.weight"] = original_state_dict[
-            f"backbone.upscale.{idx}.norm.weight"
-        ]
-        converted[f"upscale_block.block.{idx}.layernorm2d.bias"] = original_state_dict[
-            f"backbone.upscale.{idx}.norm.bias"
-        ]
-        consumed_keys.update(
-            {
-                f"backbone.upscale.{idx}.conv1.weight",
-                f"backbone.upscale.{idx}.conv1.bias",
-                f"backbone.upscale.{idx}.conv2.weight",
-                f"backbone.upscale.{idx}.norm.weight",
-                f"backbone.upscale.{idx}.norm.bias",
-            }
-        )
-
-    for layer_idx in range(config.num_hidden_layers):
-        layer_prefix = f"backbone.encoder.backbone.blocks.{layer_idx}"
-        converted[f"layers.{layer_idx}.norm1.weight"] = original_state_dict[f"{layer_prefix}.norm1.weight"]
-        converted[f"layers.{layer_idx}.norm1.bias"] = original_state_dict[f"{layer_prefix}.norm1.bias"]
-        converted[f"layers.{layer_idx}.norm2.weight"] = original_state_dict[f"{layer_prefix}.norm2.weight"]
-        converted[f"layers.{layer_idx}.norm2.bias"] = original_state_dict[f"{layer_prefix}.norm2.bias"]
-
-        qkv_weight = original_state_dict[f"{layer_prefix}.attn.qkv.weight"]
-        qkv_bias = original_state_dict[f"{layer_prefix}.attn.qkv.bias"]
-        q_weight, k_weight, v_weight = qkv_weight.chunk(3, dim=0)
-        q_bias, k_bias, v_bias = qkv_bias.chunk(3, dim=0)
-
-        converted[f"layers.{layer_idx}.attention.q_proj.weight"] = q_weight
-        converted[f"layers.{layer_idx}.attention.q_proj.bias"] = q_bias
-        converted[f"layers.{layer_idx}.attention.k_proj.weight"] = k_weight
-        converted[f"layers.{layer_idx}.attention.k_proj.bias"] = k_bias
-        converted[f"layers.{layer_idx}.attention.v_proj.weight"] = v_weight
-        converted[f"layers.{layer_idx}.attention.v_proj.bias"] = v_bias
-        converted[f"layers.{layer_idx}.attention.out_proj.weight"] = original_state_dict[
-            f"{layer_prefix}.attn.proj.weight"
-        ]
-        converted[f"layers.{layer_idx}.attention.out_proj.bias"] = original_state_dict[
-            f"{layer_prefix}.attn.proj.bias"
-        ]
-
-        converted[f"layers.{layer_idx}.layer_scale1.lambda1"] = original_state_dict[f"{layer_prefix}.ls1.gamma"]
-        converted[f"layers.{layer_idx}.layer_scale2.lambda1"] = original_state_dict[f"{layer_prefix}.ls2.gamma"]
-
-        converted[f"layers.{layer_idx}.mlp.fc1.weight"] = original_state_dict[f"{layer_prefix}.mlp.fc1.weight"]
-        converted[f"layers.{layer_idx}.mlp.fc1.bias"] = original_state_dict[f"{layer_prefix}.mlp.fc1.bias"]
-        converted[f"layers.{layer_idx}.mlp.fc2.weight"] = original_state_dict[f"{layer_prefix}.mlp.fc2.weight"]
-        converted[f"layers.{layer_idx}.mlp.fc2.bias"] = original_state_dict[f"{layer_prefix}.mlp.fc2.bias"]
-        consumed_keys.update(
-            {
-                f"{layer_prefix}.norm1.weight",
-                f"{layer_prefix}.norm1.bias",
-                f"{layer_prefix}.norm2.weight",
-                f"{layer_prefix}.norm2.bias",
-                f"{layer_prefix}.attn.qkv.weight",
-                f"{layer_prefix}.attn.qkv.bias",
-                f"{layer_prefix}.attn.proj.weight",
-                f"{layer_prefix}.attn.proj.bias",
-                f"{layer_prefix}.ls1.gamma",
-                f"{layer_prefix}.ls2.gamma",
-                f"{layer_prefix}.mlp.fc1.weight",
-                f"{layer_prefix}.mlp.fc1.bias",
-                f"{layer_prefix}.mlp.fc2.weight",
-                f"{layer_prefix}.mlp.fc2.bias",
-            }
-        )
+    pos_key = "embeddings.position_embeddings.weight"
+    if pos_key in converted:
+        converted[pos_key] = converted[pos_key].squeeze(0)
 
     return converted, consumed_keys
-
-
-def validate_qkv_split(
-    original_state_dict: dict[str, torch.Tensor], converted_state_dict: dict[str, torch.Tensor], config
-):
-    for layer_idx in range(config.num_hidden_layers):
-        source_qkv = original_state_dict[f"backbone.encoder.backbone.blocks.{layer_idx}.attn.qkv.weight"]
-        recon_qkv = torch.cat(
-            [
-                converted_state_dict[f"layers.{layer_idx}.attention.q_proj.weight"],
-                converted_state_dict[f"layers.{layer_idx}.attention.k_proj.weight"],
-                converted_state_dict[f"layers.{layer_idx}.attention.v_proj.weight"],
-            ],
-            dim=0,
-        )
-        if not torch.equal(source_qkv, recon_qkv):
-            raise ValueError(f"qkv split mismatch at layer {layer_idx}.")
 
 
 def convert_checkpoint(
@@ -389,6 +309,7 @@ def convert_checkpoint(
     output_dir: str | None = None,
     verify: bool = False,
     reference_repo_path: str | None = None,
+    push_to_hub: bool = False,
 ) -> None:
     checkpoint_path = hf_hub_download(repo_id=MODEL_REPO_ID, filename=checkpoint_filename)
     checkpoint = torch.load(checkpoint_path, map_location="cpu")
@@ -398,8 +319,7 @@ def convert_checkpoint(
         original_state_dict, checkpoint_filename, image_size=image_size, num_frames=num_frames
     )
     model = VideomtForUniversalSegmentation(config)
-    converted_state_dict, consumed_keys = convert_state_dict(original_state_dict, config)
-    validate_qkv_split(original_state_dict, converted_state_dict, config)
+    converted_state_dict, consumed_keys = convert_state_dict(original_state_dict)
 
     load_info = model.load_state_dict(converted_state_dict, strict=False)
 
@@ -445,6 +365,16 @@ def convert_checkpoint(
         config.save_pretrained(output_dir)
         print(f"saved_to={output_dir}")
 
+    if push_to_hub:
+        ckpt_cfg = CHECKPOINT_CONFIGS.get(checkpoint_filename)
+        if ckpt_cfg is None:
+            raise ValueError(
+                f"Cannot push to Hub: checkpoint '{checkpoint_filename}' has no entry in CHECKPOINT_CONFIGS."
+            )
+        hub_name = ckpt_cfg["hub_name"]
+        model.push_to_hub(hub_name)
+        print(f"pushed_to_hub={hub_name}")
+
     if verify:
         verify_ok = verify_conversion_against_github_reference(
             hf_model=model,
@@ -465,12 +395,7 @@ def verify_conversion_against_github_reference(
     num_frames: int,
     reference_repo_path: str | None = None,
 ) -> bool:
-    candidate_dummy_video = torch.randn(
-        1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(0)
-    )
-    final_dummy_video = torch.randn(
-        1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(2)
-    )
+    dummy_video = torch.randn(1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(0))
 
     with tempfile.TemporaryDirectory(prefix="videomt_ref_") as tmp_dir:
         repo_path = Path(reference_repo_path) if reference_repo_path is not None else Path(tmp_dir) / "videomt"
@@ -508,101 +433,38 @@ def verify_conversion_against_github_reference(
         timm_eva.apply_keep_indices_nlc = _safe_apply_keep_indices_nlc
         reference_cls = load_reference_videomt_class(repo_path)
 
+        backbone_model_name = infer_backbone_model_name(checkpoint_filename)
         try:
-            candidate_model_names = infer_backbone_model_name_candidates(checkpoint_filename)
-
-            best_result = None
-            for candidate_model_name in candidate_model_names:
-                try:
-                    reference_model = reference_cls(
-                        img_size=image_size,
-                        num_classes=hf_model.config.num_labels,
-                        name=candidate_model_name,
-                        num_frames=num_frames,
-                        num_q=hf_model.config.num_queries,
-                        segmenter_blocks=list(
-                            range(
-                                hf_model.config.num_hidden_layers - hf_model.config.num_blocks,
-                                hf_model.config.num_hidden_layers,
-                            )
-                        ),
-                    ).eval()
-
-                    reference_state_dict = reference_model.state_dict()
-                    loadable_reference_state_dict, skipped_reference_keys = _build_reference_load_dict(
-                        original_state_dict, reference_state_dict
+            reference_model = reference_cls(
+                img_size=image_size,
+                num_classes=hf_model.config.num_labels,
+                name=backbone_model_name,
+                num_frames=num_frames,
+                num_q=hf_model.config.num_queries,
+                segmenter_blocks=list(
+                    range(
+                        hf_model.config.num_hidden_layers - hf_model.config.num_blocks,
+                        hf_model.config.num_hidden_layers,
                     )
-
-                    reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
-                    ref_missing = set(reference_load_info.missing_keys)
-                    ref_unexpected = set(reference_load_info.unexpected_keys)
-
-                    _prepare_reference_model_for_verify(reference_model)
-
-                    with torch.no_grad():
-                        hf_outputs = hf_model(pixel_values=candidate_dummy_video)
-                        reference_outputs = reference_model(
-                            candidate_dummy_video.reshape(-1, 3, image_size, image_size)
-                        )
-
-                    reference_logits = reference_outputs["pred_logits"].reshape(
-                        -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
-                    )
-                    reference_masks = (
-                        reference_outputs["pred_masks"]
-                        .permute(0, 2, 1, 3, 4)
-                        .reshape(
-                            -1,
-                            hf_model.config.num_queries,
-                            reference_outputs["pred_masks"].shape[-2],
-                            reference_outputs["pred_masks"].shape[-1],
-                        )
-                    )
-
-                    logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
-                    masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
-                    compatibility_penalty = len(ref_missing) + len(ref_unexpected) + len(skipped_reference_keys)
-                    score = logits_diff + masks_diff + compatibility_penalty
-
-                    print(f"reference_model_name={candidate_model_name}")
-                    print(f"reference_missing_keys={len(ref_missing)}")
-                    print(f"reference_unexpected_keys={len(ref_unexpected)}")
-                    print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
-                    print(f"reference_compatibility_penalty={compatibility_penalty}")
-                    print(f"candidate_verify_logits_max_abs_diff={logits_diff:.8f}")
-                    print(f"candidate_verify_masks_max_abs_diff={masks_diff:.8f}")
-
-                    if best_result is None or score < best_result["score"]:
-                        best_result = {
-                            "reference_model": reference_model,
-                            "name": candidate_model_name,
-                            "missing": ref_missing,
-                            "unexpected": ref_unexpected,
-                            "skipped": skipped_reference_keys,
-                            "logits_diff": logits_diff,
-                            "masks_diff": masks_diff,
-                            "score": score,
-                        }
-                except Exception as e:
-                    print(f"reference_model_name={candidate_model_name}")
-                    print(f"reference_candidate_error={type(e).__name__}: {e}")
-                    print("reference_candidate_traceback_tail=")
-                    for line in traceback.format_exc().strip().splitlines()[-6:]:
-                        print(f"  {line}")
+                ),
+            ).eval()
         finally:
             timm.create_model = original_create_model
             pos_embed_sincos.apply_keep_indices_nlc = original_apply_keep_indices_nlc
             timm_eva.apply_keep_indices_nlc = original_eva_apply_keep_indices_nlc
 
-        if best_result is None:
-            return False
+        reference_state_dict = reference_model.state_dict()
+        loadable_reference_state_dict, skipped_reference_keys = _build_reference_load_dict(
+            original_state_dict, reference_state_dict
+        )
 
-        reference_model = best_result["reference_model"]
-        ref_missing = best_result["missing"]
-        ref_unexpected = best_result["unexpected"]
-        skipped_reference_keys = best_result["skipped"]
+        reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
+        ref_missing = set(reference_load_info.missing_keys)
+        ref_unexpected = set(reference_load_info.unexpected_keys)
 
-        print(f"selected_reference_model_name={best_result['name']}")
+        _prepare_reference_model_for_verify(reference_model)
+
+        print(f"reference_model_name={backbone_model_name}")
         print(f"reference_missing_keys={len(ref_missing)}")
         print(f"reference_unexpected_keys={len(ref_unexpected)}")
         print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
@@ -677,8 +539,8 @@ def verify_conversion_against_github_reference(
         print(f"verify_head_mask_fc1_weight_max_abs_diff={head_mask_diff:.8f}")
 
         with torch.no_grad():
-            hf_outputs = hf_model(pixel_values=final_dummy_video)
-            reference_outputs = reference_model(final_dummy_video.reshape(-1, 3, image_size, image_size))
+            hf_outputs = hf_model(pixel_values=dummy_video)
+            reference_outputs = reference_model(dummy_video.reshape(-1, 3, image_size, image_size))
 
         reference_logits = reference_outputs["pred_logits"].reshape(
             -1, hf_model.config.num_queries, hf_model.config.num_labels + 1
@@ -748,27 +610,69 @@ def verify_conversion_against_github_reference(
         return outputs_match
 
 
+def _resolve_checkpoint_params(
+    checkpoint_filename: str,
+    image_size: int | None,
+    num_frames: int | None,
+) -> tuple[int, int]:
+    ckpt_cfg = CHECKPOINT_CONFIGS.get(checkpoint_filename)
+    if image_size is None:
+        if ckpt_cfg is None:
+            raise ValueError(
+                f"--image-size is required for unknown checkpoint '{checkpoint_filename}'. "
+                f"Known checkpoints: {list(CHECKPOINT_CONFIGS)}"
+            )
+        image_size = ckpt_cfg["image_size"]
+    if num_frames is None:
+        num_frames = ckpt_cfg["num_frames"] if ckpt_cfg is not None else 2
+    return image_size, num_frames
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Convert official VidEoMT checkpoints to HF format.")
-    parser.add_argument("--checkpoint-filename", type=str, required=True, help="Filename on tue-mps/VidEoMT")
-    parser.add_argument("--image-size", type=int, default=640)
-    parser.add_argument("--num-frames", type=int, default=2)
+    parser.add_argument(
+        "--checkpoint-filename",
+        type=str,
+        default=None,
+        help="Filename on tue-mps/VidEoMT (required unless --all is set)",
+    )
+    parser.add_argument("--image-size", type=int, default=None, help="Auto-derived from registry when omitted")
+    parser.add_argument("--num-frames", type=int, default=None, help="Auto-derived from registry when omitted")
     parser.add_argument("--output-dir", type=str, default=None)
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--reference-repo-path", type=str, default=None)
-    return parser.parse_args()
+    parser.add_argument("--all", action="store_true", help="Convert all supported DINOv2 checkpoints")
+    parser.add_argument("--push-to-hub", action="store_true", help="Push converted models to the Hugging Face Hub")
+    args = parser.parse_args()
+
+    if not args.all and args.checkpoint_filename is None:
+        parser.error("--checkpoint-filename is required unless --all is set")
+
+    return args
 
 
 def main() -> None:
     args = parse_args()
-    convert_checkpoint(
-        checkpoint_filename=args.checkpoint_filename,
-        image_size=args.image_size,
-        num_frames=args.num_frames,
-        output_dir=args.output_dir,
-        verify=args.verify,
-        reference_repo_path=args.reference_repo_path,
-    )
+
+    if args.all:
+        filenames = list(CHECKPOINT_CONFIGS)
+    else:
+        filenames = [args.checkpoint_filename]
+
+    for checkpoint_filename in filenames:
+        image_size, num_frames = _resolve_checkpoint_params(checkpoint_filename, args.image_size, args.num_frames)
+        print(f"\n{'=' * 60}")
+        print(f"Converting {checkpoint_filename} (image_size={image_size}, num_frames={num_frames})")
+        print(f"{'=' * 60}")
+        convert_checkpoint(
+            checkpoint_filename=checkpoint_filename,
+            image_size=image_size,
+            num_frames=num_frames,
+            output_dir=args.output_dir,
+            verify=args.verify,
+            reference_repo_path=args.reference_repo_path,
+            push_to_hub=args.push_to_hub,
+        )
 
 
 if __name__ == "__main__":

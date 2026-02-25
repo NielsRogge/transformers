@@ -1213,7 +1213,7 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
             all_masks_queries_logits.append(masks_queries_logits)
             all_class_queries_logits.append(class_queries_logits)
             all_last_hidden_states.append(sequence_output)
-            propagated_query = sequence_output[:, : self.config.num_queries, :]
+            propagated_query = frame_hidden_states[:, : self.config.num_queries, :]
 
         return VideomtForUniversalSegmentationOutput(
             loss=None,
