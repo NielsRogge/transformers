@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from dataclasses import dataclass
+
 import torch
 from torch import nn
 
+from ...file_utils import ModelOutput
+from ...utils import auto_docstring
 from ..eomt.configuration_eomt import EomtConfig
 from ..eomt.modeling_eomt import (
     EomtAttention,
     EomtDropPath,
     EomtEmbeddings,
     EomtForUniversalSegmentation,
-    EomtForUniversalSegmentationOutput,
     EomtHungarianMatcher,
     EomtLayer,
     EomtLayerNorm2d,
@@ -122,8 +125,46 @@ class VideomtLoss(EomtLoss):
     pass
 
 
-class VideomtForUniversalSegmentationOutput(EomtForUniversalSegmentationOutput):
-    pass
+@dataclass
+@auto_docstring(
+    custom_intro="""
+    Class for outputs of [`VideomtForUniversalSegmentationOutput`].
+
+    This output can be directly passed to [`~VideomtVideoProcessor.post_process_semantic_segmentation`] or
+    [`~VideomtVideoProcessor.post_process_instance_segmentation`] or
+    [`~VideomtVideoProcessor.post_process_panoptic_segmentation`] to compute final segmentation maps. Please, see
+    [`~VideomtVideoProcessor`] for details regarding usage.
+    """
+)
+class VideomtForUniversalSegmentationOutput(ModelOutput):
+    r"""
+    loss (`torch.Tensor`, *optional*):
+        The computed loss, returned when labels are present.
+    class_queries_logits (`torch.FloatTensor`):
+        A tensor of shape `(batch_size, num_queries, num_labels + 1)` representing the proposed classes for each
+        query. Note the `+ 1` is needed because we incorporate the null class.
+    masks_queries_logits (`torch.FloatTensor`):
+        A tensor of shape `(batch_size, num_queries, height, width)` representing the proposed masks for each
+        query.
+    last_hidden_state (`torch.FloatTensor` of shape `(batch_size, num_channels, height, width)`):
+        Last hidden states (final feature map) of the last layer.
+    hidden_states (`tuple(torch.FloatTensor)`, *optional*, returned when `output_hidden_states=True` is passed or when `config.output_hidden_states=True`):
+        Tuple of `torch.FloatTensor` (one for the output of the embeddings + one for the output of each stage) of
+        shape `(batch_size, sequence_length, hidden_size)`. Hidden-states all layers of the model.
+    attentions (`tuple(tuple(torch.FloatTensor))`, *optional*, returned when `output_attentions=True` is passed or when `config.output_attentions=True`):
+        Tuple of `tuple(torch.FloatTensor)` (one for each layer) of shape `(batch_size, num_heads, sequence_length,
+        sequence_length)`. Self and Cross Attentions weights from transformer decoder.
+    patch_offsets (`list[torch.Tensor]`, *optional*):
+        list of tuples indicating the image index and start and end positions of patches for semantic segmentation.
+    """
+
+    loss: torch.FloatTensor | None = None
+    class_queries_logits: torch.FloatTensor | None = None
+    masks_queries_logits: torch.FloatTensor | None = None
+    last_hidden_state: torch.FloatTensor | None = None
+    hidden_states: tuple[torch.FloatTensor] | None = None
+    attentions: tuple[torch.FloatTensor] | None = None
+    patch_offsets: list[torch.Tensor] | None = None
 
 
 class VideomtPreTrainedModel(EomtPreTrainedModel):
@@ -160,12 +201,9 @@ class VideomtForUniversalSegmentation(EomtForUniversalSegmentation):
         **kwargs,
     ) -> VideomtForUniversalSegmentationOutput:
         if pixel_values.ndim != 5:
-            return super().forward(
-                pixel_values=pixel_values,
-                mask_labels=mask_labels,
-                class_labels=class_labels,
-                patch_offsets=patch_offsets,
-                **kwargs,
+            raise ValueError(
+                f"Expected 5D pixel_values (batch_size, num_frames, channels, height, width), "
+                f"but got {pixel_values.ndim}D input. For image segmentation, use EomtForUniversalSegmentation instead."
             )
 
         if mask_labels is not None or class_labels is not None:

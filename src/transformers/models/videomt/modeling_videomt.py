@@ -921,10 +921,10 @@ class VideomtLoss(nn.Module):
     custom_intro="""
     Class for outputs of [`VideomtForUniversalSegmentationOutput`].
 
-    This output can be directly passed to [`~VideomtImageProcessor.post_process_semantic_segmentation`] or
-    [`~VideomtImageProcessor.post_process_instance_segmentation`] or
-    [`~VideomtImageProcessor.post_process_panoptic_segmentation`] to compute final segmentation maps. Please, see
-    [`~VideomtImageProcessor] for details regarding usage.
+    This output can be directly passed to [`~VideomtVideoProcessor.post_process_semantic_segmentation`] or
+    [`~VideomtVideoProcessor.post_process_instance_segmentation`] or
+    [`~VideomtVideoProcessor.post_process_panoptic_segmentation`] to compute final segmentation maps. Please, see
+    [`~VideomtVideoProcessor`] for details regarding usage.
     """
 )
 class VideomtForUniversalSegmentationOutput(ModelOutput):
@@ -1159,12 +1159,9 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
             list of tuples indicating the image index and start and end positions of patches for semantic segmentation.
         """
         if pixel_values.ndim != 5:
-            return super().forward(
-                pixel_values=pixel_values,
-                mask_labels=mask_labels,
-                class_labels=class_labels,
-                patch_offsets=patch_offsets,
-                **kwargs,
+            raise ValueError(
+                f"Expected 5D pixel_values (batch_size, num_frames, channels, height, width), "
+                f"but got {pixel_values.ndim}D input. For image segmentation, use EomtForUniversalSegmentation instead."
             )
 
         if mask_labels is not None or class_labels is not None:

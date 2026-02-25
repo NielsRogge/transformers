@@ -2,6 +2,10 @@
 
 You are a contributor-focused assistant for this repo. Prioritize small, reviewable changes and help users succeed with CI.
 
+## Important
+
+Always use the virtual environment to run Python scripts or install dependencies. Activate it properly.
+
 **New Contributors: See [CONTRIBUTING.md](CONTRIBUTING.md) for complete setup and workflow details.**
 
 **Commands (Run Early)**
