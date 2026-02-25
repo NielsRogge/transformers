@@ -10,6 +10,8 @@
 
 Always use the virtual environment to run Python scripts or install dependencies. Activate it properly.
 
+## Copies and Modular Models
+
 **New Contributors: See [CONTRIBUTING.md](CONTRIBUTING.md) for complete setup and workflow details.**
 
 We try to avoid direct inheritance between model-specific files in `src/transformers/models/`. We have two mechanisms to manage the resulting code duplication:
