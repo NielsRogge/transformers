@@ -18,10 +18,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections.abc
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import torch
@@ -33,10 +33,8 @@ from ...activations import ACT2FN
 from ...file_utils import ModelOutput, is_scipy_available, requires_backends
 from ...modeling_layers import GradientCheckpointingLayer
 from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
-from ...processing_utils import Unpack
-from ...pytorch_utils import compile_compatible_method_lru_cache
-from ...utils import TransformersKwargs, auto_docstring, is_accelerate_available
-from ...utils.generic import maybe_autocast, merge_with_config_defaults
+from ...utils import auto_docstring, is_accelerate_available
+from ...utils.generic import merge_with_config_defaults
 from ...utils.output_capturing import capture_outputs
 from .configuration_videomt import VideomtConfig
 
@@ -49,33 +47,21 @@ if is_accelerate_available():
     from accelerate.utils import reduce
 
 
-def rotate_half(x):
-    """Rotates half the hidden dims of the input."""
-    x1 = x[..., : x.shape[-1] // 2]
-    x2 = x[..., x.shape[-1] // 2 :]
-    return torch.cat((-x2, x1), dim=-1)
-
-
 def eager_attention_forward(
     module: nn.Module,
     query: torch.Tensor,
     key: torch.Tensor,
     value: torch.Tensor,
     attention_mask: torch.Tensor | None,
-    scaling: float | None = None,
+    scaling: float,
     dropout: float = 0.0,
-    **kwargs: Unpack[TransformersKwargs],
+    **kwargs,
 ):
-    if scaling is None:
-        scaling = query.size(-1) ** -0.5
-
-    # Take the dot product between "query" and "key" to get the raw attention scores.
-    attn_weights = torch.matmul(query, key.transpose(2, 3)) * scaling
-
+    attn_weights = torch.matmul(query, key.transpose(-1, -2)) * scaling
     if attention_mask is not None:
         attn_weights = attn_weights + attention_mask
 
-    attn_weights = nn.functional.softmax(attn_weights, dim=-1)
+    attn_weights = nn.functional.softmax(attn_weights, dim=-1, dtype=torch.float32).to(query.dtype)
     attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
 
     attn_output = torch.matmul(attn_weights, value)
@@ -84,83 +70,46 @@ def eager_attention_forward(
     return attn_output, attn_weights
 
 
-def apply_rotary_pos_emb(
-    q: torch.Tensor, k: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor, **kwargs
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Applies Rotary Position Embedding to the query and key tensors, but only to the patch tokens,
-    ignoring the prefix tokens (cls token and register tokens).
-
-    Args:
-        q (`torch.Tensor`): The query tensor.
-        k (`torch.Tensor`): The key tensor.
-        cos (`torch.Tensor`): The cosine part of the rotary embedding.
-        sin (`torch.Tensor`): The sine part of the rotary embedding.
-
-    Returns:
-        `tuple(torch.Tensor)` comprising of the query and key tensors rotated using the Rotary Position Embedding.
-    """
-
-    num_tokens = q.shape[-2]
-    num_patches = sin.shape[-2]
-    num_prefix_tokens = num_tokens - num_patches  # cls token + register tokens
-
-    q_prefix_tokens, q_patches = q.split((num_prefix_tokens, num_patches), dim=-2)
-    k_prefix_tokens, k_patches = k.split((num_prefix_tokens, num_patches), dim=-2)
-
-    # apply rope only to patch tokens
-    q_patches = (q_patches * cos) + (rotate_half(q_patches) * sin)
-    k_patches = (k_patches * cos) + (rotate_half(k_patches) * sin)
-
-    q = torch.cat((q_prefix_tokens, q_patches), dim=-2)
-    k = torch.cat((k_prefix_tokens, k_patches), dim=-2)
-
-    return q, k
-
-
 class VideomtAttention(nn.Module):
-    """
-    Multi-headed attention compatible with ALL_ATTENTION_FUNCTIONS.
-    """
+    """Multi-headed attention from 'Attention Is All You Need' paper"""
 
-    def __init__(self, config: VideomtConfig):
+    def __init__(self, config):
         super().__init__()
         self.config = config
         self.embed_dim = config.hidden_size
         self.num_heads = config.num_attention_heads
         self.head_dim = self.embed_dim // self.num_heads
-        self.is_causal = False
-
-        self.scaling = self.head_dim**-0.5
-        self.is_causal = False
-
+        if self.head_dim * self.num_heads != self.embed_dim:
+            raise ValueError(
+                f"embed_dim must be divisible by num_heads (got `embed_dim`: {self.embed_dim} and `num_heads`:"
+                f" {self.num_heads})."
+            )
+        self.scale = self.head_dim**-0.5
         self.dropout = config.attention_dropout
-        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=config.key_bias)
-        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=config.value_bias)
+        self.is_causal = False
 
-        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=config.query_bias)
-        self.o_proj = nn.Linear(self.embed_dim, self.embed_dim, bias=config.proj_bias)
+        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim)
+        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim)
+        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim)
+        self.out_proj = nn.Linear(self.embed_dim, self.embed_dim)
 
     def forward(
         self,
         hidden_states: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
-        position_embeddings: tuple[torch.Tensor, torch.Tensor] | None = None,
-        **kwargs: Unpack[TransformersKwargs],
+        **kwargs,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         """Input shape: Batch x Time x Channel"""
 
-        batch_size, patches, _ = hidden_states.size()
+        batch_size, seq_length, embed_dim = hidden_states.shape
 
-        query_states = self.q_proj(hidden_states)
-        key_states = self.k_proj(hidden_states)
-        value_states = self.v_proj(hidden_states)
+        queries = self.q_proj(hidden_states)
+        keys = self.k_proj(hidden_states)
+        values = self.v_proj(hidden_states)
 
-        query_states = query_states.view(batch_size, patches, self.num_heads, self.head_dim).transpose(1, 2)
-        key_states = key_states.view(batch_size, patches, self.num_heads, self.head_dim).transpose(1, 2)
-        value_states = value_states.view(batch_size, patches, self.num_heads, self.head_dim).transpose(1, 2)
-
-        cos, sin = position_embeddings
-        query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+        queries = queries.view(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = keys.view(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+        values = values.view(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
 
         attention_interface: Callable = ALL_ATTENTION_FUNCTIONS.get_interface(
             self.config._attn_implementation, eager_attention_forward
@@ -168,19 +117,52 @@ class VideomtAttention(nn.Module):
 
         attn_output, attn_weights = attention_interface(
             self,
-            query_states,
-            key_states,
-            value_states,
+            queries,
+            keys,
+            values,
             attention_mask,
+            is_causal=self.is_causal,
+            scaling=self.scale,
             dropout=0.0 if not self.training else self.dropout,
-            scaling=self.scaling,
-            **kwargs,
         )
 
-        attn_output = attn_output.reshape(batch_size, patches, -1).contiguous()
-        attn_output = self.o_proj(attn_output)
+        attn_output = attn_output.reshape(batch_size, seq_length, embed_dim).contiguous()
+        attn_output = self.out_proj(attn_output)
 
         return attn_output, attn_weights
+
+
+class VideomtPatchEmbeddings(nn.Module):
+    """
+    This class turns `pixel_values` of shape `(batch_size, num_channels, height, width)` into the initial
+    `hidden_states` (patch embeddings) of shape `(batch_size, seq_length, hidden_size)` to be consumed by a
+    Transformer.
+    """
+
+    def __init__(self, config):
+        super().__init__()
+        image_size, patch_size = config.image_size, config.patch_size
+        num_channels, hidden_size = config.num_channels, config.hidden_size
+
+        image_size = image_size if isinstance(image_size, collections.abc.Iterable) else (image_size, image_size)
+        patch_size = patch_size if isinstance(patch_size, collections.abc.Iterable) else (patch_size, patch_size)
+        num_patches = (image_size[1] // patch_size[1]) * (image_size[0] // patch_size[0])
+        self.image_size = image_size
+        self.patch_size = patch_size
+        self.num_channels = num_channels
+        self.num_patches = num_patches
+
+        self.projection = nn.Conv2d(num_channels, hidden_size, kernel_size=patch_size, stride=patch_size)
+
+    def forward(self, pixel_values: torch.Tensor) -> torch.Tensor:
+        num_channels = pixel_values.shape[1]
+        if num_channels != self.num_channels:
+            raise ValueError(
+                "Make sure that the channel dimension of the pixel values match with the one set in the configuration."
+                f" Expected {self.num_channels} but got {num_channels}."
+            )
+        embeddings = self.projection(pixel_values).flatten(2).transpose(1, 2)
+        return embeddings
 
 
 class VideomtEmbeddings(nn.Module):
@@ -188,29 +170,25 @@ class VideomtEmbeddings(nn.Module):
     Construct the CLS token, mask token, position and patch embeddings.
     """
 
-    def __init__(self, config: VideomtConfig):
+    def __init__(self, config: VideomtConfig) -> None:
         super().__init__()
+
         self.config = config
+        self.patch_size = config.patch_size
+
         self.cls_token = nn.Parameter(torch.randn(1, 1, config.hidden_size))
+        self.register_tokens = nn.Parameter(torch.zeros(1, config.num_register_tokens, config.hidden_size))
+
+        self.patch_embeddings = VideomtPatchEmbeddings(config)
+        num_patches = self.patch_embeddings.num_patches
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.num_prefix_tokens = 1 + config.num_register_tokens  # 1 for [CLS]
+        self.position_embeddings = nn.Embedding(num_patches, config.hidden_size)
+        self.register_buffer("position_ids", torch.arange(num_patches).expand((1, -1)), persistent=False)
         self.mask_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
-        self.register_tokens = nn.Parameter(torch.empty(1, config.num_register_tokens, config.hidden_size))
-        self.patch_embeddings = nn.Conv2d(
-            config.num_channels, config.hidden_size, kernel_size=config.patch_size, stride=config.patch_size
-        )
-        self.num_prefix_tokens = 1 + config.num_register_tokens
 
     def forward(self, pixel_values: torch.Tensor, bool_masked_pos: torch.Tensor | None = None) -> torch.Tensor:
-        """
-        Args:
-            pixel_values (`torch.Tensor`):
-                Input frames as either `(batch_size, num_frames, num_channels, height, width)` or flattened
-                `(batch_size * num_frames, num_channels, height, width)`.
-            bool_masked_pos (`torch.Tensor`, *optional*):
-                Optional mask for patch replacement.
-        """
-
-        is_video_input = pixel_values.ndim == 5
-        if is_video_input:
+        if pixel_values.ndim == 5:
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
 
@@ -236,22 +214,21 @@ class VideomtEmbeddings(nn.Module):
                     f"Expected bool_masked_pos to provide one value per patch ({expected_num_patches}), "
                     f"but got {bool_masked_pos.shape[-1]}."
                 )
-        batch_size = pixel_values.shape[0]
-        target_dtype = self.patch_embeddings.weight.dtype
 
-        # (batch_size, num_channels, height, width) -> (batch_size, num_patches, hidden_size)
-        patch_embeddings = self.patch_embeddings(pixel_values.to(dtype=target_dtype))
-        patch_embeddings = patch_embeddings.flatten(2).transpose(1, 2)
+        batch_size = pixel_values.shape[0]
+        target_dtype = self.patch_embeddings.projection.weight.dtype
+        embeddings = self.patch_embeddings(pixel_values.to(dtype=target_dtype))
 
         if bool_masked_pos is not None:
-            mask_token = self.mask_token.to(patch_embeddings.dtype)
-            patch_embeddings = torch.where(bool_masked_pos.unsqueeze(-1), mask_token, patch_embeddings)
+            mask_token = self.mask_token.to(embeddings.dtype)
+            embeddings = torch.where(bool_masked_pos.unsqueeze(-1), mask_token, embeddings)
 
-        # Add CLS and register tokens
-        cls_token = self.cls_token.expand(batch_size, -1, -1)
+        cls_tokens = self.cls_token.expand(batch_size, -1, -1)
         register_tokens = self.register_tokens.expand(batch_size, -1, -1)
-        embeddings = torch.cat([cls_token, register_tokens, patch_embeddings], dim=1)
 
+        embeddings = embeddings + self.position_embeddings(self.position_ids)
+        embeddings = torch.cat([cls_tokens, register_tokens, embeddings], dim=1)
+        embeddings = self.dropout(embeddings)
         return embeddings
 
 
@@ -285,39 +262,62 @@ class VideomtDropPath(nn.Module):
 
 
 class VideomtMLP(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         super().__init__()
-        self.config = config
-        self.hidden_size = config.hidden_size
-        self.intermediate_size = config.intermediate_size
-        self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
-        self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
-        self.act_fn = ACT2FN[config.hidden_act]
+        in_features = out_features = config.hidden_size
+        hidden_features = int(config.hidden_size * config.mlp_ratio)
+        self.fc1 = nn.Linear(in_features, hidden_features, bias=True)
+        if isinstance(config.hidden_act, str):
+            self.activation = ACT2FN[config.hidden_act]
+        else:
+            self.activation = config.hidden_act
+        self.fc2 = nn.Linear(hidden_features, out_features, bias=True)
 
-    def forward(self, x):
-        return self.down_proj(self.act_fn(self.up_proj(x)))
+    def forward(self, hidden_state: torch.Tensor) -> torch.Tensor:
+        hidden_state = self.fc1(hidden_state)
+        hidden_state = self.activation(hidden_state)
+        hidden_state = self.fc2(hidden_state)
+        return hidden_state
 
 
 class VideomtGatedMLP(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         super().__init__()
-        self.config = config
-        self.hidden_size = config.hidden_size
-        self.intermediate_size = config.intermediate_size
-        self.gate_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
-        self.up_proj = nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
-        self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
-        self.act_fn = ACT2FN[config.hidden_act]
+        in_features = out_features = config.hidden_size
+        hidden_features = int(config.hidden_size * config.mlp_ratio)
+        hidden_features = (int(hidden_features * 2 / 3) + 7) // 8 * 8
 
-    def forward(self, x):
-        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
-        return down_proj
+        self.weights_in = nn.Linear(in_features, 2 * hidden_features, bias=True)
+        self.weights_out = nn.Linear(hidden_features, out_features, bias=True)
+
+    def forward(self, hidden_state: torch.Tensor) -> torch.Tensor:
+        hidden_state = self.weights_in(hidden_state)
+        x1, x2 = hidden_state.chunk(2, dim=-1)
+        hidden = nn.functional.silu(x1) * x2
+        return self.weights_out(hidden)
+
+
+class VideomtSwiGLUFFN(nn.Module):
+    def __init__(self, config) -> None:
+        super().__init__()
+        in_features = out_features = config.hidden_size
+        hidden_features = int(config.hidden_size * config.mlp_ratio)
+        hidden_features = (int(hidden_features * 2 / 3) + 7) // 8 * 8
+
+        self.weights_in = nn.Linear(in_features, 2 * hidden_features, bias=True)
+        self.weights_out = nn.Linear(hidden_features, out_features, bias=True)
+
+    def forward(self, hidden_state: torch.Tensor) -> torch.Tensor:
+        hidden_state = self.weights_in(hidden_state)
+        x1, x2 = hidden_state.chunk(2, dim=-1)
+        hidden = nn.functional.silu(x1) * x2
+        return self.weights_out(hidden)
 
 
 class VideomtLayer(GradientCheckpointingLayer):
     """This corresponds to the Block class in the original implementation."""
 
-    def __init__(self, config: VideomtConfig):
+    def __init__(self, config: VideomtConfig) -> None:
         super().__init__()
 
         self.norm1 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -327,8 +327,8 @@ class VideomtLayer(GradientCheckpointingLayer):
 
         self.norm2 = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
-        if config.use_gated_mlp:
-            self.mlp = VideomtGatedMLP(config)
+        if config.use_swiglu_ffn:
+            self.mlp = VideomtSwiGLUFFN(config)
         else:
             self.mlp = VideomtMLP(config)
         self.layer_scale2 = VideomtLayerScale(config)
@@ -337,27 +337,23 @@ class VideomtLayer(GradientCheckpointingLayer):
         self,
         hidden_states: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
-        position_embeddings: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> torch.Tensor:
-        # Attention with residual connection
-        residual = hidden_states
-        hidden_states = self.norm1(hidden_states)
-        hidden_states, _ = self.attention(
-            hidden_states,
-            attention_mask=attention_mask,
-            position_embeddings=position_embeddings,
-        )
-        hidden_states = self.layer_scale1(hidden_states)
-        hidden_states = self.drop_path(hidden_states) + residual
+        hidden_states_norm = self.norm1(hidden_states)
+        self_attention_output, _ = self.attention(hidden_states_norm, attention_mask)
+        self_attention_output = self.layer_scale1(self_attention_output)
 
-        # MLP with residual connection
-        residual = hidden_states
-        hidden_states = self.norm2(hidden_states)
-        hidden_states = self.mlp(hidden_states)
-        hidden_states = self.layer_scale2(hidden_states)
-        hidden_states = self.drop_path(hidden_states) + residual
+        # first residual connection
+        hidden_states = self.drop_path(self_attention_output) + hidden_states
 
-        return hidden_states
+        # in Videomt, layernorm is also applied after self-attention
+        layer_output = self.norm2(hidden_states)
+        layer_output = self.mlp(layer_output)
+        layer_output = self.layer_scale2(layer_output)
+
+        # second residual connection
+        layer_output = self.drop_path(layer_output) + hidden_states
+
+        return layer_output
 
 
 class VideomtLayerScale(nn.Module):
@@ -367,143 +363,6 @@ class VideomtLayerScale(nn.Module):
 
     def forward(self, hidden_state: torch.Tensor) -> torch.Tensor:
         return hidden_state * self.lambda1
-
-
-@compile_compatible_method_lru_cache(maxsize=32)
-def get_patches_center_coordinates(
-    num_patches_h: int, num_patches_w: int, dtype: torch.dtype, device: torch.device
-) -> torch.Tensor:
-    """
-    Computes the 2D coordinates of the centers of image patches, normalized to the range [-1, +1].
-    The center of each patch is exactly halfway between its top-left and bottom-right corners.
-
-    Args:
-        num_patches_h (int): Number of patches along the vertical (height) axis.
-        num_patches_w (int): Number of patches along the horizontal (width) axis.
-        dtype (torch.dtype): The desired data type of the returned tensor.
-
-    Returns:
-        torch.Tensor: A tensor of shape (height * width, 2), where each row contains the (y, x)
-            coordinates of a patch center, normalized to [-1, +1].
-    """
-    coords_h = torch.arange(0.5, num_patches_h, dtype=dtype, device=device)
-    coords_w = torch.arange(0.5, num_patches_w, dtype=dtype, device=device)
-    coords_h = coords_h / num_patches_h
-    coords_w = coords_w / num_patches_w
-    # (height, width, 2) -> (height * width, 2)
-    coords = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"), dim=-1)
-    coords = coords.flatten(0, 1)
-    # Shift range [0, 1] to [-1, +1]
-    coords = 2.0 * coords - 1.0
-    return coords
-
-
-def augment_patches_center_coordinates(
-    coords: torch.Tensor,
-    shift: float | None = None,
-    jitter: float | None = None,
-    rescale: float | None = None,
-) -> torch.Tensor:
-    # Shift coords by adding a uniform value in [-shift, shift]
-    if shift is not None:
-        shift_hw = torch.empty((1, 2), device=coords.device, dtype=coords.dtype)
-        shift_hw = shift_hw.uniform_(-shift, shift)
-        coords = coords + shift_hw
-
-    # Jitter coords by multiplying the range [-1, 1] by a log-uniform value in [1/jitter, jitter]
-    if jitter is not None:
-        jitter_range = np.log(jitter)
-        jitter_hw = torch.empty((1, 2), device=coords.device, dtype=coords.dtype)
-        jitter_hw = jitter_hw.uniform_(-jitter_range, jitter_range).exp()
-        coords = coords * jitter_hw
-
-    # Rescale coords by multiplying the range [-1, 1] by a log-uniform value in [1/rescale, rescale]
-    if rescale is not None:
-        rescale_range = np.log(rescale)
-        rescale_hw = torch.empty(1, device=coords.device, dtype=coords.dtype)
-        rescale_hw = rescale_hw.uniform_(-rescale_range, rescale_range).exp()
-        coords = coords * rescale_hw
-
-    return coords
-
-
-class VideomtRotaryEmbedding(nn.Module):
-    inv_freq: Tensor
-
-    def __init__(self, config: VideomtConfig, device=None):
-        super().__init__()
-        self.config = config
-
-        self.rope_type = self.config.rope_parameters["rope_type"]
-        rope_init_fn: Callable = self.compute_default_rope_parameters
-        if self.rope_type != "default":
-            raise ValueError("`Videomt` only supports `default` RoPE! Please check your `rope_type`")
-        inv_freq, self.attention_scaling = rope_init_fn(self.config, device)
-
-        self.register_buffer("inv_freq", inv_freq, persistent=False)
-        self.register_buffer("original_inv_freq", inv_freq.clone(), persistent=False)
-
-    def forward(self, pixel_values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        _, _, height, width = pixel_values.shape
-        num_patches_h = height // self.config.patch_size
-        num_patches_w = width // self.config.patch_size
-
-        device = pixel_values.device
-        device_type = device.type if isinstance(device.type, str) and device.type != "mps" else "cpu"
-
-        with maybe_autocast(device_type=device_type, enabled=False):  # Force float32
-            # Although we could precompute static patch_coords from image_size and patch_size in the config,
-            # the model was trained with random_scale, so it can process images of varying sizes.
-            # Therefore, it's better to compute patch_coords dynamically (with lru_cache).
-            patch_coords = get_patches_center_coordinates(
-                num_patches_h, num_patches_w, dtype=torch.float32, device=device
-            )
-            if self.training:
-                patch_coords = augment_patches_center_coordinates(
-                    patch_coords,
-                    shift=self.config.pos_embed_shift,
-                    jitter=self.config.pos_embed_jitter,
-                    rescale=self.config.pos_embed_rescale,
-                )
-
-            # (height * width, 2, head_dim / 4) -> (height * width, head_dim / 2) -> (height * width, head_dim)
-            angles = 2 * math.pi * patch_coords[:, :, None] * self.inv_freq[None, None, :]
-            angles = angles.flatten(1, 2)
-            angles = angles.tile(2)
-
-            cos = torch.cos(angles)
-            sin = torch.sin(angles)
-
-        dtype = pixel_values.dtype
-        return cos.to(dtype=dtype), sin.to(dtype=dtype)
-
-    @staticmethod
-    def compute_default_rope_parameters(
-        config: VideomtConfig | None = None,
-        device: Optional["torch.device"] = None,
-        seq_len: int | None = None,
-    ) -> torch.Tensor:
-        """
-        Computes the inverse frequencies according to the original RoPE implementation
-        Args:
-            config ([`~transformers.PreTrainedConfig`]):
-                The model configuration.
-            device (`torch.device`):
-                The device to use for initialization of the inverse frequencies.
-            seq_len (`int`, *optional*):
-                The current sequence length. Unused for this type of RoPE.
-        Returns:
-            Tuple of (`torch.Tensor`, `float`), containing the inverse frequencies for the RoPE embeddings and the
-            post-processing scaling factor applied to the computed cos/sin (unused in this type of RoPE).
-        """
-        base = config.rope_parameters["rope_theta"]
-        head_dim = config.hidden_size // config.num_attention_heads
-
-        attention_factor = 1.0  # Unused in this type of RoPE
-
-        # Compute the inverse frequencies
-        inv_freq = 1 / base ** torch.arange(0, 1, 4 / head_dim, dtype=torch.float32, device=device)
-        return inv_freq, attention_factor
 
 
 # Adapted from https://github.com/facebookresearch/detectron2/blob/main/projects/PointRend/point_rend/point_features.py
@@ -1117,18 +976,31 @@ class VideomtPreTrainedModel(PreTrainedModel):
         "hidden_states": VideomtLayer,
         "attentions": VideomtAttention,
     }
-    config_class = VideomtConfig
 
     @torch.no_grad()
     def _init_weights(self, module: nn.Module) -> None:
-        super()._init_weights(module)
         std = self.config.initializer_range
-        if isinstance(module, VideomtLayerScale):
+        if isinstance(module, (nn.Linear, nn.Conv2d, nn.ConvTranspose2d)):
+            init.kaiming_uniform_(module.weight, a=math.sqrt(5))
+            if module.bias is not None:
+                fan_in, _ = torch.nn.init._calculate_fan_in_and_fan_out(module.weight)
+                bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+                init.uniform_(module.bias, -bound, bound)
+        elif isinstance(module, nn.LayerNorm):
+            init.ones_(module.weight)
+            init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            init.normal_(module.weight, mean=0.0, std=1)
+            # Here we need the check explicitly, as we slice the weight in the `zeros_` call, so it looses the flag
+            if module.padding_idx is not None and not getattr(module.weight, "_is_hf_initialized", False):
+                init.zeros_(module.weight[module.padding_idx])
+        elif isinstance(module, VideomtLayerScale):
             if hasattr(module, "lambda1"):
                 init.constant_(module.lambda1, self.config.layerscale_value)
         elif isinstance(module, VideomtEmbeddings):
             init.trunc_normal_(module.cls_token, mean=0.0, std=std)
             init.zeros_(module.register_tokens)
+            init.copy_(module.position_ids, torch.arange(module.position_ids.shape[-1]).expand((1, -1)))
         elif isinstance(module, VideomtLoss):
             empty_weight = torch.ones(module.num_labels + 1)
             empty_weight[-1] = module.eos_coef
@@ -1204,8 +1076,8 @@ class VideomtMaskHead(nn.Module):
 
 @auto_docstring(
     custom_intro="""
-    The EoMT-DINOv3 model with head on top for instance/semantic/panoptic segmentation.
-    """,
+    The Videomt Model with head on top for instance/semantic/panoptic segmentation.
+    """
 )
 class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
     main_input_name = "pixel_values"
@@ -1218,7 +1090,6 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         self.query = nn.Embedding(config.num_queries, config.hidden_size)
-        self.query_updater = nn.Linear(config.hidden_size, config.hidden_size, bias=config.query_bias)
         self.layers = nn.ModuleList([VideomtLayer(config) for _ in range(config.num_hidden_layers)])
 
         self.upscale_block = VideomtScaleBlock(config)
@@ -1236,12 +1107,7 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         self.criterion = VideomtLoss(config=config, weight_dict=self.weight_dict)
 
         self.register_buffer("attn_mask_probs", torch.ones(config.num_blocks))
-
-        self.num_prefix_tokens = 1 + config.num_register_tokens
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.embeddings.register_parameter("mask_token", None)
-
-        self.rope_embeddings = VideomtRotaryEmbedding(config)
+        self.query_updater = nn.Linear(config.hidden_size, config.hidden_size)
 
         self.post_init()
 
@@ -1292,164 +1158,73 @@ class VideomtForUniversalSegmentation(VideomtPreTrainedModel):
         patch_offsets (`list[torch.Tensor]`, *optional*):
             list of tuples indicating the image index and start and end positions of patches for semantic segmentation.
         """
-        is_video_input = pixel_values.ndim == 5
-        if is_video_input:
-            batch_size, num_frames, num_channels, height, width = pixel_values.shape
-            pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
+        if pixel_values.ndim != 5:
+            return super().forward(
+                pixel_values=pixel_values,
+                mask_labels=mask_labels,
+                class_labels=class_labels,
+                patch_offsets=patch_offsets,
+                **kwargs,
+            )
 
-            if mask_labels is not None or class_labels is not None:
-                raise ValueError(
-                    "Video training labels are not supported yet for `VideomtForUniversalSegmentation`; "
-                    "please provide flattened frame batches for training."
-                )
+        if mask_labels is not None or class_labels is not None:
+            raise ValueError(
+                "Video training labels are not supported yet for `VideomtForUniversalSegmentation`; "
+                "please provide flattened frame batches for training."
+            )
 
-            if patch_offsets is not None:
-                raise ValueError(
-                    "Video-shaped `patch_offsets` are not supported yet for `VideomtForUniversalSegmentation`; "
-                    "please provide flattened frame batches with matching patch offsets."
-                )
-        masks_queries_logits_per_layer, class_queries_logits_per_layer = (), ()
+        if patch_offsets is not None:
+            raise ValueError(
+                "Video-shaped `patch_offsets` are not supported yet for `VideomtForUniversalSegmentation`; "
+                "please provide flattened frame batches with matching patch offsets."
+            )
 
-        hidden_states = self.dropout(self.embeddings(pixel_values))
-        position_embeddings = self.rope_embeddings(pixel_values.to(hidden_states.dtype))
+        batch_size, num_frames, num_channels, height, width = pixel_values.shape
+        flat_pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
+
+        hidden_states = self.embeddings(flat_pixel_values)
         query_start_idx = self.num_hidden_layers - self.config.num_blocks
 
         for layer_module in self.layers[:query_start_idx]:
-            hidden_states = layer_module(hidden_states, position_embeddings=position_embeddings)
+            hidden_states = layer_module(hidden_states, attention_mask=None)
 
-        if self.config.num_blocks > 0:
-            if is_video_input:
-                hidden_states = hidden_states.view(
-                    batch_size, num_frames, hidden_states.shape[1], hidden_states.shape[2]
-                )
-                frame_outputs = []
-                propagated_query = None
+        hidden_states = hidden_states.view(batch_size, num_frames, hidden_states.shape[1], hidden_states.shape[2])
 
-                for frame_idx in range(num_frames):
-                    if frame_idx == 0:
-                        query = self.query.weight[None, :, :].expand(batch_size, -1, -1).to(hidden_states.device)
-                    else:
-                        query = propagated_query
+        all_masks_queries_logits = []
+        all_class_queries_logits = []
+        all_last_hidden_states = []
+        propagated_query = None
 
-                    frame_hidden_states = torch.cat((query, hidden_states[:, frame_idx]), dim=1)
-                    frame_hidden_states, masks_queries_logits_per_layer, class_queries_logits_per_layer = (
-                        self._run_segmenter_layers(
-                            hidden_states=frame_hidden_states,
-                            position_embeddings=position_embeddings,
-                            start_layer_idx=query_start_idx,
-                            masks_queries_logits_per_layer=masks_queries_logits_per_layer,
-                            class_queries_logits_per_layer=class_queries_logits_per_layer,
-                        )
-                    )
+        for frame_idx in range(num_frames):
+            frame_hidden_states = hidden_states[:, frame_idx]
 
-                    frame_outputs.append(frame_hidden_states)
-                    propagated_query = self.query_updater(
-                        frame_hidden_states[:, : self.config.num_queries, :]
-                    ) + self.query.weight[None, :, :].to(frame_hidden_states.device)
-
-                hidden_states = torch.stack(frame_outputs, dim=1)
-                hidden_states = hidden_states.reshape(
-                    batch_size * num_frames, frame_outputs[0].shape[1], frame_outputs[0].shape[2]
-                )
+            if propagated_query is None:
+                query_tokens = self.query.weight[None, :, :].expand(batch_size, -1, -1)
             else:
-                query = self.query.weight[None, :, :].expand(hidden_states.shape[0], -1, -1).to(hidden_states.device)
-                hidden_states = torch.cat((query, hidden_states), dim=1)
-                hidden_states, masks_queries_logits_per_layer, class_queries_logits_per_layer = (
-                    self._run_segmenter_layers(
-                        hidden_states=hidden_states,
-                        position_embeddings=position_embeddings,
-                        start_layer_idx=query_start_idx,
-                        masks_queries_logits_per_layer=masks_queries_logits_per_layer,
-                        class_queries_logits_per_layer=class_queries_logits_per_layer,
-                    )
-                )
+                query_tokens = self.query_updater(propagated_query) + self.query.weight[None, :, :]
+            frame_hidden_states = torch.cat((query_tokens.to(frame_hidden_states.device), frame_hidden_states), dim=1)
 
-        sequence_output = self.layernorm(hidden_states)
+            for layer_module in self.layers[query_start_idx:]:
+                frame_hidden_states = layer_module(frame_hidden_states, attention_mask=None)
 
-        masks_queries_logits, class_queries_logits = self.predict(sequence_output)
-        masks_queries_logits_per_layer += (masks_queries_logits,)
-        class_queries_logits_per_layer += (class_queries_logits,)
+            sequence_output = self.layernorm(frame_hidden_states)
+            masks_queries_logits, class_queries_logits = self.predict(sequence_output)
 
-        loss = None
-        if mask_labels is not None and class_labels is not None:
-            loss = 0.0
-            for masks_queries_logits, class_queries_logits in zip(
-                masks_queries_logits_per_layer, class_queries_logits_per_layer
-            ):
-                loss_dict = self.get_loss_dict(
-                    masks_queries_logits=masks_queries_logits,
-                    class_queries_logits=class_queries_logits,
-                    mask_labels=mask_labels,
-                    class_labels=class_labels,
-                    auxiliary_predictions=None,
-                )
-                loss += self.get_loss(loss_dict)
+            all_masks_queries_logits.append(masks_queries_logits)
+            all_class_queries_logits.append(class_queries_logits)
+            all_last_hidden_states.append(sequence_output)
+            propagated_query = sequence_output[:, : self.config.num_queries, :]
 
         return VideomtForUniversalSegmentationOutput(
-            loss=loss,
-            masks_queries_logits=masks_queries_logits,
-            class_queries_logits=class_queries_logits,
-            last_hidden_state=sequence_output,
+            loss=None,
+            masks_queries_logits=torch.cat(all_masks_queries_logits, dim=0),
+            class_queries_logits=torch.cat(all_class_queries_logits, dim=0),
+            last_hidden_state=torch.cat(all_last_hidden_states, dim=0),
             patch_offsets=patch_offsets,
         )
 
     def get_input_embeddings(self):
         return self.embeddings.patch_embeddings
-
-    def _run_segmenter_layers(
-        self,
-        hidden_states: torch.Tensor,
-        position_embeddings: tuple[torch.Tensor, torch.Tensor],
-        start_layer_idx: int,
-        masks_queries_logits_per_layer: tuple[torch.Tensor, ...],
-        class_queries_logits_per_layer: tuple[torch.Tensor, ...],
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, ...], tuple[torch.Tensor, ...]]:
-        for idx, layer_module in enumerate(self.layers[start_layer_idx:]):
-            layer_idx = start_layer_idx + idx
-            attention_mask = None
-            if self.training:
-                norm_hidden_states = self.layernorm(hidden_states)
-                masks_queries_logits, class_queries_logits = self.predict(norm_hidden_states)
-
-                masks_queries_logits_per_layer += (masks_queries_logits,)
-                class_queries_logits_per_layer += (class_queries_logits,)
-
-                attention_mask = torch.ones(
-                    hidden_states.shape[0],
-                    hidden_states.shape[1],
-                    hidden_states.shape[1],
-                    device=hidden_states.device,
-                    dtype=torch.bool,
-                )
-
-                interpolated_logits = F.interpolate(masks_queries_logits, size=self.grid_size, mode="bilinear")
-                interpolated_logits = interpolated_logits.view(
-                    interpolated_logits.size(0), interpolated_logits.size(1), -1
-                )
-
-                num_query_tokens = self.config.num_queries
-                encoder_start_tokens = num_query_tokens + self.num_prefix_tokens
-
-                attention_mask[:, :num_query_tokens, encoder_start_tokens:] = interpolated_logits > 0
-                attention_mask = self._disable_attention_mask(
-                    attention_mask,
-                    prob=self.attn_mask_probs[layer_idx - start_layer_idx],
-                    num_query_tokens=num_query_tokens,
-                    encoder_start_tokens=encoder_start_tokens,
-                    device=attention_mask.device,
-                )
-
-                attention_mask = attention_mask[:, None, ...].expand(-1, self.config.num_attention_heads, -1, -1)
-                dtype_min = torch.finfo(hidden_states.dtype).min
-                attention_mask = attention_mask.to(hidden_states.dtype).masked_fill(~attention_mask, dtype_min)
-
-            hidden_states = layer_module(
-                hidden_states,
-                attention_mask=attention_mask,
-                position_embeddings=position_embeddings,
-            )
-
-        return hidden_states, masks_queries_logits_per_layer, class_queries_logits_per_layer
 
     def predict(self, logits: torch.Tensor):
         query_tokens = logits[:, : self.config.num_queries, :]

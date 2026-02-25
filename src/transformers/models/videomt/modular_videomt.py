@@ -13,48 +13,43 @@
 # limitations under the License.
 
 import torch
+from torch import nn
 
-from ..eomt_dinov3.configuration_eomt_dinov3 import EomtDinov3Config
-from ..eomt_dinov3.modeling_eomt_dinov3 import (
-    EomtDinov3Attention,
-    EomtDinov3DropPath,
-    EomtDinov3Embeddings,
-    EomtDinov3ForUniversalSegmentation,
-    EomtDinov3ForUniversalSegmentationOutput,
-    EomtDinov3GatedMLP,
-    EomtDinov3HungarianMatcher,
-    EomtDinov3Layer,
-    EomtDinov3LayerNorm2d,
-    EomtDinov3LayerScale,
-    EomtDinov3Loss,
-    EomtDinov3MaskHead,
-    EomtDinov3MLP,
-    EomtDinov3PreTrainedModel,
-    EomtDinov3RotaryEmbedding,
-    EomtDinov3ScaleBlock,
-    EomtDinov3ScaleLayer,
+from ..eomt.configuration_eomt import EomtConfig
+from ..eomt.modeling_eomt import (
+    EomtAttention,
+    EomtDropPath,
+    EomtEmbeddings,
+    EomtForUniversalSegmentation,
+    EomtForUniversalSegmentationOutput,
+    EomtHungarianMatcher,
+    EomtLayer,
+    EomtLayerNorm2d,
+    EomtLayerScale,
+    EomtLoss,
+    EomtMaskHead,
+    EomtMLP,
+    EomtPreTrainedModel,
+    EomtScaleBlock,
+    EomtScaleLayer,
+    EomtSwiGLUFFN,
 )
 
 
-class VideomtConfig(EomtDinov3Config):
+class VideomtConfig(EomtConfig):
     model_type = "videomt"
 
 
-class VideomtAttention(EomtDinov3Attention):
+class VideomtAttention(EomtAttention):
     pass
 
 
-class VideomtEmbeddings(EomtDinov3Embeddings):
-    def forward(self, pixel_values: torch.Tensor, bool_masked_pos: torch.Tensor | None = None) -> torch.Tensor:
-        """
-        Args:
-            pixel_values (`torch.Tensor`):
-                Input frames as either `(batch_size, num_frames, num_channels, height, width)` or flattened
-                `(batch_size * num_frames, num_channels, height, width)`.
-            bool_masked_pos (`torch.Tensor`, *optional*):
-                Optional mask for patch replacement.
-        """
+class VideomtEmbeddings(EomtEmbeddings):
+    def __init__(self, config: VideomtConfig):
+        super().__init__(config)
+        self.mask_token = nn.Parameter(torch.zeros(1, 1, config.hidden_size))
 
+    def forward(self, pixel_values: torch.Tensor, bool_masked_pos: torch.Tensor | None = None) -> torch.Tensor:
         if pixel_values.ndim == 5:
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
@@ -82,66 +77,80 @@ class VideomtEmbeddings(EomtDinov3Embeddings):
                     f"but got {bool_masked_pos.shape[-1]}."
                 )
 
-        return super().forward(pixel_values=pixel_values, bool_masked_pos=bool_masked_pos)
+        batch_size = pixel_values.shape[0]
+        target_dtype = self.patch_embeddings.projection.weight.dtype
+        embeddings = self.patch_embeddings(pixel_values.to(dtype=target_dtype))
+
+        if bool_masked_pos is not None:
+            mask_token = self.mask_token.to(embeddings.dtype)
+            embeddings = torch.where(bool_masked_pos.unsqueeze(-1), mask_token, embeddings)
+
+        cls_tokens = self.cls_token.expand(batch_size, -1, -1)
+        register_tokens = self.register_tokens.expand(batch_size, -1, -1)
+
+        embeddings = embeddings + self.position_embeddings(self.position_ids)
+        embeddings = torch.cat([cls_tokens, register_tokens, embeddings], dim=1)
+        embeddings = self.dropout(embeddings)
+        return embeddings
 
 
-class VideomtDropPath(EomtDinov3DropPath):
+class VideomtDropPath(EomtDropPath):
     pass
 
 
-class VideomtMLP(EomtDinov3MLP):
+class VideomtMLP(EomtMLP):
     pass
 
 
-class VideomtGatedMLP(EomtDinov3GatedMLP):
+class VideomtGatedMLP(EomtSwiGLUFFN):
     pass
 
 
-class VideomtLayer(EomtDinov3Layer):
+class VideomtLayer(EomtLayer):
     pass
 
 
-class VideomtLayerScale(EomtDinov3LayerScale):
+class VideomtLayerScale(EomtLayerScale):
     pass
 
 
-class VideomtRotaryEmbedding(EomtDinov3RotaryEmbedding):
+class VideomtHungarianMatcher(EomtHungarianMatcher):
     pass
 
 
-class VideomtHungarianMatcher(EomtDinov3HungarianMatcher):
+class VideomtLoss(EomtLoss):
     pass
 
 
-class VideomtLoss(EomtDinov3Loss):
+class VideomtForUniversalSegmentationOutput(EomtForUniversalSegmentationOutput):
     pass
 
 
-class VideomtForUniversalSegmentationOutput(EomtDinov3ForUniversalSegmentationOutput):
+class VideomtPreTrainedModel(EomtPreTrainedModel):
     pass
 
 
-class VideomtPreTrainedModel(EomtDinov3PreTrainedModel):
+class VideomtLayerNorm2d(EomtLayerNorm2d):
     pass
 
 
-class VideomtLayerNorm2d(EomtDinov3LayerNorm2d):
+class VideomtScaleLayer(EomtScaleLayer):
     pass
 
 
-class VideomtScaleLayer(EomtDinov3ScaleLayer):
+class VideomtScaleBlock(EomtScaleBlock):
     pass
 
 
-class VideomtScaleBlock(EomtDinov3ScaleBlock):
+class VideomtMaskHead(EomtMaskHead):
     pass
 
 
-class VideomtMaskHead(EomtDinov3MaskHead):
-    pass
+class VideomtForUniversalSegmentation(EomtForUniversalSegmentation):
+    def __init__(self, config: VideomtConfig):
+        super().__init__(config)
+        self.query_updater = nn.Linear(config.hidden_size, config.hidden_size)
 
-
-class VideomtForUniversalSegmentation(EomtDinov3ForUniversalSegmentation):
     def forward(
         self,
         pixel_values: torch.Tensor,
@@ -150,28 +159,69 @@ class VideomtForUniversalSegmentation(EomtDinov3ForUniversalSegmentation):
         patch_offsets: list[torch.Tensor] | None = None,
         **kwargs,
     ) -> VideomtForUniversalSegmentationOutput:
-        if pixel_values.ndim == 5:
-            batch_size, num_frames, num_channels, height, width = pixel_values.shape
-            pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
+        if pixel_values.ndim != 5:
+            return super().forward(
+                pixel_values=pixel_values,
+                mask_labels=mask_labels,
+                class_labels=class_labels,
+                patch_offsets=patch_offsets,
+                **kwargs,
+            )
 
-            if mask_labels is not None or class_labels is not None:
-                raise ValueError(
-                    "Video training labels are not supported yet for `VideomtForUniversalSegmentation`; "
-                    "please provide flattened frame batches for training."
-                )
+        if mask_labels is not None or class_labels is not None:
+            raise ValueError(
+                "Video training labels are not supported yet for `VideomtForUniversalSegmentation`; "
+                "please provide flattened frame batches for training."
+            )
 
-            if patch_offsets is not None:
-                raise ValueError(
-                    "Video-shaped `patch_offsets` are not supported yet for `VideomtForUniversalSegmentation`; "
-                    "please provide flattened frame batches with matching patch offsets."
-                )
+        if patch_offsets is not None:
+            raise ValueError(
+                "Video-shaped `patch_offsets` are not supported yet for `VideomtForUniversalSegmentation`; "
+                "please provide flattened frame batches with matching patch offsets."
+            )
 
-        return super().forward(
-            pixel_values=pixel_values,
-            mask_labels=mask_labels,
-            class_labels=class_labels,
+        batch_size, num_frames, num_channels, height, width = pixel_values.shape
+        flat_pixel_values = pixel_values.reshape(batch_size * num_frames, num_channels, height, width)
+
+        hidden_states = self.embeddings(flat_pixel_values)
+        query_start_idx = self.num_hidden_layers - self.config.num_blocks
+
+        for layer_module in self.layers[:query_start_idx]:
+            hidden_states = layer_module(hidden_states, attention_mask=None)
+
+        hidden_states = hidden_states.view(batch_size, num_frames, hidden_states.shape[1], hidden_states.shape[2])
+
+        all_masks_queries_logits = []
+        all_class_queries_logits = []
+        all_last_hidden_states = []
+        propagated_query = None
+
+        for frame_idx in range(num_frames):
+            frame_hidden_states = hidden_states[:, frame_idx]
+
+            if propagated_query is None:
+                query_tokens = self.query.weight[None, :, :].expand(batch_size, -1, -1)
+            else:
+                query_tokens = self.query_updater(propagated_query) + self.query.weight[None, :, :]
+            frame_hidden_states = torch.cat((query_tokens.to(frame_hidden_states.device), frame_hidden_states), dim=1)
+
+            for layer_module in self.layers[query_start_idx:]:
+                frame_hidden_states = layer_module(frame_hidden_states, attention_mask=None)
+
+            sequence_output = self.layernorm(frame_hidden_states)
+            masks_queries_logits, class_queries_logits = self.predict(sequence_output)
+
+            all_masks_queries_logits.append(masks_queries_logits)
+            all_class_queries_logits.append(class_queries_logits)
+            all_last_hidden_states.append(sequence_output)
+            propagated_query = sequence_output[:, : self.config.num_queries, :]
+
+        return VideomtForUniversalSegmentationOutput(
+            loss=None,
+            masks_queries_logits=torch.cat(all_masks_queries_logits, dim=0),
+            class_queries_logits=torch.cat(all_class_queries_logits, dim=0),
+            last_hidden_state=torch.cat(all_last_hidden_states, dim=0),
             patch_offsets=patch_offsets,
-            **kwargs,
         )
 
 
