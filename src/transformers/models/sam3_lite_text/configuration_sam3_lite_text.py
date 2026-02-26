@@ -22,7 +22,8 @@
 from transformers import CLIPTextConfig
 
 from ...configuration_utils import PreTrainedConfig
-from ..auto import CONFIG_MAPPING, AutoConfig
+from ..auto import AutoConfig
+from ..sam3.configuration_sam3 import Sam3ViTConfig
 
 
 class Sam3LiteTextViTConfig(PreTrainedConfig):
@@ -127,7 +128,7 @@ class Sam3LiteTextVisionConfig(PreTrainedConfig):
     documentation from [`PreTrainedConfig`] for more information.
 
     Args:
-        backbone_config (`Union[dict, "PreTrainedConfig"]`, *optional*, defaults to `Sam3LiteTextViTConfig()`):
+        backbone_config (`Union[dict, "PreTrainedConfig"]`, *optional*, defaults to `Sam3ViTConfig()`):
             Configuration for the vision backbone. This is used to instantiate the backbone using
             `AutoModel.from_config`.
         fpn_hidden_size (`int`, *optional*, defaults to 256):
@@ -167,10 +168,9 @@ class Sam3LiteTextVisionConfig(PreTrainedConfig):
             backbone_feature_sizes = [[288, 288], [144, 144], [72, 72]]
 
         if isinstance(backbone_config, dict):
-            backbone_config["model_type"] = backbone_config.get("model_type", "sam3_lite_text_vit_model")
-            backbone_config = CONFIG_MAPPING[backbone_config["model_type"]](**backbone_config)
+            backbone_config = Sam3ViTConfig(**{k: v for k, v in backbone_config.items() if k != "model_type"})
         elif backbone_config is None:
-            backbone_config = CONFIG_MAPPING["sam3_lite_text_vit_model"]()
+            backbone_config = Sam3ViTConfig()
 
         self.backbone_config = backbone_config
 
