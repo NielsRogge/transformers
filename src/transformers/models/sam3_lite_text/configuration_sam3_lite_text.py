@@ -162,6 +162,13 @@ class Sam3LiteTextVisionConfig(PreTrainedConfig):
         initializer_range=0.02,
         **kwargs,
     ):
+        # Reuse the registered SAM3 ViT config type for AutoConfig compatibility.
+        if isinstance(backbone_config, dict):
+            backbone_config = dict(backbone_config)
+            if backbone_config.get("model_type") == "sam3_lite_text_vit_model":
+                backbone_config["model_type"] = "sam3_vit_model"
+        elif backbone_config is None:
+            backbone_config = {"model_type": "sam3_vit_model"}
         scale_factors = [4.0, 2.0, 1.0, 0.5] if scale_factors is None else scale_factors
         if backbone_feature_sizes is None:
             backbone_feature_sizes = [[288, 288], [144, 144], [72, 72]]

@@ -2,9 +2,11 @@
 """Convert EfficientSAM3 LiteText checkpoints to Hugging Face format."""
 
 import argparse
+import importlib.util
 import json
 import os
 import sys
+import types
 from pathlib import Path
 
 import regex as re
@@ -261,11 +263,46 @@ def _debug_compare_text_intermediates(original, model, input_ids: torch.Tensor):
         print("Final LN max abs diff:", (original_hidden - hf_hidden).abs().max().item())
 
 
+def _load_original_text_student_encoder(repo_path: str):
+    sam3_package_root = Path(repo_path) / "sam3" / "sam3"
+    if not sam3_package_root.exists():
+        raise FileNotFoundError(f"Could not locate sam3 package at {sam3_package_root}")
+
+    def _ensure_package(module_name: str, module_path: Path):
+        if module_name in sys.modules:
+            return
+        module = types.ModuleType(module_name)
+        module.__path__ = [str(module_path)]
+        sys.modules[module_name] = module
+
+    def _load_module(module_name: str, module_path: Path):
+        if module_name in sys.modules:
+            return sys.modules[module_name]
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"Could not create module spec for {module_name} from {module_path}")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        return module
+
+    _ensure_package("sam3", sam3_package_root)
+    _ensure_package("sam3.backbones", sam3_package_root / "backbones")
+    _ensure_package("sam3.model", sam3_package_root / "model")
+    _load_module("sam3.backbones.mobile_clip", sam3_package_root / "backbones" / "mobile_clip.py")
+    _load_module("sam3.model.tokenizer_ve", sam3_package_root / "model" / "tokenizer_ve.py")
+    text_encoder_module = _load_module("sam3.model.text_encoder_student", sam3_package_root / "model" / "text_encoder_student.py")
+    return text_encoder_module.TextStudentEncoder
+
+
 def verify_text_outputs(
     model: Sam3LiteTextModel, checkpoint_path: str, repo_path: str, debug_intermediates: bool = False
 ):
-    sys.path.insert(0, os.path.join(repo_path, "sam3"))
-    from sam3.model.text_encoder_student import TextStudentEncoder
+    try:
+        TextStudentEncoder = _load_original_text_student_encoder(repo_path)
+    except ModuleNotFoundError as exc:
+        print(f"Skipping text verification: missing dependency `{exc.name}` in original repo environment.")
+        return
 
     original_sd = load_original_state_dict(checkpoint_path)
     text_arch = _infer_text_architecture_from_state_dict(original_sd)
@@ -286,6 +323,7 @@ def verify_text_outputs(
         "embed_dropout": 0.0,
     }
     original = TextStudentEncoder(student_cfg, context_length=text_arch["max_position_embeddings"], output_dim=256)
+    expected_original_keys = set(original.state_dict().keys())
 
     orig_text = {}
     for key, value in original_sd.items():
@@ -295,14 +333,21 @@ def verify_text_outputs(
             continue
 
         base_key = key.replace("detector.backbone.language_backbone.", "")
-        base_key = base_key.replace(".qkv_proj.", ".attn.in_proj_")
-        base_key = base_key.replace(".out_proj.", ".attn.out_proj.")
 
-        # Original module exposes both `tensor_runner.*` and aliases (`encoder.*`, `projector.*`).
-        orig_text[f"tensor_runner.{base_key}"] = value
-        if base_key.startswith("encoder."):
-            orig_text[base_key] = value
-        elif base_key.startswith("projector."):
+        candidate_keys = [
+            base_key,
+            f"tensor_runner.{base_key}",
+            base_key.replace(".qkv_proj.", ".attn.in_proj_").replace(".out_proj.", ".attn.out_proj."),
+            f"tensor_runner.{base_key.replace('.qkv_proj.', '.attn.in_proj_').replace('.out_proj.', '.attn.out_proj.')}",
+        ]
+
+        matched_any = False
+        for candidate in candidate_keys:
+            if candidate in expected_original_keys:
+                orig_text[candidate] = value
+                matched_any = True
+        if not matched_any and base_key.startswith(("encoder.", "projector.")):
+            # Keep backward-compatible behavior for variants where state_dict aliases are not exposed.
             orig_text[base_key] = value
 
     missing, unexpected = original.load_state_dict(orig_text, strict=False)

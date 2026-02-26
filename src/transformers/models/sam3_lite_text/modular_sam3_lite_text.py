@@ -252,7 +252,35 @@ class Sam3LiteTextViTConfig(Sam3ViTConfig):
 
 
 class Sam3LiteTextVisionConfig(Sam3VisionConfig):
-    pass
+    def __init__(
+        self,
+        backbone_config=None,
+        fpn_hidden_size=256,
+        backbone_feature_sizes=None,
+        scale_factors=None,
+        hidden_act="gelu",
+        layer_norm_eps=1e-6,
+        initializer_range=0.02,
+        **kwargs,
+    ):
+        # Reuse the registered SAM3 ViT config type for AutoConfig compatibility.
+        if isinstance(backbone_config, dict):
+            backbone_config = dict(backbone_config)
+            if backbone_config.get("model_type") == "sam3_lite_text_vit_model":
+                backbone_config["model_type"] = "sam3_vit_model"
+        elif backbone_config is None:
+            backbone_config = {"model_type": "sam3_vit_model"}
+
+        super().__init__(
+            backbone_config=backbone_config,
+            fpn_hidden_size=fpn_hidden_size,
+            backbone_feature_sizes=backbone_feature_sizes,
+            scale_factors=scale_factors,
+            hidden_act=hidden_act,
+            layer_norm_eps=layer_norm_eps,
+            initializer_range=initializer_range,
+            **kwargs,
+        )
 
 
 class Sam3LiteTextGeometryEncoderConfig(Sam3GeometryEncoderConfig):
