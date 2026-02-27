@@ -471,6 +471,7 @@ def verify_conversion_against_github_reference(
     image_size: int,
     num_frames: int,
     reference_repo_path: str | None = None,
+    atol: float = 1e-4,
 ) -> bool:
     dummy_video = torch.randn(1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(0))
 
@@ -499,10 +500,8 @@ def verify_conversion_against_github_reference(
         def _safe_apply_keep_indices_nlc(x, pos_embed, keep_indices, pos_embed_has_batch: bool = False):
             if keep_indices.dtype not in (torch.int32, torch.int64):
                 keep_indices = keep_indices.to(dtype=torch.int64)
-
             if torch.any(keep_indices < 0):
                 keep_indices = keep_indices.clamp_min(0)
-
             return original_apply_keep_indices_nlc(x, pos_embed, keep_indices, pos_embed_has_batch=pos_embed_has_batch)
 
         timm.create_model = _create_model_no_pretrained
@@ -530,90 +529,9 @@ def verify_conversion_against_github_reference(
             pos_embed_sincos.apply_keep_indices_nlc = original_apply_keep_indices_nlc
             timm_eva.apply_keep_indices_nlc = original_eva_apply_keep_indices_nlc
 
-        reference_state_dict = reference_model.state_dict()
-        loadable_reference_state_dict, skipped_reference_keys = _build_reference_load_dict(
-            original_state_dict, reference_state_dict
-        )
-
-        reference_load_info = reference_model.load_state_dict(loadable_reference_state_dict, strict=False)
-        ref_missing = set(reference_load_info.missing_keys)
-        ref_unexpected = set(reference_load_info.unexpected_keys)
-
+        loadable_state_dict, _ = _build_reference_load_dict(original_state_dict, reference_model.state_dict())
+        reference_model.load_state_dict(loadable_state_dict, strict=False)
         _prepare_reference_model_for_verify(reference_model)
-
-        print(f"reference_model_name={backbone_model_name}")
-        print(f"reference_missing_keys={len(ref_missing)}")
-        print(f"reference_unexpected_keys={len(ref_unexpected)}")
-        print(f"reference_skipped_source_keys={len(skipped_reference_keys)}")
-        if ref_missing:
-            print("reference_missing_key_list=")
-            for key in sorted(ref_missing):
-                print(f"  - {key}")
-        if ref_unexpected:
-            print("reference_unexpected_key_list=")
-            for key in sorted(ref_unexpected):
-                print(f"  - {key}")
-        if skipped_reference_keys:
-            print("reference_skipped_source_key_list=")
-            for key in sorted(skipped_reference_keys):
-                print(f"  - {key}")
-
-        max_qkv_diff = 0.0
-        max_mlp_up_diff = 0.0
-        max_mlp_down_diff = 0.0
-        for layer_idx in range(hf_model.config.num_hidden_layers):
-            hf_qkv = torch.cat(
-                [
-                    hf_model.state_dict()[f"layers.{layer_idx}.attention.q_proj.weight"],
-                    hf_model.state_dict()[f"layers.{layer_idx}.attention.k_proj.weight"],
-                    hf_model.state_dict()[f"layers.{layer_idx}.attention.v_proj.weight"],
-                ],
-                dim=0,
-            )
-            reference_qkv = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.attn.qkv.weight"]
-            qkv_diff = (hf_qkv - reference_qkv).abs().max().item()
-            max_qkv_diff = max(max_qkv_diff, qkv_diff)
-            hf_mlp_up = hf_model.state_dict()[f"layers.{layer_idx}.mlp.fc1.weight"]
-            reference_mlp_up = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc1.weight"]
-            mlp_up_diff = (hf_mlp_up - reference_mlp_up).abs().max().item()
-            max_mlp_up_diff = max(max_mlp_up_diff, mlp_up_diff)
-
-            hf_mlp_down = hf_model.state_dict()[f"layers.{layer_idx}.mlp.fc2.weight"]
-            reference_mlp_down = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.mlp.fc2.weight"]
-            mlp_down_diff = (hf_mlp_down - reference_mlp_down).abs().max().item()
-            max_mlp_down_diff = max(max_mlp_down_diff, mlp_down_diff)
-
-            hf_ls1 = hf_model.state_dict()[f"layers.{layer_idx}.layer_scale1.lambda1"]
-            hf_ls2 = hf_model.state_dict()[f"layers.{layer_idx}.layer_scale2.lambda1"]
-            if f"encoder.backbone.blocks.{layer_idx}.ls1.gamma" in reference_model.state_dict():
-                reference_ls1 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.ls1.gamma"]
-                reference_ls2 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.ls2.gamma"]
-            else:
-                reference_ls1 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.gamma_1"]
-                reference_ls2 = reference_model.state_dict()[f"encoder.backbone.blocks.{layer_idx}.gamma_2"]
-            ls1_diff = (hf_ls1 - reference_ls1).abs().max().item()
-            ls2_diff = (hf_ls2 - reference_ls2).abs().max().item()
-
-            print(f"verify_layer_{layer_idx}_qkv_weight_max_abs_diff={qkv_diff:.8f}")
-            print(f"verify_layer_{layer_idx}_mlp_fc1_weight_max_abs_diff={mlp_up_diff:.8f}")
-            print(f"verify_layer_{layer_idx}_mlp_fc2_weight_max_abs_diff={mlp_down_diff:.8f}")
-            print(f"verify_layer_{layer_idx}_ls1_weight_max_abs_diff={ls1_diff:.8f}")
-            print(f"verify_layer_{layer_idx}_ls2_weight_max_abs_diff={ls2_diff:.8f}")
-
-        head_class_diff = (
-            (hf_model.state_dict()["class_predictor.weight"] - reference_model.state_dict()["class_head.weight"])
-            .abs()
-            .max()
-            .item()
-        )
-        head_mask_diff = (
-            (hf_model.state_dict()["mask_head.fc1.weight"] - reference_model.state_dict()["mask_head.0.weight"])
-            .abs()
-            .max()
-            .item()
-        )
-        print(f"verify_head_class_weight_max_abs_diff={head_class_diff:.8f}")
-        print(f"verify_head_mask_fc1_weight_max_abs_diff={head_mask_diff:.8f}")
 
         with torch.no_grad():
             hf_outputs = hf_model(pixel_values=dummy_video)
@@ -635,55 +553,11 @@ def verify_conversion_against_github_reference(
 
         logits_diff = (hf_outputs.class_queries_logits - reference_logits).abs().max().item()
         masks_diff = (hf_outputs.masks_queries_logits - reference_masks).abs().max().item()
-
-        if num_frames > 1:
-            hf_logits_by_frame = hf_outputs.class_queries_logits.view(
-                -1, num_frames, hf_model.config.num_queries, hf_model.config.num_labels + 1
-            )
-            hf_masks_by_frame = hf_outputs.masks_queries_logits.view(
-                -1,
-                num_frames,
-                hf_model.config.num_queries,
-                hf_outputs.masks_queries_logits.shape[-2],
-                hf_outputs.masks_queries_logits.shape[-1],
-            )
-            reference_logits_by_frame = reference_logits.view(
-                -1, num_frames, hf_model.config.num_queries, hf_model.config.num_labels + 1
-            )
-            reference_masks_by_frame = reference_masks.view(
-                -1,
-                num_frames,
-                hf_model.config.num_queries,
-                reference_masks.shape[-2],
-                reference_masks.shape[-1],
-            )
-            for frame_idx in range(num_frames):
-                frame_logits_diff = (
-                    (hf_logits_by_frame[:, frame_idx] - reference_logits_by_frame[:, frame_idx]).abs().max().item()
-                )
-                frame_masks_diff = (
-                    (hf_masks_by_frame[:, frame_idx] - reference_masks_by_frame[:, frame_idx]).abs().max().item()
-                )
-                print(f"verify_frame_{frame_idx}_logits_max_abs_diff={frame_logits_diff:.8f}")
-                print(f"verify_frame_{frame_idx}_masks_max_abs_diff={frame_masks_diff:.8f}")
-
         print(f"verify_logits_max_abs_diff={logits_diff:.8f}")
         print(f"verify_masks_max_abs_diff={masks_diff:.8f}")
 
-        outputs_match = torch.allclose(
-            hf_outputs.class_queries_logits, reference_logits, atol=1e-4, rtol=1e-4
-        ) and torch.allclose(hf_outputs.masks_queries_logits, reference_masks, atol=1e-4, rtol=1e-4)
-
-        weight_mapping_ok = (
-            max_qkv_diff < 1e-8
-            and max_mlp_up_diff < 1e-8
-            and max_mlp_down_diff < 1e-8
-            and head_class_diff < 1e-8
-            and head_mask_diff < 1e-8
-            and not ref_unexpected
-        )
-        print(f"verify_weight_mapping_ok={weight_mapping_ok}")
-        print(f"verify_full_forward_ok={outputs_match}")
+        outputs_match = logits_diff < atol and masks_diff < atol
+        print(f"verify_forward_pass_ok={outputs_match}")
         return outputs_match
 
 
