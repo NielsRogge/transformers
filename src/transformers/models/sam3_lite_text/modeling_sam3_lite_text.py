@@ -63,13 +63,21 @@ class Sam3LiteTextTextEncoderOutput(BaseModelOutputWithPooling):
 class Sam3LiteTextLayerNormFP32(nn.LayerNorm):
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         input_dtype = hidden_states.dtype
-        return super().forward(hidden_states.to(torch.float32)).to(input_dtype)
+        hidden_states = nn.functional.layer_norm(
+            hidden_states.to(torch.float32),
+            self.normalized_shape,
+            self.weight.to(torch.float32) if self.weight is not None else None,
+            self.bias.to(torch.float32) if self.bias is not None else None,
+            self.eps,
+        )
+        return hidden_states.to(input_dtype)
 
 
 class Sam3LiteTextTextPositionEmbedding(nn.Module):
     def __init__(self, max_position_embeddings: int, hidden_size: int):
         super().__init__()
         self.position_embedding = nn.Parameter(torch.empty(1, 1, max_position_embeddings, hidden_size))
+        nn.init.normal_(self.position_embedding, std=hidden_size**-0.5)
 
     def forward(self, seq_len: int) -> torch.Tensor:
         position_embedding = self.position_embedding
@@ -216,6 +224,7 @@ class Sam3LiteTextTextEncoder(nn.Module):
             self.repmixer_indexes = ()
         self.final_layer_norm = Sam3LiteTextLayerNormFP32(text_config.hidden_size)
         self.projection = nn.Parameter(torch.empty(text_config.hidden_size, text_config.projection_dim))
+        nn.init.normal_(self.projection, std=text_config.hidden_size**-0.5)
 
     def forward(self, input_ids: torch.LongTensor, **kwargs) -> Sam3LiteTextTextEncoderOutput:
         hidden_states = self.token_embedding(input_ids)

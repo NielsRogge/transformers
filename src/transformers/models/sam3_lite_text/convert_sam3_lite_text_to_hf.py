@@ -9,12 +9,15 @@ from pathlib import Path
 
 import regex as re
 import torch
-from huggingface_hub import hf_hub_download, list_repo_files
+from huggingface_hub import HfApi, hf_hub_download, list_repo_files
+from huggingface_hub.errors import HfHubHTTPError
 
 from transformers import Sam3LiteTextConfig, Sam3LiteTextModel
-from transformers.models.sam3.configuration_sam3 import Sam3ViTConfig
 from transformers.models.sam3.convert_sam3_to_hf import convert_old_keys_to_new_keys
-from transformers.models.sam3_lite_text.configuration_sam3_lite_text import Sam3LiteTextVisionConfig
+from transformers.models.sam3_lite_text.configuration_sam3_lite_text import (
+    Sam3LiteTextVisionConfig,
+    Sam3LiteTextViTConfig,
+)
 
 
 TEXT_KEY_MAPPING = {
@@ -195,10 +198,21 @@ def _infer_text_architecture_from_state_dict(state_dict: dict[str, torch.Tensor]
 
 def _build_config(state_dict: dict[str, torch.Tensor]) -> Sam3LiteTextConfig:
     text_arch = _infer_text_architecture_from_state_dict(state_dict)
-    config = Sam3LiteTextConfig(vision_config=Sam3LiteTextVisionConfig(backbone_config=Sam3ViTConfig()))
+    config = Sam3LiteTextConfig(vision_config=Sam3LiteTextVisionConfig(backbone_config=Sam3LiteTextViTConfig()))
     for key, value in text_arch.items():
         setattr(config.text_config, key, value)
     return config
+
+
+def _default_hub_model_id(checkpoint_name: str) -> str:
+    token = os.environ.get("HF_TOKEN")
+    try:
+        username = HfApi().whoami(token=token)["name"]
+    except (HfHubHTTPError, KeyError) as exc:
+        raise ValueError(
+            "Could not infer Hub username from HF_TOKEN. Provide --hub_model_id explicitly or set a valid HF_TOKEN."
+        ) from exc
+    return f"{username}/{checkpoint_name}"
 
 
 def get_litetext_checkpoint_filenames(repo_id: str) -> list[str]:
@@ -222,7 +236,7 @@ def convert_all_checkpoints(
         ckpt_output = Path(output_dir) / ckpt_name
         print(f"\n=== Converting {filename} -> {ckpt_output} ===")
         try:
-            hub_model_id = f"nielsr/{ckpt_name}" if push_to_hub else None
+            hub_model_id = _default_hub_model_id(ckpt_name) if push_to_hub else None
             convert_checkpoint(
                 ckpt_path,
                 str(ckpt_output),
@@ -361,7 +375,7 @@ def convert_checkpoint(
     if push_to_hub:
         if hub_model_id is None:
             ckpt_name = Path(checkpoint_path).stem
-            hub_model_id = f"nielsr/{ckpt_name}"
+            hub_model_id = _default_hub_model_id(ckpt_name)
         print(f"Pushing converted checkpoint to Hub: {hub_model_id}")
         model.push_to_hub(hub_model_id)
 
@@ -376,9 +390,20 @@ def main():
     )
     parser.add_argument("--original_repo_path", type=str, default=None)
     parser.add_argument("--debug_intermediates", action="store_true")
-    parser.add_argument("--convert_all", action="store_true")
-    parser.add_argument("--push_to_hub", action="store_true")
-    parser.add_argument("--hub_model_id", type=str, default=None)
+    parser.add_argument(
+        "--convert_all", action="store_true", help="Convert every LiteText checkpoint in the source repo."
+    )
+    parser.add_argument(
+        "--push_to_hub",
+        action="store_true",
+        help="Push converted checkpoints to the Hugging Face Hub (defaults to <HF_TOKEN username>/<checkpoint_stem>).",
+    )
+    parser.add_argument(
+        "--hub_model_id",
+        type=str,
+        default=None,
+        help="Explicit Hub destination for single-checkpoint conversion (ignored when --convert_all is used).",
+    )
     args = parser.parse_args()
 
     if args.convert_all:

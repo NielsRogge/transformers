@@ -162,6 +162,10 @@ class Sam3LiteTextVisionConfig(PreTrainedConfig):
         initializer_range=0.02,
         **kwargs,
     ):
+        if isinstance(backbone_config, dict):
+            backbone_config = Sam3LiteTextViTConfig(**{k: v for k, v in backbone_config.items() if k != "model_type"})
+        elif backbone_config is None:
+            backbone_config = Sam3LiteTextViTConfig()
         scale_factors = [4.0, 2.0, 1.0, 0.5] if scale_factors is None else scale_factors
         if backbone_feature_sizes is None:
             backbone_feature_sizes = [[288, 288], [144, 144], [72, 72]]

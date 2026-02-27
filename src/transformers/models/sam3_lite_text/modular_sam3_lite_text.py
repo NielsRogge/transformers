@@ -72,13 +72,21 @@ class Sam3LiteTextTextEncoderOutput(BaseModelOutputWithPooling):
 class Sam3LiteTextLayerNormFP32(nn.LayerNorm):
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         input_dtype = hidden_states.dtype
-        return super().forward(hidden_states.to(torch.float32)).to(input_dtype)
+        hidden_states = nn.functional.layer_norm(
+            hidden_states.to(torch.float32),
+            self.normalized_shape,
+            self.weight.to(torch.float32) if self.weight is not None else None,
+            self.bias.to(torch.float32) if self.bias is not None else None,
+            self.eps,
+        )
+        return hidden_states.to(input_dtype)
 
 
 class Sam3LiteTextTextPositionEmbedding(nn.Module):
     def __init__(self, max_position_embeddings: int, hidden_size: int):
         super().__init__()
         self.position_embedding = nn.Parameter(torch.empty(1, 1, max_position_embeddings, hidden_size))
+        nn.init.normal_(self.position_embedding, std=hidden_size**-0.5)
 
     def forward(self, seq_len: int) -> torch.Tensor:
         position_embedding = self.position_embedding
@@ -225,6 +233,7 @@ class Sam3LiteTextTextEncoder(nn.Module):
             self.repmixer_indexes = ()
         self.final_layer_norm = Sam3LiteTextLayerNormFP32(text_config.hidden_size)
         self.projection = nn.Parameter(torch.empty(text_config.hidden_size, text_config.projection_dim))
+        nn.init.normal_(self.projection, std=text_config.hidden_size**-0.5)
 
     def forward(self, input_ids: torch.LongTensor, **kwargs) -> Sam3LiteTextTextEncoderOutput:
         hidden_states = self.token_embedding(input_ids)
@@ -252,7 +261,31 @@ class Sam3LiteTextViTConfig(Sam3ViTConfig):
 
 
 class Sam3LiteTextVisionConfig(Sam3VisionConfig):
-    pass
+    def __init__(
+        self,
+        backbone_config=None,
+        fpn_hidden_size=256,
+        backbone_feature_sizes=None,
+        scale_factors=None,
+        hidden_act="gelu",
+        layer_norm_eps=1e-6,
+        initializer_range=0.02,
+        **kwargs,
+    ):
+        if isinstance(backbone_config, dict):
+            backbone_config = Sam3LiteTextViTConfig(**{k: v for k, v in backbone_config.items() if k != "model_type"})
+        elif backbone_config is None:
+            backbone_config = Sam3LiteTextViTConfig()
+        super().__init__(
+            backbone_config=backbone_config,
+            fpn_hidden_size=fpn_hidden_size,
+            backbone_feature_sizes=backbone_feature_sizes,
+            scale_factors=scale_factors,
+            hidden_act=hidden_act,
+            layer_norm_eps=layer_norm_eps,
+            initializer_range=initializer_range,
+            **kwargs,
+        )
 
 
 class Sam3LiteTextGeometryEncoderConfig(Sam3GeometryEncoderConfig):
