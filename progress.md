@@ -83,7 +83,6 @@
 - For `--convert_all`, each converted checkpoint now computes default push target `nielsr/<checkpoint_stem>` when `--push_to_hub` is enabled.
 - Validated CLI and non-push conversion flow locally; kept upload behavior opt-in to avoid accidental hub writes during local runs.
 
-
 ## Latest progress update (current turn 10)
 - Improved converter CLI UX by adding help text for `--convert_all`, `--push_to_hub`, and `--hub_model_id` so the new Hub upload flow is self-documenting from `--help` output.
 - Kept push semantics unchanged: defaults remain `nielsr/<checkpoint_stem>` when `--push_to_hub` is enabled without explicit `--hub_model_id`.
