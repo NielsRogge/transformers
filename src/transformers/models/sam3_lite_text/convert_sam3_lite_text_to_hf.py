@@ -78,8 +78,8 @@ for i in range(12):
     TEXT_KEY_MAPPING.update(
         {
             rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_mha\.0\.": rf"text_encoder.layers.{i}.layer_norm1.",
-            rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_mha\.1\.qkv_proj\.": rf"text_encoder.layers.{i}.attention.in_proj_",
-            rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_mha\.1\.out_proj\.": rf"text_encoder.layers.{i}.attention.out_proj.",
+            rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_mha\.1\.qkv_proj\.": rf"text_encoder.layers.{i}.self_attn.in_proj_",
+            rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_mha\.1\.out_proj\.": rf"text_encoder.layers.{i}.self_attn.out_proj.",
             rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_ffn\.0\.": rf"text_encoder.layers.{i}.layer_norm2.",
             rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_ffn\.1\.": rf"text_encoder.layers.{i}.fc1.",
             rf"^backbone\.language_backbone\.encoder\.transformer\.{i}\.pre_norm_ffn\.4\.": rf"text_encoder.layers.{i}.fc2.",
@@ -98,9 +98,6 @@ def split_qkv_for_sam3_lite_text(state_dict: dict[str, torch.Tensor]) -> dict[st
 
     in_proj_keys_to_split = [key for key in state_dict.keys() if ".in_proj_" in key]
     for key in in_proj_keys_to_split:
-        # Keep MobileCLIP text encoder MHA in packed in_proj format (nn.MultiheadAttention layout).
-        if key.startswith("text_encoder.layers."):
-            continue
         in_proj = state_dict.pop(key)
         q, k, v = torch.chunk(in_proj, 3, dim=0)
         if key.endswith("in_proj_weight"):
@@ -291,7 +288,7 @@ def _debug_compare_text_intermediates(original, model, input_ids: torch.Tensor):
                     model.text_encoder.layers[idx](hf_hidden.permute(0, 2, 1).unsqueeze(2)).squeeze(2).permute(0, 2, 1)
                 )
             else:
-                hf_hidden = model.text_encoder.layers[idx](hf_hidden)
+                hf_hidden, _ = model.text_encoder.layers[idx](hf_hidden)
 
             print(f"Layer {idx} max abs diff:", (original_hidden - hf_hidden).abs().max().item())
 

@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from ...masking_utils import create_bidirectional_mask
+from ...modeling_layers import GradientCheckpointingLayer
 from ...modeling_outputs import BaseModelOutputWithPooling
+from ...modeling_utils import ALL_ATTENTION_FUNCTIONS
+from ...processing_utils import Unpack
+from ...utils.generic import TransformersKwargs
 from ..sam3.configuration_sam3 import (
     Sam3Config,
     Sam3DETRDecoderConfig,
@@ -69,24 +75,10 @@ class Sam3LiteTextTextEncoderOutput(BaseModelOutputWithPooling):
     pass
 
 
-class Sam3LiteTextLayerNormFP32(nn.LayerNorm):
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        input_dtype = hidden_states.dtype
-        hidden_states = nn.functional.layer_norm(
-            hidden_states.to(torch.float32),
-            self.normalized_shape,
-            self.weight.to(torch.float32) if self.weight is not None else None,
-            self.bias.to(torch.float32) if self.bias is not None else None,
-            self.eps,
-        )
-        return hidden_states.to(input_dtype)
-
-
 class Sam3LiteTextTextPositionEmbedding(nn.Module):
     def __init__(self, max_position_embeddings: int, hidden_size: int):
         super().__init__()
         self.position_embedding = nn.Parameter(torch.empty(1, 1, max_position_embeddings, hidden_size))
-        nn.init.normal_(self.position_embedding, std=hidden_size**-0.5)
 
     def forward(self, seq_len: int) -> torch.Tensor:
         position_embedding = self.position_embedding
@@ -176,32 +168,109 @@ class Sam3LiteTextConvFFN(nn.Module):
         return hidden_states
 
 
-class Sam3LiteTextTransformerLayer(nn.Module):
-    def __init__(self, hidden_size: int, intermediate_size: int, num_attention_heads: int):
-        super().__init__()
-        self.layer_norm1 = Sam3LiteTextLayerNormFP32(hidden_size)
-        self.attention = nn.MultiheadAttention(hidden_size, num_attention_heads, batch_first=True)
-        self.dropout = nn.Dropout(0.0)
-        self.layer_norm2 = Sam3LiteTextLayerNormFP32(hidden_size)
-        self.fc1 = nn.Linear(hidden_size, intermediate_size)
-        self.act = nn.GELU()
-        self.fc2 = nn.Linear(intermediate_size, hidden_size)
+def eager_attention_forward(
+    module: nn.Module,
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    attention_mask: torch.Tensor | None,
+    scaling: float | None = None,
+    dropout: float = 0.0,
+    **kwargs: Unpack[TransformersKwargs],
+):
+    if scaling is None:
+        scaling = query.size(-1) ** -0.5
+    attn_weights = torch.matmul(query, key.transpose(2, 3)) * scaling
+    if attention_mask is not None:
+        attn_weights = attn_weights + attention_mask
+    attn_weights = nn.functional.softmax(attn_weights, dim=-1)
+    attn_weights = nn.functional.dropout(attn_weights, p=dropout, training=module.training)
+    attn_output = torch.matmul(attn_weights, value)
+    attn_output = attn_output.transpose(1, 2).contiguous()
+    return attn_output, attn_weights
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+
+class Sam3LiteTextTextEncoderAttention(nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.embed_dim = config.hidden_size
+        self.num_heads = config.num_attention_heads
+        self.head_dim = self.embed_dim // self.num_heads
+        self.scale = self.head_dim**-0.5
+        self.dropout = getattr(config, "attention_dropout", 0.0)
+        self.is_causal = False
+
+        self.q_proj = nn.Linear(self.embed_dim, self.embed_dim)
+        self.k_proj = nn.Linear(self.embed_dim, self.embed_dim)
+        self.v_proj = nn.Linear(self.embed_dim, self.embed_dim)
+        self.out_proj = nn.Linear(self.embed_dim, self.embed_dim)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+        **kwargs: Unpack[TransformersKwargs],
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
+        batch_size, seq_length, embed_dim = hidden_states.shape
+
+        queries = self.q_proj(hidden_states)
+        keys = self.k_proj(hidden_states)
+        values = self.v_proj(hidden_states)
+
+        queries = queries.view(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+        keys = keys.view(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+        values = values.view(batch_size, seq_length, self.num_heads, self.head_dim).transpose(1, 2)
+
+        attention_interface: Callable = ALL_ATTENTION_FUNCTIONS.get_interface(
+            self.config._attn_implementation, eager_attention_forward
+        )
+
+        attn_output, attn_weights = attention_interface(
+            self,
+            queries,
+            keys,
+            values,
+            attention_mask,
+            scaling=self.scale,
+            dropout=0.0 if not self.training else self.dropout,
+            **kwargs,
+        )
+
+        attn_output = attn_output.reshape(batch_size, seq_length, embed_dim).contiguous()
+        attn_output = self.out_proj(attn_output)
+
+        return attn_output, attn_weights
+
+
+class Sam3LiteTextTransformerLayer(GradientCheckpointingLayer):
+    def __init__(self, config):
+        super().__init__()
+        self.self_attn = Sam3LiteTextTextEncoderAttention(config)
+        self.layer_norm1 = nn.LayerNorm(config.hidden_size)
+        self.layer_norm2 = nn.LayerNorm(config.hidden_size)
+        self.fc1 = nn.Linear(config.hidden_size, config.intermediate_size)
+        self.act = nn.GELU()
+        self.fc2 = nn.Linear(config.intermediate_size, config.hidden_size)
+
+    def forward(
+        self, hidden_states: torch.Tensor, **kwargs: Unpack[TransformersKwargs]
+    ) -> tuple[torch.Tensor, torch.Tensor | None]:
         residual = hidden_states
         hidden_states = self.layer_norm1(hidden_states)
-        hidden_states = self.attention(hidden_states, hidden_states, hidden_states, need_weights=False)[0]
-        hidden_states = residual + self.dropout(hidden_states)
+        hidden_states, attn_weights = self.self_attn(hidden_states, **kwargs)
+        hidden_states = residual + hidden_states
         residual = hidden_states
         hidden_states = self.layer_norm2(hidden_states)
         hidden_states = self.fc2(self.act(self.fc1(hidden_states)))
-        return residual + hidden_states
+        return residual + hidden_states, attn_weights
 
 
 class Sam3LiteTextTextEncoder(nn.Module):
     def __init__(self, config: "Sam3LiteTextConfig"):
         super().__init__()
         text_config = config.text_config
+        self.config = text_config
         self.token_embedding = nn.Embedding(text_config.vocab_size, text_config.hidden_size)
         self.position_embedding = Sam3LiteTextTextPositionEmbedding(
             text_config.max_position_embeddings, text_config.hidden_size
@@ -212,48 +281,64 @@ class Sam3LiteTextTextEncoder(nn.Module):
             num_transformer_layers = text_config.num_hidden_layers - 2
             self.layers = nn.ModuleList(
                 [Sam3LiteTextRepMixerBlock(text_config.hidden_size, text_config.intermediate_size)]
-                + [
-                    Sam3LiteTextTransformerLayer(
-                        text_config.hidden_size, text_config.intermediate_size, text_config.num_attention_heads
-                    )
-                    for _ in range(num_transformer_layers)
-                ]
+                + [Sam3LiteTextTransformerLayer(text_config) for _ in range(num_transformer_layers)]
                 + [Sam3LiteTextRepMixerBlock(text_config.hidden_size, text_config.intermediate_size)]
             )
             self.repmixer_indexes = (0, text_config.num_hidden_layers - 1)
         else:
             self.layers = nn.ModuleList(
-                [
-                    Sam3LiteTextTransformerLayer(
-                        text_config.hidden_size, text_config.intermediate_size, text_config.num_attention_heads
-                    )
-                    for _ in range(text_config.num_hidden_layers)
-                ]
+                [Sam3LiteTextTransformerLayer(text_config) for _ in range(text_config.num_hidden_layers)]
             )
             self.repmixer_indexes = ()
-        self.final_layer_norm = Sam3LiteTextLayerNormFP32(text_config.hidden_size)
+        self.final_layer_norm = nn.LayerNorm(text_config.hidden_size)
         self.projection = nn.Parameter(torch.empty(text_config.hidden_size, text_config.projection_dim))
-        nn.init.normal_(self.projection, std=text_config.hidden_size**-0.5)
 
     def forward(self, input_ids: torch.LongTensor, **kwargs) -> Sam3LiteTextTextEncoderOutput:
+        output_attentions = kwargs.pop("output_attentions", getattr(self.config, "output_attentions", False))
+        output_hidden_states = kwargs.pop("output_hidden_states", getattr(self.config, "output_hidden_states", False))
+        attention_mask = kwargs.pop("attention_mask", None)
+        kwargs.pop("return_dict", None)
+
+        all_hidden_states = () if output_hidden_states else None
+        all_attentions = () if output_attentions else None
+
         hidden_states = self.token_embedding(input_ids)
         seq_len = hidden_states.shape[1]
         hidden_states = hidden_states + self.position_embedding(seq_len).to(hidden_states.dtype)
         hidden_states = self.embedding_dropout(hidden_states)
+
+        # Convert 2D attention mask to 4D for attention layers
+        if attention_mask is not None:
+            attention_mask = create_bidirectional_mask(self.config, hidden_states, attention_mask)
+
+        if output_hidden_states:
+            all_hidden_states = all_hidden_states + (hidden_states,)
+
         for idx, layer in enumerate(self.layers):
             if idx in self.repmixer_indexes:
                 hidden_states = hidden_states.permute(0, 2, 1).unsqueeze(2)
                 hidden_states = layer(hidden_states)
                 hidden_states = hidden_states.squeeze(2).permute(0, 2, 1)
             else:
-                hidden_states = layer(hidden_states)
+                hidden_states, attn_weights = layer(hidden_states, attention_mask=attention_mask, **kwargs)
+                if output_attentions:
+                    all_attentions = all_attentions + (attn_weights,)
+
+            if output_hidden_states:
+                all_hidden_states = all_hidden_states + (hidden_states,)
+
         hidden_states = self.final_layer_norm(hidden_states)
 
         pooled = hidden_states[
             torch.arange(hidden_states.shape[0], device=hidden_states.device), input_ids.argmax(dim=-1)
         ]
         pooled = pooled @ self.projection
-        return Sam3LiteTextTextEncoderOutput(last_hidden_state=hidden_states, pooler_output=pooled)
+        return Sam3LiteTextTextEncoderOutput(
+            last_hidden_state=hidden_states,
+            pooler_output=pooled,
+            hidden_states=all_hidden_states,
+            attentions=all_attentions,
+        )
 
 
 class Sam3LiteTextViTConfig(Sam3ViTConfig):
@@ -365,7 +450,12 @@ class Sam3LiteTextViTLayer(Sam3ViTLayer):
 
 
 class Sam3LiteTextPreTrainedModel(Sam3PreTrainedModel):
-    pass
+    def _init_weights(self, module):
+        super()._init_weights(module)
+        if isinstance(module, Sam3LiteTextTextPositionEmbedding):
+            nn.init.normal_(module.position_embedding, std=module.position_embedding.shape[-1] ** -0.5)
+        elif isinstance(module, Sam3LiteTextTextEncoder):
+            nn.init.normal_(module.projection, std=module.config.hidden_size**-0.5)
 
 
 class Sam3LiteTextViTModel(Sam3ViTModel):

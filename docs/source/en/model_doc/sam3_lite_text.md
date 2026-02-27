@@ -17,28 +17,67 @@ limitations under the License.
 
 -->
 
-
 # SAM3-LiteText
+
+<div style="float: right;">
+    <div class="flex flex-wrap space-x-1">
+        <img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-DE3412?style=flat&logo=pytorch&logoColor=white">
+    </div>
+</div>
 
 ## Overview
 
-The SAM3-LiteText model was proposed in [<INSERT PAPER NAME HERE>](<INSERT PAPER LINK HERE>) by <INSERT AUTHORS HERE>.
-<INSERT SHORT SUMMARY HERE>
+SAM3-LiteText was proposed in [SAM3-LiteText: An Anatomical Study of the SAM3 Text Encoder for Efficient Vision-Language Segmentation](https://huggingface.co/papers/2602.12173) by Chengxi Zeng, Yuxuan Jiang, Ge Gao, Shuai Wang, Duolikun Danier, Bin Zhu, Stevan Rudinac, David Bull, and Fan Zhang.
+
+SAM3-LiteText is a lightweight variant of [SAM3](sam3) that replaces the heavy SAM3 text encoder (353M parameters) with a compact MobileCLIP-based text encoder optimized through knowledge distillation. The SAM3 ViT-H image encoder is kept intact. This reduces text encoder parameters by up to 88% while maintaining segmentation performance comparable to the original model.
 
 The abstract from the paper is the following:
 
-<INSERT PAPER ABSTRACT HERE>
+*Vision-language segmentation models such as SAM3 enable flexible, prompt-driven visual grounding, but inherit large, general-purpose text encoders originally designed for open-ended language understanding. In practice, segmentation prompts are short, structured, and semantically constrained, leading to substantial over-provisioning in text encoder capacity and persistent computational and memory overhead. In this paper, we perform a large-scale anatomical analysis of text prompting in vision-language segmentation, covering 404,796 real prompts across multiple benchmarks. Our analysis reveals severe redundancy: most context windows are underutilized, vocabulary usage is highly sparse, and text embeddings lie on low-dimensional manifold despite high-dimensional representations. Motivated by these findings, we propose SAM3-LiteText, a lightweight text encoding framework that replaces the original SAM3 text encoder with a compact MobileCLIP student that is optimized by knowledge distillation. Extensive experiments on image and video segmentation benchmarks show that SAM3-LiteText reduces text encoder parameters by up to 88%, substantially reducing static memory footprint, while maintaining segmentation performance comparable to the original model.*
 
-Tips:
+The text encoder architecture is based on [MobileCLIP](https://huggingface.co/papers/2311.17049) and comes in three variants:
 
-<INSERT TIPS ABOUT MODEL HERE>
+| Variant | Text Encoder | Text Params | Reduction |
+|---|---|---|---|
+| SAM3-LiteText-S0-16 | MobileCLIP-S0 | 42.54M | ~88% |
+| SAM3-LiteText-S1-16 | MobileCLIP-S1 | 63.53M | ~82% |
+| SAM3-LiteText-L-16 | MobileCLIP2-L | 123.80M | ~65% |
 
-This model was contributed by [INSERT YOUR HF USERNAME HERE](https://huggingface.co/<INSERT YOUR HF USERNAME HERE>).
-The original code can be found [here](<INSERT LINK TO GITHUB REPO HERE>).
+This model was contributed by [nielsr](https://huggingface.co/nielsr).
+The original code can be found [here](https://github.com/SimonZeng7108/efficientsam3/tree/sam3_litetext).
 
-## Usage examples
+## Usage
 
-<INSERT SOME NICE EXAMPLES HERE>
+SAM3-LiteText is a drop-in replacement for SAM3 with a lightweight text encoder. It uses the same processor ([`Sam3Processor`]) and supports the same prompting interface. Refer to the [SAM3 documentation](sam3) for detailed usage examples including text prompts, box prompts, batched inference, and more.
+
+```python
+>>> from transformers import Sam3Processor, Sam3LiteTextModel
+>>> import torch
+>>> from PIL import Image
+>>> import requests
+
+>>> device = "cuda" if torch.cuda.is_available() else "cpu"
+
+>>> model = Sam3LiteTextModel.from_pretrained("nielsr/efficient-sam-3-mobileclip-s0-ctx16").to(device)
+>>> processor = Sam3Processor.from_pretrained("nielsr/efficient-sam-3-mobileclip-s0-ctx16")
+
+>>> image_url = "http://images.cocodataset.org/val2017/000000077595.jpg"
+>>> image = Image.open(requests.get(image_url, stream=True).raw).convert("RGB")
+
+>>> inputs = processor(images=image, text="ear", return_tensors="pt").to(device)
+
+>>> with torch.no_grad():
+...     outputs = model(**inputs)
+
+>>> results = processor.post_process_instance_segmentation(
+...     outputs,
+...     threshold=0.5,
+...     mask_threshold=0.5,
+...     target_sizes=inputs.get("original_sizes").tolist(),
+... )[0]
+
+>>> print(f"Found {len(results['masks'])} objects")
+```
 
 ## Sam3LiteTextConfig
 

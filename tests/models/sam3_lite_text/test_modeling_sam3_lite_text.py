@@ -334,6 +334,8 @@ class Sam3LiteTextModelTester:
         )
 
         # Small text config for testing (instead of default full CLIP model)
+        # model_name="standard" avoids MCT mode (which uses RepMixer blocks without attention),
+        # ensuring all layers are TransformerLayers so attention output tests pass.
         text_config = {
             "vocab_size": 1000,  # Keep at 1000 for stability
             "hidden_size": 32,
@@ -343,6 +345,7 @@ class Sam3LiteTextModelTester:
             "num_attention_heads": 4,
             "max_position_embeddings": 32,  # Keep at 32 for stability
             "hidden_act": "gelu",
+            "model_name": "standard",
         }
 
         geometry_encoder_config = Sam3LiteTextGeometryEncoderConfig(
@@ -738,7 +741,7 @@ class Sam3LiteTextModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.Test
                 model_eager = model_eager.eval().to(torch_device)
 
                 self.assertTrue(getattr(model_eager, "vision_encoder").config._attn_implementation == "eager")
-                if hasattr(model_eager, "text_encoder"):
+                if hasattr(model_eager, "text_encoder") and hasattr(model_eager.text_encoder, "config"):
                     self.assertTrue(model_eager.text_encoder.config._attn_implementation == "eager")
                 if hasattr(model_eager, "detr_encoder"):
                     self.assertTrue(model_eager.detr_encoder.config._attn_implementation == "eager")
