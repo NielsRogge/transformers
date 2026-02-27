@@ -1,5 +1,28 @@
-# Copyright 2026 The HuggingFace Team. All rights reserved.
-"""Convert EfficientSAM3 LiteText checkpoints to Hugging Face format."""
+# Copyright 2026 The HuggingFace Inc. team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Convert EfficientSAM3 LiteText checkpoints to Hugging Face format.
+
+URL: https://github.com/SimonZeng7108/efficientsam3.
+
+To run this script:
+
+```bash
+python src/transformers/models/sam3_lite_text/convert_sam3_lite_text_to_hf.py \
+    --output_dir . \
+    --original_repo_path /Users/nielsrogge/Documents/python_projecten/efficientsam3
+```
+"""
 
 import argparse
 import json
