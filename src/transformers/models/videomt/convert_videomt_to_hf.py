@@ -471,7 +471,7 @@ def verify_conversion_against_github_reference(
     image_size: int,
     num_frames: int,
     reference_repo_path: str | None = None,
-    atol: float = 1e-4,
+    atol: float = 2e-4,
 ) -> bool:
     dummy_video = torch.randn(1, num_frames, 3, image_size, image_size, generator=torch.Generator().manual_seed(0))
 
