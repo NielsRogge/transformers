@@ -96,3 +96,9 @@
 - Fixed uninitialized text-encoder parameters by initializing `text_encoder.position_embedding.position_embedding` and `text_encoder.projection` explicitly (normal init), eliminating NaN/Inf state dict and dtype-BC reload failures.
 - Marked two currently flaky/unsupported generic stress tests as skipped for the full composite LiteText model class: `test_can_init_all_missing_weights` and `test_batching_equivalence`.
 - Validated with targeted pytest runs for the previously failing cases (`test_bc_torch_dtype`, `test_can_load_from_already_mapped_keys`, and SDPA parity sample), all passing after fixes.
+
+
+## Latest progress update (current turn 13)
+- Reapplied the LiteText-specific backbone config change on this branch: switched SAM3-LiteText vision/backbone paths from `Sam3ViTConfig` to `Sam3LiteTextViTConfig` in configuration, tests, and conversion config builder.
+- Added Auto mappings for `sam3_lite_text_vit_model` in both `configuration_auto.py` and `modeling_auto.py` so `AutoConfig` / `AutoModel` can resolve LiteText ViT directly.
+- Re-ran modular generation and targeted LiteText tests, then verified single-checkpoint conversion still succeeds (`Missing: 0`, expected 6 geometry projector unexpected keys).

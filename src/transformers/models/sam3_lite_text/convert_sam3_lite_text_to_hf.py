@@ -13,9 +13,11 @@ from huggingface_hub import HfApi, hf_hub_download, list_repo_files
 from huggingface_hub.errors import HfHubHTTPError
 
 from transformers import Sam3LiteTextConfig, Sam3LiteTextModel
-from transformers.models.sam3.configuration_sam3 import Sam3ViTConfig
 from transformers.models.sam3.convert_sam3_to_hf import convert_old_keys_to_new_keys
-from transformers.models.sam3_lite_text.configuration_sam3_lite_text import Sam3LiteTextVisionConfig
+from transformers.models.sam3_lite_text.configuration_sam3_lite_text import (
+    Sam3LiteTextVisionConfig,
+    Sam3LiteTextViTConfig,
+)
 
 
 TEXT_KEY_MAPPING = {
@@ -196,7 +198,7 @@ def _infer_text_architecture_from_state_dict(state_dict: dict[str, torch.Tensor]
 
 def _build_config(state_dict: dict[str, torch.Tensor]) -> Sam3LiteTextConfig:
     text_arch = _infer_text_architecture_from_state_dict(state_dict)
-    config = Sam3LiteTextConfig(vision_config=Sam3LiteTextVisionConfig(backbone_config=Sam3ViTConfig()))
+    config = Sam3LiteTextConfig(vision_config=Sam3LiteTextVisionConfig(backbone_config=Sam3LiteTextViTConfig()))
     for key, value in text_arch.items():
         setattr(config.text_config, key, value)
     return config

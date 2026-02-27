@@ -37,7 +37,6 @@ if is_torch_available():
     import torch
     from torch import nn
 
-    from transformers.models.sam3.configuration_sam3 import Sam3ViTConfig
     from transformers.models.sam3.processing_sam3 import Sam3Processor as Sam3LiteTextProcessor
     from transformers.models.sam3_lite_text.configuration_sam3_lite_text import (
         Sam3LiteTextConfig,
@@ -46,6 +45,7 @@ if is_torch_available():
         Sam3LiteTextGeometryEncoderConfig,
         Sam3LiteTextMaskDecoderConfig,
         Sam3LiteTextVisionConfig,
+        Sam3LiteTextViTConfig,
     )
     from transformers.models.sam3_lite_text.modeling_sam3_lite_text import Sam3LiteTextModel, Sam3LiteTextVisionModel
 
@@ -93,7 +93,7 @@ class Sam3LiteTextVisionModelTester:
         self.is_training = is_training
 
     def get_config(self):
-        backbone_config = Sam3ViTConfig(
+        backbone_config = Sam3LiteTextViTConfig(
             hidden_size=self.hidden_size,
             num_hidden_layers=self.num_hidden_layers,
             num_attention_heads=self.num_attention_heads,
@@ -315,7 +315,7 @@ class Sam3LiteTextModelTester:
         return config, pixel_values, input_ids, attention_mask
 
     def get_config(self):
-        backbone_config = Sam3ViTConfig(
+        backbone_config = Sam3LiteTextViTConfig(
             hidden_size=self.hidden_size,
             num_hidden_layers=self.num_hidden_layers,
             num_attention_heads=self.num_attention_heads,
