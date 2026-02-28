@@ -295,6 +295,8 @@ class RfDetrConfig(PreTrainedConfig):
         eos_coefficient=0.1,
         focal_alpha=0.25,
         auxiliary_loss=True,
+        mask_downsample_ratio=4,
+        segmentation_bottleneck_ratio=1,
         **kwargs,
     ):
         if backbone_config is None:
@@ -379,6 +381,8 @@ class RfDetrConfig(PreTrainedConfig):
         self.focal_alpha = focal_alpha
         self.disable_custom_kernels = disable_custom_kernels
         super().__init__(**kwargs)
+        self.mask_downsample_ratio = mask_downsample_ratio
+        self.segmentation_bottleneck_ratio = segmentation_bottleneck_ratio
 
 
 __all__ = ["RfDetrConfig", "RfDetrWindowedDinov2Config"]

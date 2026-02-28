@@ -87,12 +87,34 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
   - command:
     `source .venv/bin/activate && uv run --no-project --python .venv/bin/python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --model_name large-2026 --checkpoint_repo_id nielsr/rf-detr-checkpoints --pytorch_dump_folder_path /tmp/rf-detr-large2026-alias`
   - result: successful conversion to HF format.
+- [x] Added RF-DETR instance-segmentation modeling support in modular RF-DETR:
+  - implemented `RfDetrDepthwiseConvBlock`, `RfDetrMLPBlock`, and `RfDetrSegmentationHead`,
+  - added `RfDetrInstanceSegmentationOutput`,
+  - added `RfDetrForInstanceSegmentation` with mask prediction head on top of RF-DETR decoder outputs,
+  - extended `RfDetrConfig` with `mask_downsample_ratio` and `segmentation_bottleneck_ratio`.
+- [x] Regenerated RF-DETR generated files from modular source after segmentation changes:
+  - command: `source .venv/bin/activate && uv run --no-project --python .venv/bin/python utils/modular_model_converter.py rf_detr`,
+  - regenerated files include `src/transformers/models/rf_detr/modeling_rf_detr.py` and `src/transformers/models/rf_detr/configuration_rf_detr.py`.
+- [x] Extended RF-DETR conversion script to support instance segmentation conversion for `rf-detr-seg-small.pt`:
+  - added checkpoint/task resolution for both object detection and instance segmentation model names,
+  - added segmentation checkpoint defaults (`seg-small`) for checkpoints without embedded `args`,
+  - added segmentation key remapping for `segmentation_head.*` weights,
+  - converter now instantiates `RfDetrForInstanceSegmentation` when needed and verifies mask parity.
+- [x] Verified conversion + original parity for `rf-detr-seg-small.pt` from `nielsr/rf-detr-checkpoints`:
+  - command:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --model_name seg-small --checkpoint_repo_id nielsr/rf-detr-checkpoints --pytorch_dump_folder_path /tmp/rf-detr-seg-small-hf --verify_with_original --original_repo_path /Users/nielsrogge/Documents/python_projecten/rf-detr`,
+  - result: successful conversion with `Missing keys: 0` and `Unexpected keys: 0`.
+- [x] Verified lint/smoke checks on updated RF-DETR files:
+  - `ruff check` passes on modular/generated/converter files,
+  - import smoke test confirms `from transformers.models.rf_detr import RfDetrForInstanceSegmentation`.
 
 ## Latest Verification Snapshot
 - Conversion load status: `Missing keys: 0`, `Unexpected keys: 0`.
 - Numerical parity on locally generated RFDETRSmall-style dummy checkpoint: `max_abs_logits_diff ~= 8.6e-6`, `max_abs_boxes_diff = 0.0`.
 - Numerical parity on real released `RFDETRSmall` checkpoint: `max_abs_logits_diff ~= 1.67e-4`, `max_abs_boxes_diff ~= 7.34e-5`.
+- Numerical parity on released `RFDETRSegSmall` checkpoint: `max_abs_logits_diff ~= 1.01e-4`, `max_abs_boxes_diff ~= 1.51e-4`, `max_abs_masks_diff ~= 4.24e-3`.
 - Printed logits/boxes slices are matching up to float tolerance.
+- Printed logits/boxes/masks slices are matching up to float tolerance for segmentation conversion.
 - Real checkpoint parity above was re-run after modular regeneration (same metrics), confirming generated `modeling_rf_detr.py` parity.
 
 ## Notes

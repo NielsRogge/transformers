@@ -21,14 +21,14 @@ This script supports:
 It can be run as follows:
 
 ```bash
-uv run src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --checkpoint_path /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth --original_repo_path /Users/nielsrogge/Documents/python_projecten/rf-detr --pytorch_dump_folder_path . --verify_with_original
+python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --checkpoint_path /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth --original_repo_path /Users/nielsrogge/Documents/python_projecten/rf-detr --pytorch_dump_folder_path . --verify_with_original
 ```
 
-Or by model name, downloading the original object-detection checkpoint from
+Or by model name, downloading the original checkpoint from
 `nielsr/rf-detr-checkpoints`:
 
 ```bash
-uv run src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --model_name small --pytorch_dump_folder_path ./rf-detr-small-hf
+python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --model_name small --pytorch_dump_folder_path ./rf-detr-small-hf
 ```
 """
 
@@ -44,7 +44,11 @@ from pathlib import Path
 import torch
 from huggingface_hub import HfApi, hf_hub_download
 
-from transformers.models.rf_detr.modeling_rf_detr import RfDetrConfig, RfDetrForObjectDetection
+from transformers.models.rf_detr.modeling_rf_detr import (
+    RfDetrConfig,
+    RfDetrForInstanceSegmentation,
+    RfDetrForObjectDetection,
+)
 
 
 # fmt: off
@@ -101,8 +105,23 @@ ORIGINAL_TO_CONVERTED_KEY_MAPPING = {
 }
 # fmt: on
 
+INSTANCE_SEGMENTATION_TO_CONVERTED_KEY_MAPPING = {
+    r"segmentation_head.blocks.(\d+).dwconv.(weight|bias)": r"segmentation_head.blocks.\1.dwconv.\2",
+    r"segmentation_head.blocks.(\d+).norm.(weight|bias)": r"segmentation_head.blocks.\1.norm.\2",
+    r"segmentation_head.blocks.(\d+).pwconv1.(weight|bias)": r"segmentation_head.blocks.\1.pwconv1.\2",
+    r"segmentation_head.blocks.(\d+).gamma": r"segmentation_head.blocks.\1.gamma",
+    r"segmentation_head.spatial_features_proj.(weight|bias)": r"segmentation_head.spatial_features_proj.\1",
+    r"segmentation_head.query_features_block.norm_in.(weight|bias)": r"segmentation_head.query_features_block.norm_in.\1",
+    r"segmentation_head.query_features_block.layers.(\d+).(weight|bias)": r"segmentation_head.query_features_block.layers.\1.\2",
+    r"segmentation_head.query_features_block.gamma": r"segmentation_head.query_features_block.gamma",
+    r"segmentation_head.query_features_proj.(weight|bias)": r"segmentation_head.query_features_proj.\1",
+    r"segmentation_head.bias": r"segmentation_head.bias",
+}
+
+MODEL_TASK_OBJECT_DETECTION = "object-detection"
+MODEL_TASK_INSTANCE_SEGMENTATION = "instance-segmentation"
+
 DEFAULT_RF_DETR_CHECKPOINT_REPO_ID = "nielsr/rf-detr-checkpoints"
-# Object-detection checkpoints only (segmentation checkpoints are intentionally excluded for now).
 OBJECT_DETECTION_CHECKPOINT_CANDIDATES = {
     "nano": ["rf-detr-nano.pth"],
     "small": ["rf-detr-small.pth"],
@@ -121,6 +140,12 @@ OBJECT_DETECTION_MODEL_NAME_ALIASES = {
     "base-2": {"base2", "rfdetrbase2"},
     "base-o365": {"baseo365", "o365", "rfdetrbaseo365"},
 }
+INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES = {
+    "seg-small": ["rf-detr-seg-small.pt"],
+}
+INSTANCE_SEGMENTATION_MODEL_NAME_ALIASES = {
+    "seg-small": {"segsmall", "rfdetrsegsmall", "instsegsmall", "instancesegsmall"},
+}
 OBJECT_DETECTION_MODEL_NAME_PATTERNS = {
     "nano": [r"(?:.*/)?rf[-_]?detr[-_]?nano(?:[-_].*)?\.pth$"],
     "small": [r"(?:.*/)?rf[-_]?detr[-_]?small(?:[-_].*)?\.pth$"],
@@ -129,6 +154,9 @@ OBJECT_DETECTION_MODEL_NAME_PATTERNS = {
     "base": [r"(?:.*/)?rf[-_]?detr[-_]?base(?:[-_].*)?\.pth$"],
     "base-2": [r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?2(?:[-_].*)?\.pth$"],
     "base-o365": [r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?o365(?:[-_].*)?\.pth$"],
+}
+INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS = {
+    "seg-small": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?small(?:[-_].*)?\.(?:pt|pth)$"],
 }
 OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS = {
     "nano": {
@@ -258,6 +286,28 @@ OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS = {
         "num_classes": 90,
     },
 }
+INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS = {
+    "seg-small": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 4,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 100,
+        "group_detr": 13,
+        "resolution": 384,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 2,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
+}
 
 
 def convert_old_keys_to_new_keys(state_dict_keys: list[str], key_mapping: dict[str, str]) -> dict[str, str]:
@@ -344,24 +394,47 @@ def _normalize_model_name(model_name: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", model_name.lower())
 
 
-def _resolve_detection_model_name(model_name: str) -> str:
+def _resolve_model_spec_from_name(model_name: str) -> tuple[str, str]:
     normalized_model_name = _normalize_model_name(model_name)
+
     for canonical_name, aliases in OBJECT_DETECTION_MODEL_NAME_ALIASES.items():
         if normalized_model_name == _normalize_model_name(canonical_name) or normalized_model_name in aliases:
-            return canonical_name
+            return MODEL_TASK_OBJECT_DETECTION, canonical_name
 
-    available_model_names = ", ".join(sorted(OBJECT_DETECTION_CHECKPOINT_CANDIDATES))
+    for canonical_name, aliases in INSTANCE_SEGMENTATION_MODEL_NAME_ALIASES.items():
+        if normalized_model_name == _normalize_model_name(canonical_name) or normalized_model_name in aliases:
+            return MODEL_TASK_INSTANCE_SEGMENTATION, canonical_name
+
+    available_detection_model_names = ", ".join(sorted(OBJECT_DETECTION_CHECKPOINT_CANDIDATES))
+    available_segmentation_model_names = ", ".join(sorted(INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES))
     raise ValueError(
-        f"Unsupported RF-DETR object-detection model name: `{model_name}`. "
-        f"Supported model names are: {available_model_names}."
+        f"Unsupported RF-DETR model name: `{model_name}`. "
+        "Supported object-detection model names are: "
+        f"{available_detection_model_names}. "
+        "Supported instance-segmentation model names are: "
+        f"{available_segmentation_model_names}."
     )
 
 
-def _infer_model_name_from_checkpoint_path(checkpoint_path: str) -> str | None:
+def _infer_model_spec_from_checkpoint_path(checkpoint_path: str) -> tuple[str, str] | None:
     checkpoint_filename = Path(checkpoint_path).name.lower()
+
     for canonical_name, candidate_filenames in OBJECT_DETECTION_CHECKPOINT_CANDIDATES.items():
         if checkpoint_filename in {name.lower() for name in candidate_filenames}:
-            return canonical_name
+            return MODEL_TASK_OBJECT_DETECTION, canonical_name
+
+    for canonical_name, candidate_filenames in INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES.items():
+        if checkpoint_filename in {name.lower() for name in candidate_filenames}:
+            return MODEL_TASK_INSTANCE_SEGMENTATION, canonical_name
+
+    for canonical_name, patterns in OBJECT_DETECTION_MODEL_NAME_PATTERNS.items():
+        if any(re.fullmatch(pattern, checkpoint_filename) for pattern in patterns):
+            return MODEL_TASK_OBJECT_DETECTION, canonical_name
+
+    for canonical_name, patterns in INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS.items():
+        if any(re.fullmatch(pattern, checkpoint_filename) for pattern in patterns):
+            return MODEL_TASK_INSTANCE_SEGMENTATION, canonical_name
+
     return None
 
 
@@ -399,10 +472,20 @@ def _prepare_checkpoint_args(
     state_dict: dict[str, torch.Tensor],
     checkpoint_path: str,
     model_name: str | None = None,
-) -> tuple[dict, str | None]:
-    resolved_model_name = _resolve_detection_model_name(model_name) if model_name is not None else None
+) -> tuple[dict, str | None, str | None]:
+    resolved_model_task = None
+    resolved_model_name = None
+    if model_name is not None:
+        resolved_model_task, resolved_model_name = _resolve_model_spec_from_name(model_name)
     if resolved_model_name is None:
-        resolved_model_name = _infer_model_name_from_checkpoint_path(checkpoint_path)
+        inferred_model_spec = _infer_model_spec_from_checkpoint_path(checkpoint_path)
+        if inferred_model_spec is not None:
+            resolved_model_task, resolved_model_name = inferred_model_spec
+
+    if resolved_model_task == MODEL_TASK_INSTANCE_SEGMENTATION:
+        default_args_by_model_name = INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS
+    else:
+        default_args_by_model_name = OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS
 
     if checkpoint_args is None:
         if resolved_model_name is None:
@@ -410,15 +493,15 @@ def _prepare_checkpoint_args(
                 "Checkpoint did not contain an `args` entry and model name could not be inferred from checkpoint path. "
                 "Please pass `--model_name`."
             )
-        if resolved_model_name not in OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS:
+        if resolved_model_name not in default_args_by_model_name:
             raise ValueError(
                 f"No default conversion args available for `{resolved_model_name}`. "
                 "Please pass a checkpoint with embedded `args`."
             )
-        return dict(OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS[resolved_model_name]), resolved_model_name
+        return dict(default_args_by_model_name[resolved_model_name]), resolved_model_name, resolved_model_task
 
     normalized_args = vars(checkpoint_args) if not isinstance(checkpoint_args, dict) else dict(checkpoint_args)
-    default_args = OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS.get(resolved_model_name, {})
+    default_args = default_args_by_model_name.get(resolved_model_name, {})
 
     for key, default_value in default_args.items():
         if normalized_args.get(key) is None:
@@ -447,34 +530,46 @@ def _prepare_checkpoint_args(
         if inferred_image_size is not None:
             normalized_args["resolution"] = inferred_image_size
 
-    return normalized_args, resolved_model_name
+    return normalized_args, resolved_model_name, resolved_model_task
 
 
-def _list_object_detection_checkpoint_files(repo_id: str) -> list[str]:
+def _list_checkpoint_files(repo_id: str, model_task: str) -> list[str]:
     repo_files = HfApi().list_repo_files(repo_id=repo_id, repo_type="model")
-    return sorted(
-        file_name
-        for file_name in repo_files
-        if file_name.lower().endswith(".pth") and "seg" not in Path(file_name).name.lower()
-    )
+    filtered_checkpoint_files = []
+    for file_name in repo_files:
+        lower_name = file_name.lower()
+        if not (lower_name.endswith(".pth") or lower_name.endswith(".pt")):
+            continue
+        basename = Path(file_name).name.lower()
+        is_segmentation = "seg" in basename
+        if model_task == MODEL_TASK_OBJECT_DETECTION and not is_segmentation:
+            filtered_checkpoint_files.append(file_name)
+        if model_task == MODEL_TASK_INSTANCE_SEGMENTATION and is_segmentation:
+            filtered_checkpoint_files.append(file_name)
+    return sorted(filtered_checkpoint_files)
 
 
 def _resolve_checkpoint_filename_for_model_name(model_name: str, checkpoint_repo_id: str) -> str:
-    canonical_model_name = _resolve_detection_model_name(model_name)
-    object_detection_files = _list_object_detection_checkpoint_files(checkpoint_repo_id)
-    if not object_detection_files:
-        raise ValueError(
-            f"No RF-DETR object-detection `.pth` checkpoints were found in Hub repo `{checkpoint_repo_id}`."
-        )
+    model_task, canonical_model_name = _resolve_model_spec_from_name(model_name)
+    checkpoint_files = _list_checkpoint_files(checkpoint_repo_id, model_task)
+    if not checkpoint_files:
+        raise ValueError(f"No RF-DETR `{model_task}` checkpoints were found in Hub repo `{checkpoint_repo_id}`.")
 
-    basename_to_repo_file = {Path(file_name).name: file_name for file_name in object_detection_files}
-    for preferred_filename in OBJECT_DETECTION_CHECKPOINT_CANDIDATES[canonical_model_name]:
+    if model_task == MODEL_TASK_OBJECT_DETECTION:
+        checkpoint_candidates = OBJECT_DETECTION_CHECKPOINT_CANDIDATES
+        checkpoint_patterns = OBJECT_DETECTION_MODEL_NAME_PATTERNS
+    else:
+        checkpoint_candidates = INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES
+        checkpoint_patterns = INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS
+
+    basename_to_repo_file = {Path(file_name).name: file_name for file_name in checkpoint_files}
+    for preferred_filename in checkpoint_candidates[canonical_model_name]:
         if preferred_filename in basename_to_repo_file:
             return basename_to_repo_file[preferred_filename]
 
     matching_files = []
-    for file_name in object_detection_files:
-        for pattern in OBJECT_DETECTION_MODEL_NAME_PATTERNS[canonical_model_name]:
+    for file_name in checkpoint_files:
+        for pattern in checkpoint_patterns[canonical_model_name]:
             if re.fullmatch(pattern, file_name.lower()):
                 matching_files.append(file_name)
                 break
@@ -490,7 +585,7 @@ def _resolve_checkpoint_filename_for_model_name(model_name: str, checkpoint_repo
 
     raise ValueError(
         f"Could not find a checkpoint file for model name `{model_name}` in repo `{checkpoint_repo_id}`. "
-        f"Available object-detection checkpoint files: {object_detection_files}"
+        f"Available `{model_task}` checkpoint files: {checkpoint_files}"
     )
 
 
@@ -506,10 +601,10 @@ def _resolve_checkpoint_path(
     if checkpoint_path is not None:
         return checkpoint_path
 
+    model_task, _ = _resolve_model_spec_from_name(model_name)
     checkpoint_filename = _resolve_checkpoint_filename_for_model_name(model_name, checkpoint_repo_id)
     print(
-        f"Downloading original RF-DETR object-detection checkpoint from `{checkpoint_repo_id}`: "
-        f"`{checkpoint_filename}`"
+        f"Downloading original RF-DETR `{model_task}` checkpoint from `{checkpoint_repo_id}`: `{checkpoint_filename}`"
     )
     resolved_checkpoint_path = hf_hub_download(
         repo_id=checkpoint_repo_id,
@@ -606,6 +701,10 @@ def build_original_rfdetr_model(
     _with_default(args, "backbone_lora", False)
     _with_default(args, "gradient_checkpointing", False)
     _with_default(args, "decoder_norm", "LN")
+    _with_default(args, "layer_norm", True)
+    _with_default(args, "two_stage", True)
+    _with_default(args, "bbox_reparam", True)
+    _with_default(args, "lite_refpoint_refine", True)
     _with_default(args, "mask_downsample_ratio", 4)
     _with_default(args, "segmentation_head", False)
     _with_default(args, "device", "cpu")
@@ -675,6 +774,8 @@ def build_rf_detr_config_from_checkpoint(checkpoint_args: dict, num_labels: int 
         num_queries=_get_checkpoint_arg(checkpoint_args, "num_queries"),
         group_detr=_get_checkpoint_arg(checkpoint_args, "group_detr"),
         auxiliary_loss=checkpoint_args.get("aux_loss", True),
+        mask_downsample_ratio=checkpoint_args.get("mask_downsample_ratio", 4),
+        segmentation_head=checkpoint_args.get("segmentation_head", False),
         num_labels=num_labels if num_labels is not None else (_get_checkpoint_arg(checkpoint_args, "num_classes") + 1),
     )
 
@@ -698,7 +799,7 @@ def convert_rf_detr_checkpoint(
         state_dict = checkpoint
 
     checkpoint_args = checkpoint.get("args") if isinstance(checkpoint, dict) else None
-    checkpoint_args, resolved_model_name = _prepare_checkpoint_args(
+    checkpoint_args, resolved_model_name, resolved_model_task = _prepare_checkpoint_args(
         checkpoint_args=checkpoint_args,
         state_dict=state_dict,
         checkpoint_path=checkpoint_path,
@@ -711,16 +812,27 @@ def convert_rf_detr_checkpoint(
         checkpoint_num_labels = state_dict["class_embed.weight"].shape[0]
 
     if resolved_model_name is not None:
-        print(f"Resolved RF-DETR model variant: {resolved_model_name}")
+        if resolved_model_task is not None:
+            print(f"Resolved RF-DETR model variant: {resolved_model_name} ({resolved_model_task})")
+        else:
+            print(f"Resolved RF-DETR model variant: {resolved_model_name}")
 
     config = build_rf_detr_config_from_checkpoint(checkpoint_args, num_labels=checkpoint_num_labels)
-    model = RfDetrForObjectDetection(config).eval()
+    is_instance_segmentation = resolved_model_task == MODEL_TASK_INSTANCE_SEGMENTATION or checkpoint_args.get(
+        "segmentation_head", False
+    )
+    if is_instance_segmentation:
+        model = RfDetrForInstanceSegmentation(config).eval()
+    else:
+        model = RfDetrForObjectDetection(config).eval()
 
     original_state_dict = dict(state_dict)
     state_dict = dict(state_dict)
     state_dict = read_in_decoder_q_k_v(state_dict, config)
 
     key_mapping = ORIGINAL_TO_CONVERTED_KEY_MAPPING | get_backbone_projector_sampling_key_mapping(config)
+    if is_instance_segmentation:
+        key_mapping = key_mapping | INSTANCE_SEGMENTATION_TO_CONVERTED_KEY_MAPPING
     all_keys = list(state_dict.keys())
     new_keys = convert_old_keys_to_new_keys(all_keys, key_mapping)
 
@@ -780,10 +892,16 @@ def convert_rf_detr_checkpoint(
 
         print(f"max_abs_logits_diff={max_abs_logits_diff:.10f}")
         print(f"max_abs_boxes_diff={max_abs_boxes_diff:.10f}")
+        if is_instance_segmentation:
+            max_abs_masks_diff = (original_outputs["pred_masks"] - hf_outputs.pred_masks).abs().max().item()
+            print(f"max_abs_masks_diff={max_abs_masks_diff:.10f}")
         print("original_logits_slice", original_outputs["pred_logits"].flatten()[:8])
         print("hf_logits_slice", hf_outputs.logits.flatten()[:8])
         print("original_boxes_slice", original_outputs["pred_boxes"].flatten()[:8])
         print("hf_boxes_slice", hf_outputs.pred_boxes.flatten()[:8])
+        if is_instance_segmentation:
+            print("original_masks_slice", original_outputs["pred_masks"].flatten()[:8])
+            print("hf_masks_slice", hf_outputs.pred_masks.flatten()[:8])
 
 
 def main():
@@ -799,9 +917,9 @@ def main():
         type=str,
         default=None,
         help=(
-            "RF-DETR object-detection model name to download from the Hub repo specified by "
-            "--checkpoint_repo_id (e.g. `nano`, `small`, `medium`, `large`, `base`, `base-2`, "
-            "`base-o365`)."
+            "RF-DETR model name to download from the Hub repo specified by --checkpoint_repo_id "
+            "(e.g. object detection: `nano`, `small`, `medium`, `large`, `base`, `base-2`, `base-o365`; "
+            "instance segmentation: `seg-small`)."
         ),
     )
     parser.add_argument(

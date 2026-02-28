@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import torch
 import torch.nn as nn
 
@@ -35,7 +37,9 @@ from ..lw_detr.modeling_lw_detr import (
     LwDetrMLPPredictionHead,
     LwDetrModel,
     LwDetrMultiScaleProjector,
+    LwDetrObjectDetectionOutput,
     LwDetrPreTrainedModel,
+    refine_bboxes,
 )
 
 
@@ -319,6 +323,8 @@ class RfDetrConfig(LwDetrConfig):
         eos_coefficient=0.1,
         focal_alpha=0.25,
         auxiliary_loss=True,
+        mask_downsample_ratio=4,
+        segmentation_bottleneck_ratio=1,
         **kwargs,
     ):
         if backbone_config is None:
@@ -381,6 +387,8 @@ class RfDetrConfig(LwDetrConfig):
             auxiliary_loss=auxiliary_loss,
             **kwargs,
         )
+        self.mask_downsample_ratio = mask_downsample_ratio
+        self.segmentation_bottleneck_ratio = segmentation_bottleneck_ratio
 
 
 class RfDetrPreTrainedModel(LwDetrPreTrainedModel):
@@ -405,6 +413,105 @@ class RfDetrConvNormLayer(LwDetrConvNormLayer):
 
 class RfDetrMLPPredictionHead(LwDetrMLPPredictionHead):
     pass
+
+
+class RfDetrDepthwiseConvBlock(nn.Module):
+    def __init__(self, dim: int, layer_scale_init_value: float = 0):
+        super().__init__()
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=3, padding=1, groups=dim)
+        self.norm = nn.LayerNorm(dim, eps=1e-6)
+        self.pwconv1 = nn.Linear(dim, dim)
+        self.act = nn.GELU()
+        self.gamma = (
+            nn.Parameter(layer_scale_init_value * torch.ones((dim,)), requires_grad=True)
+            if layer_scale_init_value > 0
+            else None
+        )
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        residual = hidden_states
+        hidden_states = self.dwconv(hidden_states)
+        hidden_states = hidden_states.permute(0, 2, 3, 1)
+        hidden_states = self.norm(hidden_states)
+        hidden_states = self.pwconv1(hidden_states)
+        hidden_states = self.act(hidden_states)
+        if self.gamma is not None:
+            hidden_states = self.gamma * hidden_states
+        hidden_states = hidden_states.permute(0, 3, 1, 2)
+        return hidden_states + residual
+
+
+class RfDetrMLPBlock(nn.Module):
+    def __init__(self, dim: int, layer_scale_init_value: float = 0):
+        super().__init__()
+        self.norm_in = nn.LayerNorm(dim)
+        self.layers = nn.ModuleList(
+            [
+                nn.Linear(dim, dim * 4),
+                nn.GELU(),
+                nn.Linear(dim * 4, dim),
+            ]
+        )
+        self.gamma = (
+            nn.Parameter(layer_scale_init_value * torch.ones((dim,)), requires_grad=True)
+            if layer_scale_init_value > 0
+            else None
+        )
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        residual = hidden_states
+        hidden_states = self.norm_in(hidden_states)
+        for layer in self.layers:
+            hidden_states = layer(hidden_states)
+        if self.gamma is not None:
+            hidden_states = self.gamma * hidden_states
+        return hidden_states + residual
+
+
+class RfDetrSegmentationHead(nn.Module):
+    def __init__(self, in_dim: int, num_blocks: int, bottleneck_ratio: int | None = 1, downsample_ratio: int = 4):
+        super().__init__()
+        self.downsample_ratio = downsample_ratio
+        self.interaction_dim = in_dim if bottleneck_ratio is None else in_dim // bottleneck_ratio
+        self.blocks = nn.ModuleList([RfDetrDepthwiseConvBlock(in_dim) for _ in range(num_blocks)])
+        self.spatial_features_proj = (
+            nn.Identity() if bottleneck_ratio is None else nn.Conv2d(in_dim, self.interaction_dim, kernel_size=1)
+        )
+        self.query_features_block = RfDetrMLPBlock(in_dim)
+        self.query_features_proj = (
+            nn.Identity() if bottleneck_ratio is None else nn.Linear(in_dim, self.interaction_dim)
+        )
+        self.bias = nn.Parameter(torch.zeros(1), requires_grad=True)
+
+    def forward(
+        self,
+        spatial_features: torch.Tensor,
+        query_features: list[torch.Tensor] | torch.Tensor,
+        image_size: tuple[int, int],
+        skip_blocks: bool = False,
+    ) -> list[torch.Tensor]:
+        target_size = (image_size[0] // self.downsample_ratio, image_size[1] // self.downsample_ratio)
+        spatial_features = nn.functional.interpolate(
+            spatial_features, size=target_size, mode="bilinear", align_corners=False
+        )
+
+        if isinstance(query_features, torch.Tensor):
+            query_features = list(query_features.unbind(0))
+
+        mask_logits = []
+        if not skip_blocks:
+            for block, query_feature in zip(self.blocks, query_features):
+                spatial_features = block(spatial_features)
+                spatial_features_proj = self.spatial_features_proj(spatial_features)
+                query_feature = self.query_features_proj(self.query_features_block(query_feature))
+                mask_logits.append(torch.einsum("bchw,bnc->bnhw", spatial_features_proj, query_feature) + self.bias)
+        else:
+            if len(query_features) != 1:
+                raise ValueError("skip_blocks is only supported when `query_features` has length 1.")
+            query_feature = self.query_features_proj(self.query_features_block(query_features[0]))
+            mask_logits.append(torch.einsum("bchw,bnc->bnhw", spatial_features, query_feature) + self.bias)
+
+        return mask_logits
 
 
 class RfDetrConvEncoder(nn.Module):
@@ -472,9 +579,105 @@ class RfDetrForObjectDetection(LwDetrForObjectDetection):
         self.post_init()
 
 
+@dataclass
+class RfDetrInstanceSegmentationOutput(LwDetrObjectDetectionOutput):
+    pred_masks: torch.FloatTensor | None = None
+
+
+class RfDetrForInstanceSegmentation(RfDetrPreTrainedModel):
+    config_class = RfDetrConfig
+    _tied_weights_keys = None
+
+    def __init__(self, config: RfDetrConfig):
+        RfDetrPreTrainedModel.__init__(self, config)
+
+        self.model = RfDetrModel(config)
+        self.class_embed = nn.Linear(config.d_model, config.num_labels)
+        self.bbox_embed = RfDetrMLPPredictionHead(config.d_model, config.d_model, 4, num_layers=3)
+        self.segmentation_head = RfDetrSegmentationHead(
+            in_dim=config.d_model,
+            num_blocks=config.decoder_layers,
+            bottleneck_ratio=config.segmentation_bottleneck_ratio,
+            downsample_ratio=config.mask_downsample_ratio,
+        )
+
+        self.post_init()
+
+    def forward(
+        self,
+        pixel_values: torch.FloatTensor = None,
+        pixel_mask: torch.LongTensor | None = None,
+        labels: list[dict] | None = None,
+        **kwargs,
+    ) -> RfDetrInstanceSegmentationOutput:
+        if labels is not None:
+            raise NotImplementedError("Loss computation for `RfDetrForInstanceSegmentation` is not implemented yet.")
+
+        captured_features = {}
+
+        def _capture_backbone_features(_module: nn.Module, _inputs: tuple[torch.Tensor, ...], output):
+            captured_features["features"] = output
+
+        feature_capture_handle = self.model.backbone.register_forward_hook(_capture_backbone_features)
+        try:
+            outputs = self.model(
+                pixel_values,
+                pixel_mask=pixel_mask,
+                **kwargs,
+            )
+        finally:
+            feature_capture_handle.remove()
+
+        if "features" not in captured_features:
+            raise RuntimeError("Could not capture RF-DETR backbone features required by the segmentation head.")
+        features = captured_features["features"]
+
+        last_hidden_states = outputs.last_hidden_state
+        intermediate_reference_points = outputs.intermediate_reference_points
+        enc_outputs_class_logits = outputs.enc_outputs_class
+        enc_outputs_boxes_logits = outputs.enc_outputs_coord_logits
+
+        logits = self.class_embed(last_hidden_states)
+        pred_boxes_delta = self.bbox_embed(last_hidden_states)
+        pred_boxes = refine_bboxes(intermediate_reference_points[-1], pred_boxes_delta)
+
+        enc_outputs_class_logits_list = enc_outputs_class_logits.split(self.config.num_queries, dim=1)
+        pred_class = []
+        group_detr = self.config.group_detr if self.training else 1
+        for group_index in range(group_detr):
+            group_pred_class = self.model.enc_out_class_embed[group_index](enc_outputs_class_logits_list[group_index])
+            pred_class.append(group_pred_class)
+        enc_outputs_class_logits = torch.cat(pred_class, dim=1)
+
+        intermediate_hidden_states = outputs.intermediate_hidden_states
+        pred_masks_per_layer = self.segmentation_head(
+            spatial_features=features[0][0],
+            query_features=intermediate_hidden_states,
+            image_size=(pixel_values.shape[-2], pixel_values.shape[-1]),
+        )
+        pred_masks = pred_masks_per_layer[-1]
+
+        return RfDetrInstanceSegmentationOutput(
+            logits=logits,
+            pred_boxes=pred_boxes,
+            pred_masks=pred_masks,
+            init_reference_points=outputs.init_reference_points,
+            last_hidden_state=outputs.last_hidden_state,
+            intermediate_hidden_states=outputs.intermediate_hidden_states,
+            intermediate_reference_points=outputs.intermediate_reference_points,
+            enc_outputs_class=enc_outputs_class_logits,
+            enc_outputs_coord_logits=enc_outputs_boxes_logits,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+            cross_attentions=outputs.cross_attentions,
+        )
+
+
 __all__ = [
     "RfDetrConfig",
+    "RfDetrForInstanceSegmentation",
     "RfDetrForObjectDetection",
+    "RfDetrInstanceSegmentationOutput",
     "RfDetrModel",
     "RfDetrWindowedDinov2Backbone",
     "RfDetrWindowedDinov2Config",

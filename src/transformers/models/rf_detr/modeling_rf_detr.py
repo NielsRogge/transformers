@@ -1339,6 +1339,105 @@ class RfDetrMLPPredictionHead(nn.Module):
         return x
 
 
+class RfDetrDepthwiseConvBlock(nn.Module):
+    def __init__(self, dim: int, layer_scale_init_value: float = 0):
+        super().__init__()
+        self.dwconv = nn.Conv2d(dim, dim, kernel_size=3, padding=1, groups=dim)
+        self.norm = nn.LayerNorm(dim, eps=1e-6)
+        self.pwconv1 = nn.Linear(dim, dim)
+        self.act = nn.GELU()
+        self.gamma = (
+            nn.Parameter(layer_scale_init_value * torch.ones((dim,)), requires_grad=True)
+            if layer_scale_init_value > 0
+            else None
+        )
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        residual = hidden_states
+        hidden_states = self.dwconv(hidden_states)
+        hidden_states = hidden_states.permute(0, 2, 3, 1)
+        hidden_states = self.norm(hidden_states)
+        hidden_states = self.pwconv1(hidden_states)
+        hidden_states = self.act(hidden_states)
+        if self.gamma is not None:
+            hidden_states = self.gamma * hidden_states
+        hidden_states = hidden_states.permute(0, 3, 1, 2)
+        return hidden_states + residual
+
+
+class RfDetrMLPBlock(nn.Module):
+    def __init__(self, dim: int, layer_scale_init_value: float = 0):
+        super().__init__()
+        self.norm_in = nn.LayerNorm(dim)
+        self.layers = nn.ModuleList(
+            [
+                nn.Linear(dim, dim * 4),
+                nn.GELU(),
+                nn.Linear(dim * 4, dim),
+            ]
+        )
+        self.gamma = (
+            nn.Parameter(layer_scale_init_value * torch.ones((dim,)), requires_grad=True)
+            if layer_scale_init_value > 0
+            else None
+        )
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        residual = hidden_states
+        hidden_states = self.norm_in(hidden_states)
+        for layer in self.layers:
+            hidden_states = layer(hidden_states)
+        if self.gamma is not None:
+            hidden_states = self.gamma * hidden_states
+        return hidden_states + residual
+
+
+class RfDetrSegmentationHead(nn.Module):
+    def __init__(self, in_dim: int, num_blocks: int, bottleneck_ratio: int | None = 1, downsample_ratio: int = 4):
+        super().__init__()
+        self.downsample_ratio = downsample_ratio
+        self.interaction_dim = in_dim if bottleneck_ratio is None else in_dim // bottleneck_ratio
+        self.blocks = nn.ModuleList([RfDetrDepthwiseConvBlock(in_dim) for _ in range(num_blocks)])
+        self.spatial_features_proj = (
+            nn.Identity() if bottleneck_ratio is None else nn.Conv2d(in_dim, self.interaction_dim, kernel_size=1)
+        )
+        self.query_features_block = RfDetrMLPBlock(in_dim)
+        self.query_features_proj = (
+            nn.Identity() if bottleneck_ratio is None else nn.Linear(in_dim, self.interaction_dim)
+        )
+        self.bias = nn.Parameter(torch.zeros(1), requires_grad=True)
+
+    def forward(
+        self,
+        spatial_features: torch.Tensor,
+        query_features: list[torch.Tensor] | torch.Tensor,
+        image_size: tuple[int, int],
+        skip_blocks: bool = False,
+    ) -> list[torch.Tensor]:
+        target_size = (image_size[0] // self.downsample_ratio, image_size[1] // self.downsample_ratio)
+        spatial_features = nn.functional.interpolate(
+            spatial_features, size=target_size, mode="bilinear", align_corners=False
+        )
+
+        if isinstance(query_features, torch.Tensor):
+            query_features = list(query_features.unbind(0))
+
+        mask_logits = []
+        if not skip_blocks:
+            for block, query_feature in zip(self.blocks, query_features):
+                spatial_features = block(spatial_features)
+                spatial_features_proj = self.spatial_features_proj(spatial_features)
+                query_feature = self.query_features_proj(self.query_features_block(query_feature))
+                mask_logits.append(torch.einsum("bchw,bnc->bnhw", spatial_features_proj, query_feature) + self.bias)
+        else:
+            if len(query_features) != 1:
+                raise ValueError("skip_blocks is only supported when `query_features` has length 1.")
+            query_feature = self.query_features_proj(self.query_features_block(query_features[0]))
+            mask_logits.append(torch.einsum("bchw,bnc->bnhw", spatial_features, query_feature) + self.bias)
+
+        return mask_logits
+
+
 class RfDetrConvEncoder(nn.Module):
     def __init__(self, config: RfDetrConfig):
         super().__init__()
@@ -1880,4 +1979,150 @@ class RfDetrForObjectDetection(RfDetrPreTrainedModel):
         )
 
 
-__all__ = ["RfDetrForObjectDetection", "RfDetrModel", "RfDetrWindowedDinov2Backbone"]
+@dataclass
+class RfDetrInstanceSegmentationOutput(ModelOutput):
+    r"""
+    loss (`torch.FloatTensor` of shape `(1,)`, *optional*, returned when `labels` are provided)):
+        Total loss as a linear combination of a negative log-likehood (cross-entropy) for class prediction and a
+        bounding box loss. The latter is defined as a linear combination of the L1 loss and the generalized
+        scale-invariant IoU loss.
+    loss_dict (`Dict`, *optional*):
+        A dictionary containing the individual losses. Useful for logging.
+    logits (`torch.FloatTensor` of shape `(batch_size, num_queries, num_classes + 1)`):
+        Classification logits (including no-object) for all queries.
+    pred_boxes (`torch.FloatTensor` of shape `(batch_size, num_queries, 4)`):
+        Normalized boxes coordinates for all queries, represented as (center_x, center_y, width, height). These
+        values are normalized in [0, 1], relative to the size of each individual image in the batch (disregarding
+        possible padding). You can use [`~DeformableDetrProcessor.post_process_object_detection`] to retrieve the
+        unnormalized bounding boxes.
+    auxiliary_outputs (`list[Dict]`, *optional*):
+        Optional, only returned when auxiliary losses are activated (i.e. `config.auxiliary_loss` is set to `True`)
+        and labels are provided. It is a list of dictionaries containing the two above keys (`logits` and
+        `pred_boxes`) for each decoder layer.
+    init_reference_points (`torch.FloatTensor` of shape  `(batch_size, num_queries, 4)`):
+        Initial reference points sent through the Transformer decoder.
+    intermediate_hidden_states (`torch.FloatTensor` of shape `(batch_size, config.decoder_layers, num_queries, hidden_size)`):
+        Stacked intermediate hidden states (output of each layer of the decoder).
+    intermediate_reference_points (`torch.FloatTensor` of shape `(batch_size, config.decoder_layers, num_queries, 4)`):
+        Stacked intermediate reference points (reference points of each layer of the decoder).
+    enc_outputs_class (`torch.FloatTensor` of shape `(batch_size, sequence_length, config.num_labels)`, *optional*, returned when `config.with_box_refine=True` and `config.two_stage=True`):
+        Predicted bounding boxes scores where the top `config.two_stage_num_proposals` scoring bounding boxes are
+        picked as region proposals in the first stage. Output of bounding box binary classification (i.e.
+        foreground and background).
+    enc_outputs_coord_logits (`torch.FloatTensor` of shape `(batch_size, sequence_length, 4)`, *optional*, returned when `config.with_box_refine=True` and `config.two_stage=True`):
+        Logits of predicted bounding boxes coordinates in the first stage.
+    """
+
+    loss: torch.FloatTensor | None = None
+    loss_dict: dict | None = None
+    logits: torch.FloatTensor | None = None
+    pred_boxes: torch.FloatTensor | None = None
+    auxiliary_outputs: list[dict] | None = None
+    init_reference_points: torch.FloatTensor | None = None
+    last_hidden_state: torch.FloatTensor | None = None
+    intermediate_hidden_states: torch.FloatTensor | None = None
+    intermediate_reference_points: torch.FloatTensor | None = None
+    enc_outputs_class: Any = None
+    enc_outputs_coord_logits: torch.FloatTensor | None = None
+    hidden_states: tuple[torch.FloatTensor, ...] | None = None
+    attentions: tuple[torch.FloatTensor, ...] | None = None
+    cross_attentions: tuple[torch.FloatTensor, ...] | None = None
+    pred_masks: torch.FloatTensor | None = None
+
+
+class RfDetrForInstanceSegmentation(RfDetrPreTrainedModel):
+    config_class = RfDetrConfig
+    _tied_weights_keys = None
+
+    def __init__(self, config: RfDetrConfig):
+        RfDetrPreTrainedModel.__init__(self, config)
+
+        self.model = RfDetrModel(config)
+        self.class_embed = nn.Linear(config.d_model, config.num_labels)
+        self.bbox_embed = RfDetrMLPPredictionHead(config.d_model, config.d_model, 4, num_layers=3)
+        self.segmentation_head = RfDetrSegmentationHead(
+            in_dim=config.d_model,
+            num_blocks=config.decoder_layers,
+            bottleneck_ratio=config.segmentation_bottleneck_ratio,
+            downsample_ratio=config.mask_downsample_ratio,
+        )
+
+        self.post_init()
+
+    def forward(
+        self,
+        pixel_values: torch.FloatTensor = None,
+        pixel_mask: torch.LongTensor | None = None,
+        labels: list[dict] | None = None,
+        **kwargs,
+    ) -> RfDetrInstanceSegmentationOutput:
+        if labels is not None:
+            raise NotImplementedError("Loss computation for `RfDetrForInstanceSegmentation` is not implemented yet.")
+
+        captured_features = {}
+
+        def _capture_backbone_features(_module: nn.Module, _inputs: tuple[torch.Tensor, ...], output):
+            captured_features["features"] = output
+
+        feature_capture_handle = self.model.backbone.register_forward_hook(_capture_backbone_features)
+        try:
+            outputs = self.model(
+                pixel_values,
+                pixel_mask=pixel_mask,
+                **kwargs,
+            )
+        finally:
+            feature_capture_handle.remove()
+
+        if "features" not in captured_features:
+            raise RuntimeError("Could not capture RF-DETR backbone features required by the segmentation head.")
+        features = captured_features["features"]
+
+        last_hidden_states = outputs.last_hidden_state
+        intermediate_reference_points = outputs.intermediate_reference_points
+        enc_outputs_class_logits = outputs.enc_outputs_class
+        enc_outputs_boxes_logits = outputs.enc_outputs_coord_logits
+
+        logits = self.class_embed(last_hidden_states)
+        pred_boxes_delta = self.bbox_embed(last_hidden_states)
+        pred_boxes = refine_bboxes(intermediate_reference_points[-1], pred_boxes_delta)
+
+        enc_outputs_class_logits_list = enc_outputs_class_logits.split(self.config.num_queries, dim=1)
+        pred_class = []
+        group_detr = self.config.group_detr if self.training else 1
+        for group_index in range(group_detr):
+            group_pred_class = self.model.enc_out_class_embed[group_index](enc_outputs_class_logits_list[group_index])
+            pred_class.append(group_pred_class)
+        enc_outputs_class_logits = torch.cat(pred_class, dim=1)
+
+        intermediate_hidden_states = outputs.intermediate_hidden_states
+        pred_masks_per_layer = self.segmentation_head(
+            spatial_features=features[0][0],
+            query_features=intermediate_hidden_states,
+            image_size=(pixel_values.shape[-2], pixel_values.shape[-1]),
+        )
+        pred_masks = pred_masks_per_layer[-1]
+
+        return RfDetrInstanceSegmentationOutput(
+            logits=logits,
+            pred_boxes=pred_boxes,
+            pred_masks=pred_masks,
+            init_reference_points=outputs.init_reference_points,
+            last_hidden_state=outputs.last_hidden_state,
+            intermediate_hidden_states=outputs.intermediate_hidden_states,
+            intermediate_reference_points=outputs.intermediate_reference_points,
+            enc_outputs_class=enc_outputs_class_logits,
+            enc_outputs_coord_logits=enc_outputs_boxes_logits,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+            cross_attentions=outputs.cross_attentions,
+        )
+
+
+__all__ = [
+    "RfDetrForInstanceSegmentation",
+    "RfDetrForObjectDetection",
+    "RfDetrInstanceSegmentationOutput",
+    "RfDetrModel",
+    "RfDetrWindowedDinov2Backbone",
+]
