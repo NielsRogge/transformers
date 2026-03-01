@@ -15,8 +15,8 @@
 
 This script supports:
 1. converting checkpoint keys to the HF RF-DETR implementation,
-2. saving model + config,
-3. optional numerical parity check against the original implementation on dummy inputs.
+2. saving model + config + image processor,
+3. optional numerical parity checks against the original implementation on dummy inputs.
 
 It can be run as follows:
 
@@ -41,9 +41,12 @@ import sys
 import types
 from pathlib import Path
 
+import numpy as np
 import torch
 from huggingface_hub import HfApi, hf_hub_download
 
+from transformers.models.rf_detr.image_processing_rf_detr import RfDetrImageProcessor
+from transformers.models.rf_detr.image_processing_rf_detr_fast import RfDetrImageProcessorFast
 from transformers.models.rf_detr.modeling_rf_detr import (
     RfDetrConfig,
     RfDetrForInstanceSegmentation,
@@ -658,10 +661,7 @@ def _patch_original_repo_compatibility():
         )
 
 
-def build_original_rfdetr_model(
-    original_repo_path: str,
-    checkpoint_args,
-):
+def _ensure_original_rfdetr_importable(original_repo_path: str):
     _patch_original_repo_compatibility()
 
     root = Path(original_repo_path).expanduser().resolve() / "src" / "rfdetr"
@@ -682,6 +682,12 @@ def build_original_rfdetr_model(
         peft.PeftModel = PeftModel
         sys.modules["peft"] = peft
 
+
+def build_original_rfdetr_model(
+    original_repo_path: str,
+    checkpoint_args,
+):
+    _ensure_original_rfdetr_importable(original_repo_path)
     original_modeling = importlib.import_module("rfdetr.models.lwdetr")
 
     args = argparse.Namespace(**checkpoint_args)
@@ -717,6 +723,12 @@ def build_original_rfdetr_model(
 
     model = original_modeling.build_model(args).eval()
     return model
+
+
+def build_original_rfdetr_postprocessor(original_repo_path: str, num_select: int):
+    _ensure_original_rfdetr_importable(original_repo_path)
+    original_modeling = importlib.import_module("rfdetr.models.lwdetr")
+    return original_modeling.PostProcess(num_select=num_select).eval()
 
 
 def build_rf_detr_config_from_checkpoint(checkpoint_args: dict, num_labels: int | None = None) -> RfDetrConfig:
@@ -821,10 +833,22 @@ def convert_rf_detr_checkpoint(
     is_instance_segmentation = resolved_model_task == MODEL_TASK_INSTANCE_SEGMENTATION or checkpoint_args.get(
         "segmentation_head", False
     )
+    num_top_queries = int(checkpoint_args.get("num_select", config.num_queries))
+
     if is_instance_segmentation:
         model = RfDetrForInstanceSegmentation(config).eval()
     else:
         model = RfDetrForObjectDetection(config).eval()
+
+    image_size = config.backbone_config.image_size
+    image_processor = RfDetrImageProcessor(
+        size={"height": image_size, "width": image_size},
+        num_top_queries=num_top_queries,
+    )
+    image_processor_fast = RfDetrImageProcessorFast(
+        size={"height": image_size, "width": image_size},
+        num_top_queries=num_top_queries,
+    )
 
     original_state_dict = dict(state_dict)
     state_dict = dict(state_dict)
@@ -860,11 +884,13 @@ def convert_rf_detr_checkpoint(
     os.makedirs(pytorch_dump_folder_path, exist_ok=True)
     model.save_pretrained(pytorch_dump_folder_path)
     config.save_pretrained(pytorch_dump_folder_path)
+    image_processor.save_pretrained(pytorch_dump_folder_path)
     print(f"Saved converted model to: {pytorch_dump_folder_path}")
 
     if push_to_hub:
         repo_id = repo_id or _infer_default_repo_id(checkpoint_path, checkpoint_args)
         model.push_to_hub(repo_id=repo_id)
+        image_processor.push_to_hub(repo_id=repo_id)
         print(f"Pushed converted model to Hub: {repo_id}")
 
     if verify_with_original:
@@ -880,9 +906,45 @@ def convert_rf_detr_checkpoint(
         original_model.load_state_dict(original_state_dict, strict=True)
         original_model.eval()
 
-        image_size = config.backbone_config.image_size
-        torch.manual_seed(0)
-        pixel_values = torch.randn(1, 3, image_size, image_size)
+        import torchvision.transforms.functional as torchvision_transforms
+
+        rng = np.random.default_rng(seed=0)
+        dummy_image_height = image_size + 15
+        dummy_image_width = image_size - 13 if image_size > 32 else image_size + 3
+        dummy_image = rng.integers(0, 256, size=(dummy_image_height, dummy_image_width, 3), dtype=np.uint8)
+
+        original_preprocessed = torchvision_transforms.to_tensor(dummy_image)
+        original_preprocessed = torchvision_transforms.normalize(
+            original_preprocessed,
+            image_processor.image_mean,
+            image_processor.image_std,
+        )
+        original_preprocessed = torchvision_transforms.resize(
+            original_preprocessed,
+            (image_size, image_size),
+            interpolation=image_processor.resample,
+        )
+        original_preprocessed = original_preprocessed.unsqueeze(0)
+        hf_preprocessed = image_processor(images=dummy_image, return_tensors="pt").pixel_values
+        hf_preprocessed_fast = image_processor_fast(images=dummy_image, return_tensors="pt").pixel_values
+
+        max_abs_preprocess_diff = (original_preprocessed - hf_preprocessed).abs().max().item()
+        max_abs_preprocess_fast_diff = (original_preprocessed - hf_preprocessed_fast).abs().max().item()
+        max_abs_slow_fast_preprocess_diff = (hf_preprocessed - hf_preprocessed_fast).abs().max().item()
+        print(f"max_abs_preprocess_diff={max_abs_preprocess_diff:.10f}")
+        print(f"max_abs_preprocess_fast_diff={max_abs_preprocess_fast_diff:.10f}")
+        print(f"max_abs_slow_fast_preprocess_diff={max_abs_slow_fast_preprocess_diff:.10f}")
+        print("original_preprocess_slice", original_preprocessed.flatten()[:8])
+        print("hf_preprocess_slice", hf_preprocessed.flatten()[:8])
+        print("hf_fast_preprocess_slice", hf_preprocessed_fast.flatten()[:8])
+        if not torch.equal(original_preprocessed, hf_preprocessed):
+            raise AssertionError("Preprocessing mismatch between original RF-DETR and RfDetrImageProcessor.")
+        if not torch.allclose(original_preprocessed, hf_preprocessed_fast, atol=1e-6, rtol=0.0):
+            raise AssertionError("Preprocessing mismatch between original RF-DETR and RfDetrImageProcessorFast.")
+        if not torch.allclose(hf_preprocessed, hf_preprocessed_fast, atol=1e-6, rtol=0.0):
+            raise AssertionError("Preprocessing mismatch between RfDetrImageProcessor and RfDetrImageProcessorFast.")
+
+        pixel_values = hf_preprocessed
 
         original_outputs = original_model(pixel_values)
         hf_outputs = model(pixel_values=pixel_values)
@@ -902,6 +964,123 @@ def convert_rf_detr_checkpoint(
         if is_instance_segmentation:
             print("original_masks_slice", original_outputs["pred_masks"].flatten()[:8])
             print("hf_masks_slice", hf_outputs.pred_masks.flatten()[:8])
+
+        target_sizes = torch.tensor([[dummy_image_height, dummy_image_width]], device=pixel_values.device)
+        original_postprocessor = build_original_rfdetr_postprocessor(
+            original_repo_path=original_repo_path,
+            num_select=num_top_queries,
+        )
+        original_postprocessed_outputs = original_postprocessor(original_outputs, target_sizes)
+
+        if is_instance_segmentation:
+            hf_postprocessed_outputs = image_processor.post_process_instance_segmentation(
+                outputs=original_outputs,
+                threshold=0.0,
+                mask_threshold=0.0,
+                target_sizes=target_sizes,
+                num_top_queries=num_top_queries,
+            )
+            hf_postprocessed_outputs_fast = image_processor_fast.post_process_instance_segmentation(
+                outputs=original_outputs,
+                threshold=0.0,
+                mask_threshold=0.0,
+                target_sizes=target_sizes,
+                num_top_queries=num_top_queries,
+            )
+        else:
+            hf_postprocessed_outputs = image_processor.post_process_object_detection(
+                outputs=original_outputs,
+                threshold=0.0,
+                target_sizes=target_sizes,
+                num_top_queries=num_top_queries,
+            )
+            hf_postprocessed_outputs_fast = image_processor_fast.post_process_object_detection(
+                outputs=original_outputs,
+                threshold=0.0,
+                target_sizes=target_sizes,
+                num_top_queries=num_top_queries,
+            )
+
+        postprocess_scores_diff = (
+            (original_postprocessed_outputs[0]["scores"] - hf_postprocessed_outputs[0]["scores"]).abs().max().item()
+        )
+        postprocess_boxes_diff = (
+            (original_postprocessed_outputs[0]["boxes"] - hf_postprocessed_outputs[0]["boxes"]).abs().max().item()
+        )
+        postprocess_scores_fast_diff = (
+            (original_postprocessed_outputs[0]["scores"] - hf_postprocessed_outputs_fast[0]["scores"])
+            .abs()
+            .max()
+            .item()
+        )
+        postprocess_boxes_fast_diff = (
+            (original_postprocessed_outputs[0]["boxes"] - hf_postprocessed_outputs_fast[0]["boxes"]).abs().max().item()
+        )
+        postprocess_slow_fast_scores_diff = (
+            (hf_postprocessed_outputs[0]["scores"] - hf_postprocessed_outputs_fast[0]["scores"]).abs().max().item()
+        )
+        postprocess_slow_fast_boxes_diff = (
+            (hf_postprocessed_outputs[0]["boxes"] - hf_postprocessed_outputs_fast[0]["boxes"]).abs().max().item()
+        )
+        postprocess_labels_match = torch.equal(
+            original_postprocessed_outputs[0]["labels"], hf_postprocessed_outputs[0]["labels"]
+        )
+        postprocess_labels_fast_match = torch.equal(
+            original_postprocessed_outputs[0]["labels"], hf_postprocessed_outputs_fast[0]["labels"]
+        )
+        postprocess_slow_fast_labels_match = torch.equal(
+            hf_postprocessed_outputs[0]["labels"], hf_postprocessed_outputs_fast[0]["labels"]
+        )
+        print(f"max_abs_postprocess_scores_diff={postprocess_scores_diff:.10f}")
+        print(f"max_abs_postprocess_boxes_diff={postprocess_boxes_diff:.10f}")
+        print(f"max_abs_postprocess_scores_fast_diff={postprocess_scores_fast_diff:.10f}")
+        print(f"max_abs_postprocess_boxes_fast_diff={postprocess_boxes_fast_diff:.10f}")
+        print(f"max_abs_postprocess_slow_fast_scores_diff={postprocess_slow_fast_scores_diff:.10f}")
+        print(f"max_abs_postprocess_slow_fast_boxes_diff={postprocess_slow_fast_boxes_diff:.10f}")
+        print(f"postprocess_labels_match={postprocess_labels_match}")
+        print(f"postprocess_labels_fast_match={postprocess_labels_fast_match}")
+        print(f"postprocess_slow_fast_labels_match={postprocess_slow_fast_labels_match}")
+        if not torch.allclose(original_postprocessed_outputs[0]["scores"], hf_postprocessed_outputs[0]["scores"]):
+            raise AssertionError("Object detection postprocess score mismatch with original RF-DETR implementation.")
+        if not torch.allclose(original_postprocessed_outputs[0]["boxes"], hf_postprocessed_outputs[0]["boxes"]):
+            raise AssertionError("Object detection postprocess box mismatch with original RF-DETR implementation.")
+        if not postprocess_labels_match:
+            raise AssertionError("Object detection postprocess labels mismatch with original RF-DETR implementation.")
+        if not torch.allclose(original_postprocessed_outputs[0]["scores"], hf_postprocessed_outputs_fast[0]["scores"]):
+            raise AssertionError("Object detection postprocess score mismatch with RfDetrImageProcessorFast.")
+        if not torch.allclose(original_postprocessed_outputs[0]["boxes"], hf_postprocessed_outputs_fast[0]["boxes"]):
+            raise AssertionError("Object detection postprocess box mismatch with RfDetrImageProcessorFast.")
+        if not postprocess_labels_fast_match:
+            raise AssertionError("Object detection postprocess labels mismatch with RfDetrImageProcessorFast.")
+        if not torch.allclose(hf_postprocessed_outputs[0]["scores"], hf_postprocessed_outputs_fast[0]["scores"]):
+            raise AssertionError("Postprocess score mismatch between slow and fast RF-DETR image processors.")
+        if not torch.allclose(hf_postprocessed_outputs[0]["boxes"], hf_postprocessed_outputs_fast[0]["boxes"]):
+            raise AssertionError("Postprocess box mismatch between slow and fast RF-DETR image processors.")
+        if not postprocess_slow_fast_labels_match:
+            raise AssertionError("Postprocess labels mismatch between slow and fast RF-DETR image processors.")
+        if is_instance_segmentation:
+            postprocess_masks_match = torch.equal(
+                original_postprocessed_outputs[0]["masks"], hf_postprocessed_outputs[0]["masks"]
+            )
+            postprocess_masks_fast_match = torch.equal(
+                original_postprocessed_outputs[0]["masks"], hf_postprocessed_outputs_fast[0]["masks"]
+            )
+            postprocess_slow_fast_masks_match = torch.equal(
+                hf_postprocessed_outputs[0]["masks"], hf_postprocessed_outputs_fast[0]["masks"]
+            )
+            print(f"postprocess_masks_match={postprocess_masks_match}")
+            print(f"postprocess_masks_fast_match={postprocess_masks_fast_match}")
+            print(f"postprocess_slow_fast_masks_match={postprocess_slow_fast_masks_match}")
+            if not postprocess_masks_match:
+                raise AssertionError(
+                    "Instance segmentation postprocess masks mismatch with original RF-DETR implementation."
+                )
+            if not postprocess_masks_fast_match:
+                raise AssertionError("Instance segmentation postprocess masks mismatch with RfDetrImageProcessorFast.")
+            if not postprocess_slow_fast_masks_match:
+                raise AssertionError(
+                    "Instance segmentation postprocess masks mismatch between slow and fast RF-DETR image processors."
+                )
 
 
 def main():

@@ -120,16 +120,103 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
   - command:
     `source .venv/bin/activate && uv run --no-project --python .venv/bin/python ruff check tests/models/rf_detr/test_modeling_rf_detr.py`,
   - result: `All checks passed!`.
+- [x] Added `RfDetrImageProcessor` implementation:
+  - created `src/transformers/models/rf_detr/image_processing_rf_detr.py`,
+  - implemented RF-DETR-native preprocessing (`to_tensor`-equivalent conversion, [0,1] validation, ImageNet normalization, fixed square resize),
+  - implemented `post_process_object_detection` with RF-DETR/LW-DETR sigmoid top-k behavior,
+  - implemented `post_process_instance_segmentation` with top-k mask gather, resizing, and thresholding behavior matching upstream.
+- [x] Wired RF-DETR image processing into Transformers mappings/imports:
+  - added `"rf_detr"` to `src/transformers/models/auto/image_processing_auto.py`,
+  - updated `src/transformers/models/rf_detr/__init__.py` to include `image_processing_rf_detr` in TYPE_CHECKING imports.
+- [x] Extended `src/transformers/models/rf_detr/convert_rf_detr_to_hf.py` for image processor support:
+  - converter now builds/saves `RfDetrImageProcessor` alongside model/config,
+  - converter now pushes image processor with `--push_to_hub`,
+  - converter now configures image processor `size` and `num_top_queries` from checkpoint args/config.
+- [x] Added conversion-time preprocessing parity check against upstream RF-DETR:
+  - deterministic dummy uint8 image preprocessing compared between upstream torchvision path and HF `RfDetrImageProcessor`,
+  - converter prints slices and `max_abs_preprocess_diff`,
+  - converter raises on mismatch.
+- [x] Added conversion-time postprocessing parity checks against upstream `PostProcess`:
+  - compares detection postprocess scores/boxes/labels on same upstream model outputs,
+  - compares segmentation postprocess scores/boxes/labels/masks on same upstream model outputs,
+  - converter raises on mismatch.
+- [x] Verified updated conversion flow end-to-end on local released checkpoints:
+  - object detection checkpoint: `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth`,
+  - instance segmentation checkpoint: `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-small.pt`,
+  - both runs passed with `Missing keys: 0` and `Unexpected keys: 0`.
+- [x] Verified image processor loading:
+  - `from transformers import RfDetrImageProcessor` works,
+  - `AutoImageProcessor.from_pretrained(...)` on converted checkpoint resolves to `RfDetrImageProcessor`.
+- [x] Verified style/syntax checks for image processor/converter integration:
+  - `ruff check` passes on touched files,
+  - `py_compile` passes on `image_processing_rf_detr.py` and `convert_rf_detr_to_hf.py`.
+- [x] Re-ran RF-DETR model tests after image processor/converter integration:
+  - command:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py`,
+  - result: `191 passed, 144 skipped, 14 warnings`.
+- [x] Added RF-DETR fast image processor:
+  - created `src/transformers/models/rf_detr/image_processing_rf_detr_fast.py`,
+  - implemented `RfDetrImageProcessorFast` on top of `BaseImageProcessorFast`,
+  - kept RF-DETR input semantics (torch tensors must already be in `[0,1]`, 3-channel RGB requirement),
+  - added `post_process_object_detection` and `post_process_instance_segmentation` parity logic in fast class.
+- [x] Wired RF-DETR fast image processor into imports/auto mappings:
+  - updated `src/transformers/models/rf_detr/__init__.py` to include `image_processing_rf_detr_fast`,
+  - updated `src/transformers/models/auto/image_processing_auto.py` mapping for `"rf_detr"` to `("RfDetrImageProcessor", "RfDetrImageProcessorFast")`.
+- [x] Extended converter verification to include fast image processor:
+  - `src/transformers/models/rf_detr/convert_rf_detr_to_hf.py` now instantiates `RfDetrImageProcessorFast`,
+  - converter now checks slow/original and fast/original preprocess parity on deterministic dummy image,
+  - converter now checks slow vs fast postprocess parity for both detection and segmentation,
+  - strict exact check remains for slow processor vs original, fast checks use tight tolerance (`atol=1e-6`) for preprocessing.
+- [x] Added RF-DETR image processing tests:
+  - created `tests/models/rf_detr/test_image_processing_rf_detr.py`,
+  - enabled `ImageProcessingTestMixin` coverage for slow+fast processor save/load and equivalence flows,
+  - added explicit slow/fast equivalence tests for `post_process_object_detection` and `post_process_instance_segmentation`,
+  - added explicit validation test that unnormalized torch inputs are rejected.
+- [x] Verified RF-DETR image processing tests:
+  - command:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_image_processing_rf_detr.py`,
+  - result: `23 passed, 3 skipped`.
+- [x] Re-verified converter end-to-end with fast verification enabled:
+  - object detection checkpoint conversion/parity:
+    `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth`,
+  - instance segmentation checkpoint conversion/parity:
+    `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-small.pt`,
+  - both runs passed with `Missing keys: 0` and `Unexpected keys: 0`.
+- [x] Re-ran RF-DETR modeling + image-processing tests together after fast image-processor changes:
+  - command:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py tests/models/rf_detr/test_image_processing_rf_detr.py`,
+  - result: `214 passed, 147 skipped, 14 warnings`.
 
 ## Latest Verification Snapshot
 - Conversion load status: `Missing keys: 0`, `Unexpected keys: 0`.
 - Numerical parity on locally generated RFDETRSmall-style dummy checkpoint: `max_abs_logits_diff ~= 8.6e-6`, `max_abs_boxes_diff = 0.0`.
 - Numerical parity on real released `RFDETRSmall` checkpoint: `max_abs_logits_diff ~= 1.67e-4`, `max_abs_boxes_diff ~= 7.34e-5`.
 - Numerical parity on released `RFDETRSegSmall` checkpoint: `max_abs_logits_diff ~= 1.01e-4`, `max_abs_boxes_diff ~= 1.51e-4`, `max_abs_masks_diff ~= 4.24e-3`.
+- Preprocessing parity on real released `RFDETRSmall`: `max_abs_preprocess_diff = 0.0` (exact tensor match).
+- Preprocessing parity on real released `RFDETRSegSmall`: `max_abs_preprocess_diff = 0.0` (exact tensor match).
+- Fast preprocessing parity on real released `RFDETRSmall`:
+  - `max_abs_preprocess_fast_diff ~= 9.54e-7` vs original,
+  - `max_abs_slow_fast_preprocess_diff ~= 9.54e-7` (slow vs fast).
+- Fast preprocessing parity on real released `RFDETRSegSmall`:
+  - `max_abs_preprocess_fast_diff ~= 7.15e-7` vs original,
+  - `max_abs_slow_fast_preprocess_diff ~= 7.15e-7` (slow vs fast).
+- Detection postprocess parity on real released `RFDETRSmall`:
+  - `max_abs_postprocess_scores_diff = 0.0`,
+  - `max_abs_postprocess_boxes_diff = 0.0`,
+  - `postprocess_labels_match = True`,
+  - fast parity: scores/boxes diff `0.0`, labels match `True`, slow-vs-fast labels match `True`.
+- Segmentation postprocess parity on real released `RFDETRSegSmall`:
+  - `max_abs_postprocess_scores_diff = 0.0`,
+  - `max_abs_postprocess_boxes_diff = 0.0`,
+  - `postprocess_labels_match = True`,
+  - `postprocess_masks_match = True`,
+  - fast parity: scores/boxes diff `0.0`, labels/masks match `True`, slow-vs-fast masks match `True`.
 - Printed logits/boxes slices are matching up to float tolerance.
 - Printed logits/boxes/masks slices are matching up to float tolerance for segmentation conversion.
 - Real checkpoint parity above was re-run after modular regeneration (same metrics), confirming generated `modeling_rf_detr.py` parity.
 - RF-DETR tests (including new instance-segmentation unit coverage): `191 passed, 144 skipped, 14 warnings`.
+- RF-DETR image-processing tests (slow+fast): `23 passed, 3 skipped`.
+- RF-DETR combined modeling + image-processing tests after fast processor integration: `214 passed, 147 skipped, 14 warnings`.
 
 ## Notes
 - The RT-DETR small checkpoint can be found at `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth`.

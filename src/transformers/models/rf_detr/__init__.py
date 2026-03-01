@@ -20,6 +20,8 @@ from ...utils.import_utils import define_import_structure
 
 if TYPE_CHECKING:
     from .configuration_rf_detr import *
+    from .image_processing_rf_detr import *
+    from .image_processing_rf_detr_fast import *
     from .modeling_rf_detr import *
 else:
     import sys
