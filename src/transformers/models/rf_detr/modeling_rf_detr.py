@@ -2049,6 +2049,7 @@ class RfDetrForInstanceSegmentation(RfDetrPreTrainedModel):
 
         self.post_init()
 
+    @can_return_tuple
     def forward(
         self,
         pixel_values: torch.FloatTensor = None,
@@ -2124,5 +2125,7 @@ __all__ = [
     "RfDetrForObjectDetection",
     "RfDetrInstanceSegmentationOutput",
     "RfDetrModel",
+    "RfDetrPreTrainedModel",
     "RfDetrWindowedDinov2Backbone",
+    "RfDetrWindowedDinov2PreTrainedModel",
 ]

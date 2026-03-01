@@ -21,12 +21,14 @@ import torch.nn as nn
 
 from ...configuration_utils import PreTrainedConfig
 from ...modeling_outputs import BackboneOutput, BaseModelOutput
+from ...utils.generic import can_return_tuple
 from ..auto import AutoConfig
 from ..dinov2_with_registers.configuration_dinov2_with_registers import Dinov2WithRegistersConfig
 from ..dinov2_with_registers.modeling_dinov2_with_registers import (
     Dinov2WithRegistersBackbone,
     Dinov2WithRegistersEmbeddings,
     Dinov2WithRegistersLayer,
+    Dinov2WithRegistersPreTrainedModel,
 )
 from ..lw_detr.configuration_lw_detr import LwDetrConfig
 from ..lw_detr.modeling_lw_detr import (
@@ -305,6 +307,10 @@ class RfDetrWindowedDinov2Encoder(nn.Module):
             last_hidden_state=hidden_states,
             hidden_states=tuple(all_hidden_states) if all_hidden_states is not None else None,
         )
+
+
+class RfDetrWindowedDinov2PreTrainedModel(Dinov2WithRegistersPreTrainedModel):
+    pass
 
 
 class RfDetrWindowedDinov2Backbone(Dinov2WithRegistersBackbone):
@@ -790,6 +796,7 @@ class RfDetrForInstanceSegmentation(RfDetrPreTrainedModel):
 
         self.post_init()
 
+    @can_return_tuple
     def forward(
         self,
         pixel_values: torch.FloatTensor = None,
@@ -866,6 +873,8 @@ __all__ = [
     "RfDetrForObjectDetection",
     "RfDetrInstanceSegmentationOutput",
     "RfDetrModel",
+    "RfDetrPreTrainedModel",
     "RfDetrWindowedDinov2Backbone",
     "RfDetrWindowedDinov2Config",
+    "RfDetrWindowedDinov2PreTrainedModel",
 ]

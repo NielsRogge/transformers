@@ -348,9 +348,9 @@ class RfDetrModelTester:
 
 @require_torch
 class RfDetrModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
-    all_model_classes = (RfDetrModel, RfDetrForObjectDetection) if is_torch_available() else ()
+    all_model_classes = (RfDetrModel, RfDetrForObjectDetection, RfDetrForInstanceSegmentation) if is_torch_available() else ()
     pipeline_model_mapping = (
-        {"image-feature-extraction": RfDetrModel, "object-detection": RfDetrForObjectDetection}
+        {"image-feature-extraction": RfDetrModel, "object-detection": RfDetrForObjectDetection, "image-segmentation": RfDetrForInstanceSegmentation}
         if is_torch_available()
         else {}
     )
@@ -424,6 +424,21 @@ class RfDetrModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     @unittest.skip(reason="Feed forward chunking is not implemented")
     def test_feed_forward_chunking(self):
         pass
+
+    def test_training(self):
+        if not self.model_tester.is_training:
+            self.skipTest(reason="ModelTester is not configured to run training tests")
+
+        # Instance segmentation currently has no loss implementation.
+        for model_class in [RfDetrForObjectDetection]:
+            config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
+            config.return_dict = True
+            model = model_class(config)
+            model.to(torch_device)
+            model.train()
+            inputs = self._prepare_for_class(inputs_dict, model_class, return_labels=True)
+            loss = model(**inputs).loss
+            loss.backward()
 
     def test_attention_outputs(self):
         def check_attention_outputs(inputs_dict, config, model_class):

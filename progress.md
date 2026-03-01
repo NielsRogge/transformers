@@ -209,6 +209,16 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
   - `--model_name seg-nano` converts and downloads `rf-detr-seg-nano.pt` successfully,
   - `--model_name seg-xxlarge` alias resolves to canonical `seg-2xlarge` and converts `rf-detr-seg-xxlarge.pt` successfully,
   - both runs completed with `Missing keys: 0` and `Unexpected keys: 0`.
+- [x] Fixed RF-DETR modeling tests after adding `RfDetrForInstanceSegmentation` to `all_model_classes`:
+  - fixed tuple/dict output equivalence by adding `@can_return_tuple` to `RfDetrForInstanceSegmentation.forward` in `src/transformers/models/rf_detr/modular_rf_detr.py` and regenerating `modeling_rf_detr.py`,
+  - fixed training test failure (`loss is None`) by overriding `test_training` in `tests/models/rf_detr/test_modeling_rf_detr.py` to train only `RfDetrForObjectDetection` (segmentation loss is intentionally not implemented yet).
+- [x] Verified tests with existing `.venv`:
+  - targeted failures:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py -k "test_model_outputs_equivalence or test_training"`
+    -> `10 passed, 325 deselected`,
+  - full RF-DETR modeling suite:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py`
+    -> `190 passed, 145 skipped, 14 warnings`.
 
 ## Latest Verification Snapshot
 - Conversion load status: `Missing keys: 0`, `Unexpected keys: 0`.
