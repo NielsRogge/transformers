@@ -186,9 +186,38 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
   - command:
     `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py tests/models/rf_detr/test_image_processing_rf_detr.py`,
   - result: `214 passed, 147 skipped, 14 warnings`.
+- [x] Added dataset-specific `id2label` / `label2id` population in `src/transformers/models/rf_detr/convert_rf_detr_to_hf.py`:
+  - infer label dataset per checkpoint/model variant (`coco` for `nano/small/medium/large/base/base-2/seg-small`, `object365` for `base-o365`),
+  - load mappings from `huggingface/label-files` (`coco-detection-id2label.json`, `object365-id2label.json`),
+  - align mapping length with checkpoint head size (`num_labels`) and keep an offline-safe fallback to `LABEL_{id}` labels when label-files are unavailable.
+  - smoke-verified conversion after the change:
+    - `rf-detr-small.pth` loads `coco` mapping with `91` labels,
+    - `rf-detr-base-o365.pth` loads `object365` mapping with `366` labels,
+    - `rf-detr-seg-small.pt` loads `coco` mapping with `91` labels,
+    - all conversions completed with `Missing keys: 0` and `Unexpected keys: 0`.
+- [x] Extended instance-segmentation conversion support in `src/transformers/models/rf_detr/convert_rf_detr_to_hf.py` to all checkpoints mentioned in upstream RF-DETR:
+  - added model-name support, aliases, filename candidates, and regex patterns for:
+    `seg-preview`, `seg-nano`, `seg-small`, `seg-medium`, `seg-large`, `seg-xlarge`, `seg-2xlarge` (including `seg-xxlarge` alias/file pattern),
+  - added default fallback args for all segmentation variants (for checkpoints without embedded `args`),
+  - expanded COCO label mapping assignment to all segmentation variants,
+  - added query-count fallback inference from `query_feat.weight` in `_prepare_checkpoint_args` to auto-correct `num_queries` when checkpoint/defaults disagree.
+- [x] Verified full local segmentation conversion sweep (all upstream-mentioned segmentation checkpoints):
+  - command:
+    `source .venv/bin/activate && for ckpt in /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-preview.pt /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-nano.pt /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-small.pt /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-medium.pt /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-large.pt /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-xlarge.pt /Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-seg-xxlarge.pt; do uv run --no-project --python .venv/bin/python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --checkpoint_path \"$ckpt\" --pytorch_dump_folder_path \"/tmp/rf-detr-$(basename \"$ckpt\" .pt)-hf-allseg\" || exit 1; done`
+  - result: all variants converted successfully with `Missing keys: 0` and `Unexpected keys: 0`.
+- [x] Verified new model-name download path for additional segmentation variants:
+  - `--model_name seg-nano` converts and downloads `rf-detr-seg-nano.pt` successfully,
+  - `--model_name seg-xxlarge` alias resolves to canonical `seg-2xlarge` and converts `rf-detr-seg-xxlarge.pt` successfully,
+  - both runs completed with `Missing keys: 0` and `Unexpected keys: 0`.
 
 ## Latest Verification Snapshot
 - Conversion load status: `Missing keys: 0`, `Unexpected keys: 0`.
+- Converter now auto-populates `config.id2label`/`config.label2id`:
+  - COCO variants load `coco-detection-id2label.json` (`91` labels),
+  - Objects365 variant (`base-o365`) loads `object365-id2label.json` (`366` labels).
+- Full segmentation checkpoint conversion sweep succeeded for:
+  `rf-detr-seg-preview.pt`, `rf-detr-seg-nano.pt`, `rf-detr-seg-small.pt`,
+  `rf-detr-seg-medium.pt`, `rf-detr-seg-large.pt`, `rf-detr-seg-xlarge.pt`, `rf-detr-seg-xxlarge.pt`.
 - Numerical parity on locally generated RFDETRSmall-style dummy checkpoint: `max_abs_logits_diff ~= 8.6e-6`, `max_abs_boxes_diff = 0.0`.
 - Numerical parity on real released `RFDETRSmall` checkpoint: `max_abs_logits_diff ~= 1.67e-4`, `max_abs_boxes_diff ~= 7.34e-5`.
 - Numerical parity on released `RFDETRSegSmall` checkpoint: `max_abs_logits_diff ~= 1.01e-4`, `max_abs_boxes_diff ~= 1.51e-4`, `max_abs_masks_diff ~= 4.24e-3`.

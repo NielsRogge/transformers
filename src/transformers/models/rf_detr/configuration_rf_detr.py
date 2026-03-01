@@ -35,57 +35,60 @@ class RfDetrWindowedDinov2Config(BackboneConfigMixin, PreTrainedConfig):
     documentation from [`PreTrainedConfig`] for more information.
 
     Args:
-        hidden_size (`int`, *optional*, defaults to 768):
-            Dimensionality of the encoder layers and the pooler layer.
-        num_hidden_layers (`int`, *optional*, defaults to 12):
-            Number of hidden layers in the Transformer encoder.
-        num_attention_heads (`int`, *optional*, defaults to 12):
-            Number of attention heads for each attention layer in the Transformer encoder.
-        mlp_ratio (`int`, *optional*, defaults to 4):
-            Ratio of the hidden size of the MLPs relative to the `hidden_size`.
-        hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
-            The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
-            `"relu"`, `"selu"` and `"gelu_new"` are supported.
-        hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
-            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
-        attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
-            The dropout ratio for the attention probabilities.
-        initializer_range (`float`, *optional*, defaults to 0.02):
-            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
-        layer_norm_eps (`float`, *optional*, defaults to 1e-06):
-            The epsilon used by the layer normalization layers.
-        image_size (`int`, *optional*, defaults to 224):
-            The size (resolution) of each image.
-        patch_size (`int`, *optional*, defaults to 16):
-            The size (resolution) of each patch.
-        num_channels (`int`, *optional*, defaults to 3):
-            The number of input channels.
-        qkv_bias (`bool`, *optional*, defaults to `True`):
-            Whether to add a bias to the queries, keys and values.
-        layerscale_value (`float`, *optional*, defaults to 1.0):
-           Initial value to use for layer scale.
-        drop_path_rate (`float`, *optional*, defaults to 0.0):
-            Stochastic depth rate per sample (when applied in the main path of residual layers).
-        use_swiglu_ffn (`bool`, *optional*, defaults to `False`):
-            Whether to use the SwiGLU feedforward neural network.
-        num_register_tokens (`int`, *optional*, defaults to 4):
-            Number of register tokens to use.
-        out_features (`list[str]`, *optional*):
-            If used as backbone, list of features to output. Can be any of `"stem"`, `"stage1"`, `"stage2"`, etc.
-            (depending on how many stages the model has). If unset and `out_indices` is set, will default to the
-            corresponding stages. If unset and `out_indices` is unset, will default to the last stage. Must be in the
-            same order as defined in the `stage_names` attribute.
-        out_indices (`list[int]`, *optional*):
-            If used as backbone, list of indices of features to output. Can be any of 0, 1, 2, etc. (depending on how
-            many stages the model has). If unset and `out_features` is set, will default to the corresponding stages.
-            If unset and `out_features` is unset, will default to the last stage. Must be in the
-            same order as defined in the `stage_names` attribute.
-        apply_layernorm (`bool`, *optional*, defaults to `True`):
-            Whether to apply layer normalization to the feature maps in case the model is used as backbone.
-        reshape_hidden_states (`bool`, *optional*, defaults to `True`):
-            Whether to reshape the feature maps to 4D tensors of shape `(batch_size, hidden_size, height, width)` in
-            case the model is used as backbone. If `False`, the feature maps will be 3D tensors of shape `(batch_size,
-            seq_len, hidden_size)`.
+            hidden_size (`int`, *optional*, defaults to 768):
+                Dimensionality of the encoder layers and the pooler layer.
+            num_hidden_layers (`int`, *optional*, defaults to 12):
+                Number of hidden layers in the Transformer encoder.
+            num_attention_heads (`int`, *optional*, defaults to 12):
+                Number of attention heads for each attention layer in the Transformer encoder.
+            mlp_ratio (`int`, *optional*, defaults to 4):
+                Ratio of the hidden size of the MLPs relative to the `hidden_size`.
+            hidden_act (`str` or `function`, *optional*, defaults to `"gelu"`):
+                The non-linear activation function (function or string) in the encoder and pooler. If string, `"gelu"`,
+                `"relu"`, `"selu"` and `"gelu_new"` are supported.
+            hidden_dropout_prob (`float`, *optional*, defaults to 0.0):
+                The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+            attention_probs_dropout_prob (`float`, *optional*, defaults to 0.0):
+                The dropout ratio for the attention probabilities.
+            initializer_range (`float`, *optional*, defaults to 0.02):
+                The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+            layer_norm_eps (`float`, *optional*, defaults to 1e-06):
+                The epsilon used by the layer normalization layers.
+            image_size (`int`, *optional*, defaults to 224):
+                The size (resolution) of each image.
+            patch_size (`int`, *optional*, defaults to 16):
+                The size (resolution) of each patch.
+            num_channels (`int`, *optional*, defaults to 3):
+                The number of input channels.
+            qkv_bias (`bool`, *optional*, defaults to `True`):
+                Whether to add a bias to the queries, keys and values.
+            layerscale_value (`float`, *optional*, defaults to 1.0):
+               Initial value to use for layer scale.
+            drop_path_rate (`float`, *optional*, defaults to 0.0):
+                Stochastic depth rate per sample (when applied in the main path of residual layers).
+            use_swiglu_ffn (`bool`, *optional*, defaults to `False`):
+                Whether to use the SwiGLU feedforward neural network.
+            num_register_tokens (`int`, *optional*, defaults to 4):
+                Number of register tokens to use.
+            out_features (`list[str]`, *optional*):
+                If used as backbone, list of features to output. Can be any of `"stem"`, `"stage1"`, `"stage2"`, etc.
+                (depending on how many stages the model has). If unset and `out_indices` is set, will default to the
+                corresponding stages. If unset and `out_indices` is unset, will default to the last stage. Must be in the
+                same order as defined in the `stage_names` attribute.
+            out_indices (`list[int]`, *optional*):
+                If used as backbone, list of indices of features to output. Can be any of 0, 1, 2, etc. (depending on how
+                many stages the model has). If unset and `out_features` is set, will default to the corresponding stages.
+                If unset and `out_features` is unset, will default to the last stage. Must be in the
+                same order as defined in the `stage_names` attribute.
+            apply_layernorm (`bool`, *optional*, defaults to `True`):
+                Whether to apply layer normalization to the feature maps in case the model is used as backbone.
+            reshape_hidden_states (`bool`, *optional*, defaults to `True`):
+                Whether to reshape the feature maps to 4D tensors of shape `(batch_size, hidden_size, height, width)` in
+                case the model is used as backbone. If `False`, the feature maps will be 3D tensors of shape `(batch_size,
+                seq_len, hidden_size)`.
+            num_windows (`int`, *optional*, defaults to 2): <fill_docstring>
+            window_block_indexes (`list[int] | None`, *optional*): <fill_docstring>
+            gradient_checkpointing (`bool`, *optional*, defaults to `False`): <fill_docstring>
 
     Example:
 
@@ -177,72 +180,74 @@ class RfDetrConfig(PreTrainedConfig):
     documentation from [`PretrainedConfig`] for more information.
 
     Args:
-        backbone_config (`PretrainedConfig` or `dict`, *optional*):
-            The configuration of the backbone model. If not provided, will default to `RfDetrViTConfig` with
-            a small ViT architecture optimized for detection tasks.
-        projector_scale_factors (`list[float]`, *optional*, defaults to `[]`):
-            Scale factors for the feature pyramid network. Each scale factor determines the resolution of features
-            at different levels. Supported values are 0.5, 1.0, and 2.0.
-        hidden_expansion (`float`, *optional*, defaults to 0.5):
-            Expansion factor for hidden dimensions in the projector layers.
-        c2f_num_blocks (`int`, *optional*, defaults to 3):
-            Number of blocks in the C2F layer.
-        activation_function (`str`, *optional*, defaults to `"silu"`):
-            The non-linear activation function in the projector. Supported values are `"silu"`, `"relu"`, `"gelu"`.
-        batch_norm_eps (`float`, *optional*, defaults to 1e-05):
-            The epsilon value for batch normalization layers.
-        d_model (`int`, *optional*, defaults to 256):
-            Dimension of the model layers and the number of expected features in the decoder inputs.
-        dropout (`float`, *optional*, defaults to 0.1):
-            The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
-        decoder_ffn_dim (`int`, *optional*, defaults to 2048):
-            Dimension of the "intermediate" (often named feed-forward) layer in decoder.
-        decoder_n_points (`int`, *optional*, defaults to 4):
-            The number of sampled keys in each feature level for each attention head in the decoder.
-        decoder_layers (`int`, *optional*, defaults to 3):
-            Number of decoder layers in the transformer.
-        decoder_self_attention_heads (`int`, *optional*, defaults to 8):
-            Number of attention heads for each attention layer in the decoder self-attention.
-        decoder_cross_attention_heads (`int`, *optional*, defaults to 16):
-            Number of attention heads for each attention layer in the decoder cross-attention.
-        decoder_activation_function (`str`, *optional*, defaults to `"relu"`):
-            The non-linear activation function in the decoder. Supported values are `"relu"`, `"silu"`, `"gelu"`.
-        num_queries (`int`, *optional*, defaults to 300):
-            Number of object queries, i.e. detection slots. This is the maximal number of objects
-            [`RfDetrModel`] can detect in a single image.
-        attention_bias (`bool`, *optional*, defaults to `True`):
-            Whether to add bias to the attention layers.
-        attention_dropout (`float`, *optional*, defaults to 0.0):
-            The dropout ratio for the attention probabilities.
-        activation_dropout (`float`, *optional*, defaults to 0.0):
-            The dropout ratio for activations inside the fully connected layer.
-        group_detr (`int`, *optional*, defaults to 13):
-            Number of groups for Group DETR attention mechanism, which helps reduce computational complexity.
-        init_std (`float`, *optional*, defaults to 0.02):
-            The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
-        disable_custom_kernels (`bool`, *optional*, defaults to `True`):
-            Disable the use of custom CUDA and CPU kernels. This option is necessary for the ONNX export, as custom
-            kernels are not supported by PyTorch ONNX export.
-        class_cost (`float`, *optional*, defaults to 2):
-            Relative weight of the classification error in the Hungarian matching cost.
-        bbox_cost (`float`, *optional*, defaults to 5):
-            Relative weight of the L1 error of the bounding box coordinates in the Hungarian matching cost.
-        giou_cost (`float`, *optional*, defaults to 2):
-            Relative weight of the generalized IoU loss of the bounding box in the Hungarian matching cost.
-        mask_loss_coefficient (`float`, *optional*, defaults to 1):
-            Relative weight of the Focal loss in the panoptic segmentation loss.
-        dice_loss_coefficient (`float`, *optional*, defaults to 1):
-            Relative weight of the DICE/F-1 loss in the panoptic segmentation loss.
-        bbox_loss_coefficient (`float`, *optional*, defaults to 5):
-            Relative weight of the L1 bounding box loss in the object detection loss.
-        giou_loss_coefficient (`float`, *optional*, defaults to 2):
-            Relative weight of the generalized IoU loss in the object detection loss.
-        eos_coefficient (`float`, *optional*, defaults to 0.1):
-            Relative classification weight of the 'no-object' class in the object detection loss.
-        focal_alpha (`float`, *optional*, defaults to 0.25):
-            Alpha parameter in the focal loss.
-        auxiliary_loss (`bool`, *optional*, defaults to `True`):
-            Whether auxiliary decoding losses (loss at each decoder layer) are to be used.
+            backbone_config (`PretrainedConfig` or `dict`, *optional*):
+                The configuration of the backbone model. If not provided, will default to `RfDetrViTConfig` with
+                a small ViT architecture optimized for detection tasks.
+            projector_scale_factors (`list[float]`, *optional*, defaults to `[]`):
+                Scale factors for the feature pyramid network. Each scale factor determines the resolution of features
+                at different levels. Supported values are 0.5, 1.0, and 2.0.
+            hidden_expansion (`float`, *optional*, defaults to 0.5):
+                Expansion factor for hidden dimensions in the projector layers.
+            c2f_num_blocks (`int`, *optional*, defaults to 3):
+                Number of blocks in the C2F layer.
+            activation_function (`str`, *optional*, defaults to `"silu"`):
+                The non-linear activation function in the projector. Supported values are `"silu"`, `"relu"`, `"gelu"`.
+            batch_norm_eps (`float`, *optional*, defaults to 1e-05):
+                The epsilon value for batch normalization layers.
+            d_model (`int`, *optional*, defaults to 256):
+                Dimension of the model layers and the number of expected features in the decoder inputs.
+            dropout (`float`, *optional*, defaults to 0.0):
+                The dropout probability for all fully connected layers in the embeddings, encoder, and pooler.
+            decoder_ffn_dim (`int`, *optional*, defaults to 2048):
+                Dimension of the "intermediate" (often named feed-forward) layer in decoder.
+            decoder_n_points (`int`, *optional*, defaults to 2):
+                The number of sampled keys in each feature level for each attention head in the decoder.
+            decoder_layers (`int`, *optional*, defaults to 3):
+                Number of decoder layers in the transformer.
+            decoder_self_attention_heads (`int`, *optional*, defaults to 8):
+                Number of attention heads for each attention layer in the decoder self-attention.
+            decoder_cross_attention_heads (`int`, *optional*, defaults to 16):
+                Number of attention heads for each attention layer in the decoder cross-attention.
+            decoder_activation_function (`str`, *optional*, defaults to `"relu"`):
+                The non-linear activation function in the decoder. Supported values are `"relu"`, `"silu"`, `"gelu"`.
+            num_queries (`int`, *optional*, defaults to 300):
+                Number of object queries, i.e. detection slots. This is the maximal number of objects
+                [`RfDetrModel`] can detect in a single image.
+            attention_bias (`bool`, *optional*, defaults to `True`):
+                Whether to add bias to the attention layers.
+            attention_dropout (`float`, *optional*, defaults to 0.0):
+                The dropout ratio for the attention probabilities.
+            activation_dropout (`float`, *optional*, defaults to 0.0):
+                The dropout ratio for activations inside the fully connected layer.
+            group_detr (`int`, *optional*, defaults to 13):
+                Number of groups for Group DETR attention mechanism, which helps reduce computational complexity.
+            init_std (`float`, *optional*, defaults to 0.02):
+                The standard deviation of the truncated_normal_initializer for initializing all weight matrices.
+            disable_custom_kernels (`bool`, *optional*, defaults to `True`):
+                Disable the use of custom CUDA and CPU kernels. This option is necessary for the ONNX export, as custom
+                kernels are not supported by PyTorch ONNX export.
+            class_cost (`float`, *optional*, defaults to 2):
+                Relative weight of the classification error in the Hungarian matching cost.
+            bbox_cost (`float`, *optional*, defaults to 5):
+                Relative weight of the L1 error of the bounding box coordinates in the Hungarian matching cost.
+            giou_cost (`float`, *optional*, defaults to 2):
+                Relative weight of the generalized IoU loss of the bounding box in the Hungarian matching cost.
+            mask_loss_coefficient (`float`, *optional*, defaults to 1):
+                Relative weight of the Focal loss in the panoptic segmentation loss.
+            dice_loss_coefficient (`float`, *optional*, defaults to 1):
+                Relative weight of the DICE/F-1 loss in the panoptic segmentation loss.
+            bbox_loss_coefficient (`float`, *optional*, defaults to 5):
+                Relative weight of the L1 bounding box loss in the object detection loss.
+            giou_loss_coefficient (`float`, *optional*, defaults to 2):
+                Relative weight of the generalized IoU loss in the object detection loss.
+            eos_coefficient (`float`, *optional*, defaults to 0.1):
+                Relative classification weight of the 'no-object' class in the object detection loss.
+            focal_alpha (`float`, *optional*, defaults to 0.25):
+                Alpha parameter in the focal loss.
+            auxiliary_loss (`bool`, *optional*, defaults to `True`):
+                Whether auxiliary decoding losses (loss at each decoder layer) are to be used.
+            mask_downsample_ratio (`<fill_type>`, *optional*, defaults to 4): <fill_docstring>
+            segmentation_bottleneck_ratio (`<fill_type>`, *optional*, defaults to 1): <fill_docstring>
 
     Examples:
 

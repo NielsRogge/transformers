@@ -34,6 +34,7 @@ python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --model_name sma
 
 import argparse
 import importlib
+import json
 import math
 import os
 import re
@@ -123,6 +124,29 @@ INSTANCE_SEGMENTATION_TO_CONVERTED_KEY_MAPPING = {
 
 MODEL_TASK_OBJECT_DETECTION = "object-detection"
 MODEL_TASK_INSTANCE_SEGMENTATION = "instance-segmentation"
+LABEL_DATASET_COCO = "coco"
+LABEL_DATASET_OBJECT365 = "object365"
+LABEL_FILES_DATASET_REPO_ID = "huggingface/label-files"
+LABEL_FILES_DATASET_FILENAMES = {
+    LABEL_DATASET_COCO: "coco-detection-id2label.json",
+    LABEL_DATASET_OBJECT365: "object365-id2label.json",
+}
+MODEL_NAME_TO_LABEL_DATASET = {
+    "nano": LABEL_DATASET_COCO,
+    "small": LABEL_DATASET_COCO,
+    "medium": LABEL_DATASET_COCO,
+    "large": LABEL_DATASET_COCO,
+    "base": LABEL_DATASET_COCO,
+    "base-2": LABEL_DATASET_COCO,
+    "base-o365": LABEL_DATASET_OBJECT365,
+    "seg-preview": LABEL_DATASET_COCO,
+    "seg-nano": LABEL_DATASET_COCO,
+    "seg-small": LABEL_DATASET_COCO,
+    "seg-medium": LABEL_DATASET_COCO,
+    "seg-large": LABEL_DATASET_COCO,
+    "seg-xlarge": LABEL_DATASET_COCO,
+    "seg-2xlarge": LABEL_DATASET_COCO,
+}
 
 DEFAULT_RF_DETR_CHECKPOINT_REPO_ID = "nielsr/rf-detr-checkpoints"
 OBJECT_DETECTION_CHECKPOINT_CANDIDATES = {
@@ -144,10 +168,31 @@ OBJECT_DETECTION_MODEL_NAME_ALIASES = {
     "base-o365": {"baseo365", "o365", "rfdetrbaseo365"},
 }
 INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES = {
+    "seg-preview": ["rf-detr-seg-preview.pt"],
+    "seg-nano": ["rf-detr-seg-nano.pt"],
     "seg-small": ["rf-detr-seg-small.pt"],
+    "seg-medium": ["rf-detr-seg-medium.pt"],
+    "seg-large": ["rf-detr-seg-large.pt"],
+    "seg-xlarge": ["rf-detr-seg-xlarge.pt"],
+    "seg-2xlarge": ["rf-detr-seg-2xlarge.pt", "rf-detr-seg-xxlarge.pt"],
 }
 INSTANCE_SEGMENTATION_MODEL_NAME_ALIASES = {
+    "seg-preview": {"segpreview", "rfdetrsegpreview", "instsegpreview", "instancesegpreview"},
+    "seg-nano": {"segnano", "rfdetrsegnano", "instsegnano", "instancesegnano"},
     "seg-small": {"segsmall", "rfdetrsegsmall", "instsegsmall", "instancesegsmall"},
+    "seg-medium": {"segmedium", "rfdetrsegmedium", "instsegmedium", "instancesegmedium"},
+    "seg-large": {"seglarge", "rfdetrseglarge", "instseglarge", "instanceseglarge"},
+    "seg-xlarge": {"segxlarge", "rfdetrsegxlarge", "instsegxlarge", "instancesegxlarge"},
+    "seg-2xlarge": {
+        "seg2xlarge",
+        "segxxlarge",
+        "rfdetrseg2xlarge",
+        "rfdetrsegxxlarge",
+        "instseg2xlarge",
+        "instsegxxlarge",
+        "instanceseg2xlarge",
+        "instancesegxxlarge",
+    },
 }
 OBJECT_DETECTION_MODEL_NAME_PATTERNS = {
     "nano": [r"(?:.*/)?rf[-_]?detr[-_]?nano(?:[-_].*)?\.pth$"],
@@ -159,7 +204,13 @@ OBJECT_DETECTION_MODEL_NAME_PATTERNS = {
     "base-o365": [r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?o365(?:[-_].*)?\.pth$"],
 }
 INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS = {
+    "seg-preview": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?preview(?:[-_].*)?\.(?:pt|pth)$"],
+    "seg-nano": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?nano(?:[-_].*)?\.(?:pt|pth)$"],
     "seg-small": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?small(?:[-_].*)?\.(?:pt|pth)$"],
+    "seg-medium": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?medium(?:[-_].*)?\.(?:pt|pth)$"],
+    "seg-large": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?large(?:[-_].*)?\.(?:pt|pth)$"],
+    "seg-xlarge": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?xlarge(?:[-_].*)?\.(?:pt|pth)$"],
+    "seg-2xlarge": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?(?:2xlarge|xxlarge)(?:[-_].*)?\.(?:pt|pth)$"],
 }
 OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS = {
     "nano": {
@@ -290,6 +341,48 @@ OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS = {
     },
 }
 INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS = {
+    "seg-preview": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 4,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 200,
+        "num_select": 200,
+        "group_detr": 13,
+        "resolution": 432,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 2,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
+    "seg-nano": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 4,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 100,
+        "num_select": 100,
+        "group_detr": 13,
+        "resolution": 312,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 1,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
     "seg-small": {
         "encoder": "dinov2_windowed_small",
         "out_feature_indexes": [3, 6, 9, 12],
@@ -302,6 +395,90 @@ INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS = {
         "num_queries": 100,
         "group_detr": 13,
         "resolution": 384,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 2,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
+    "seg-medium": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 5,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 200,
+        "num_select": 200,
+        "group_detr": 13,
+        "resolution": 432,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 2,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
+    "seg-large": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 5,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 300,
+        "num_select": 300,
+        "group_detr": 13,
+        "resolution": 504,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 2,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
+    "seg-xlarge": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 6,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 300,
+        "num_select": 300,
+        "group_detr": 13,
+        "resolution": 624,
+        "dinov2_patch_size": 12,
+        "dinov2_num_windows": 2,
+        "vit_encoder_num_layers": 12,
+        "aux_loss": True,
+        "num_classes": 90,
+        "segmentation_head": True,
+        "mask_downsample_ratio": 4,
+    },
+    "seg-2xlarge": {
+        "encoder": "dinov2_windowed_small",
+        "out_feature_indexes": [3, 6, 9, 12],
+        "projector_scale": ["P4"],
+        "hidden_dim": 256,
+        "dec_n_points": 2,
+        "dec_layers": 6,
+        "sa_nheads": 8,
+        "ca_nheads": 16,
+        "num_queries": 300,
+        "num_select": 300,
+        "group_detr": 13,
+        "resolution": 768,
         "dinov2_patch_size": 12,
         "dinov2_num_windows": 2,
         "vit_encoder_num_layers": 12,
@@ -377,6 +554,55 @@ def _get_checkpoint_arg(checkpoint_args: dict, *names: str, default=None, requir
         joined_names = ", ".join(names)
         raise KeyError(f"None of [{joined_names}] were found in checkpoint args.")
     return default
+
+
+def _build_default_id2label(num_labels: int) -> dict[int, str]:
+    return {idx: f"LABEL_{idx}" for idx in range(num_labels)}
+
+
+def _load_id2label_from_label_files(dataset_name: str, num_labels: int) -> dict[int, str]:
+    filename = LABEL_FILES_DATASET_FILENAMES[dataset_name]
+    try:
+        label_file_path = hf_hub_download(
+            repo_id=LABEL_FILES_DATASET_REPO_ID,
+            filename=filename,
+            repo_type="dataset",
+        )
+        with open(label_file_path, encoding="utf-8") as f:
+            id2label = {int(k): v for k, v in json.load(f).items()}
+    except Exception as error:
+        print(
+            f"Could not download id2label mapping from `{LABEL_FILES_DATASET_REPO_ID}/{filename}`: {error}. "
+            "Falling back to default `LABEL_{id}` labels."
+        )
+        return _build_default_id2label(num_labels)
+
+    # Keep config labels aligned with the checkpoint head dimension.
+    return {idx: id2label.get(idx, f"LABEL_{idx}") for idx in range(num_labels)}
+
+
+def _resolve_label_dataset_name(
+    checkpoint_args: dict,
+    resolved_model_name: str | None,
+    checkpoint_num_labels: int | None,
+) -> str | None:
+    if resolved_model_name is not None:
+        label_dataset_name = MODEL_NAME_TO_LABEL_DATASET.get(resolved_model_name)
+        if label_dataset_name is not None:
+            return label_dataset_name
+
+    dataset_file = str(checkpoint_args.get("dataset_file", "")).lower()
+    if "o365" in dataset_file or "obj365" in dataset_file or "objects365" in dataset_file:
+        return LABEL_DATASET_OBJECT365
+    if "coco" in dataset_file:
+        return LABEL_DATASET_COCO
+
+    if checkpoint_num_labels == 366:
+        return LABEL_DATASET_OBJECT365
+    if checkpoint_num_labels == 91:
+        return LABEL_DATASET_COCO
+
+    return None
 
 
 def _infer_default_repo_id(checkpoint_path: str, checkpoint_args: dict) -> str:
@@ -509,6 +735,18 @@ def _prepare_checkpoint_args(
     for key, default_value in default_args.items():
         if normalized_args.get(key) is None:
             normalized_args[key] = default_value
+
+    query_feat = state_dict.get("query_feat.weight")
+    if query_feat is not None and query_feat.ndim >= 1:
+        checkpoint_query_count = int(query_feat.shape[0])
+        group_detr = int(normalized_args.get("group_detr", 1))
+        model_query_count = normalized_args.get("num_queries")
+        if model_query_count is None or int(model_query_count) * group_detr != checkpoint_query_count:
+            if checkpoint_query_count % group_detr == 0:
+                normalized_args["num_queries"] = checkpoint_query_count // group_detr
+            else:
+                normalized_args["group_detr"] = 1
+                normalized_args["num_queries"] = checkpoint_query_count
 
     if normalized_args.get("patch_size") is None and normalized_args.get("dinov2_patch_size") is None:
         inferred_patch_size = _infer_patch_size_from_state_dict(state_dict)
@@ -830,6 +1068,21 @@ def convert_rf_detr_checkpoint(
             print(f"Resolved RF-DETR model variant: {resolved_model_name}")
 
     config = build_rf_detr_config_from_checkpoint(checkpoint_args, num_labels=checkpoint_num_labels)
+    label_dataset_name = _resolve_label_dataset_name(
+        checkpoint_args=checkpoint_args,
+        resolved_model_name=resolved_model_name,
+        checkpoint_num_labels=checkpoint_num_labels,
+    )
+    if label_dataset_name is not None:
+        config.id2label = _load_id2label_from_label_files(label_dataset_name, config.num_labels)
+        config.label2id = {label: idx for idx, label in config.id2label.items()}
+        print(f"Loaded id2label mapping for dataset `{label_dataset_name}` ({len(config.id2label)} labels).")
+    else:
+        print(
+            "Could not infer dataset for id2label mapping from checkpoint metadata. "
+            "Keeping default config label mapping."
+        )
+
     is_instance_segmentation = resolved_model_task == MODEL_TASK_INSTANCE_SEGMENTATION or checkpoint_args.get(
         "segmentation_head", False
     )
@@ -1098,7 +1351,8 @@ def main():
         help=(
             "RF-DETR model name to download from the Hub repo specified by --checkpoint_repo_id "
             "(e.g. object detection: `nano`, `small`, `medium`, `large`, `base`, `base-2`, `base-o365`; "
-            "instance segmentation: `seg-small`)."
+            "instance segmentation: `seg-preview`, `seg-nano`, `seg-small`, `seg-medium`, `seg-large`, "
+            "`seg-xlarge`, `seg-2xlarge`)."
         ),
     )
     parser.add_argument(
