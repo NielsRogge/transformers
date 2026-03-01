@@ -943,7 +943,6 @@ def build_original_rfdetr_model(
     _with_default(args, "drop_path", 0.0)
     _with_default(args, "shape", (args.resolution, args.resolution))
     _with_default(args, "backbone_lora", False)
-    _with_default(args, "gradient_checkpointing", False)
     _with_default(args, "decoder_norm", "LN")
     _with_default(args, "layer_norm", True)
     _with_default(args, "two_stage", True)

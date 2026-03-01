@@ -93,8 +93,6 @@ class RfDetrWindowedDinov2Config(BackboneConfigMixin, PreTrainedConfig):
         window_block_indexes (`list[int]`, *optional*):
             List of encoder layer indices that use windowed (local) attention instead of global attention.
             If not provided, all layers use windowed attention by default.
-        gradient_checkpointing (`bool`, *optional*, defaults to `False`):
-            Whether to use gradient checkpointing to save memory at the expense of a slower backward pass.
 
     Example:
 
@@ -138,7 +136,6 @@ class RfDetrWindowedDinov2Config(BackboneConfigMixin, PreTrainedConfig):
         reshape_hidden_states=True,
         num_windows: int = 2,
         window_block_indexes: list[int] | None = None,
-        gradient_checkpointing: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -168,7 +165,6 @@ class RfDetrWindowedDinov2Config(BackboneConfigMixin, PreTrainedConfig):
         self.window_block_indexes = (
             list(range(self.num_hidden_layers)) if window_block_indexes is None else window_block_indexes
         )
-        self.gradient_checkpointing = gradient_checkpointing
 
 
 class RfDetrConfig(PreTrainedConfig):

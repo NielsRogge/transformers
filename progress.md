@@ -267,3 +267,11 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
 - The real pre-trained `RFDETRSmall` checkpoint is now available locally at `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth` and was used for conversion/parity.
 - Numerical parity is currently validated via a locally generated RFDETRSmall-style checkpoint artifact (same architecture/args shape), and the converter prints matching slices with very small max abs diff (~8e-6 logits, 0 boxes).
 - Verification was re-run inside the existing repository virtual environment (`.venv`) as requested.
+
+## 2026-03-01 Follow-up
+- [x] Fixed `utils/check_config_attributes.py` failure for RF-DETR config classes:
+  - added `RfDetrConfig: True` to `SPECIAL_CASES_TO_ALLOW` (same handling pattern as `LwDetrConfig`, because these loss-related attributes are consumed through shared loss utilities outside `modeling_rf_detr.py`),
+  - added `RfDetrWindowedDinov2Config: ["gradient_checkpointing"]` to `SPECIAL_CASES_TO_ALLOW`.
+- [x] Verified with existing virtual environment:
+  - command: `.venv/bin/python utils/check_config_attributes.py`
+  - result: no errors.
