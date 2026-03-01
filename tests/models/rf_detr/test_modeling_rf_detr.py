@@ -30,7 +30,12 @@ if is_torch_available():
     import torch
     from torch import nn
 
-    from transformers import RfDetrForObjectDetection, RfDetrModel, RfDetrWindowedDinov2Backbone
+    from transformers import (
+        RfDetrForInstanceSegmentation,
+        RfDetrForObjectDetection,
+        RfDetrModel,
+        RfDetrWindowedDinov2Backbone,
+    )
 
 
 class RfDetrWindowedDinov2BackboneModelTester:
@@ -318,6 +323,28 @@ class RfDetrModelTester:
         self.parent.assertEqual(result.logits.shape, (self.batch_size, self.num_queries, self.num_labels))
         self.parent.assertEqual(result.pred_boxes.shape, (self.batch_size, self.num_queries, 4))
 
+    def create_and_check_rf_detr_instance_segmentation_head_model(self, config, pixel_values, pixel_mask, labels):
+        model = RfDetrForInstanceSegmentation(config=config)
+        model.to(torch_device)
+        model.eval()
+
+        result = model(pixel_values=pixel_values, pixel_mask=pixel_mask)
+        result = model(pixel_values)
+        self.parent.assertEqual(result.logits.shape, (self.batch_size, self.num_queries, self.num_labels))
+        self.parent.assertEqual(result.pred_boxes.shape, (self.batch_size, self.num_queries, 4))
+        self.parent.assertEqual(
+            result.pred_masks.shape,
+            (
+                self.batch_size,
+                self.num_queries,
+                self.image_size // config.mask_downsample_ratio,
+                self.image_size // config.mask_downsample_ratio,
+            ),
+        )
+
+        with self.parent.assertRaises(NotImplementedError):
+            model(pixel_values=pixel_values, pixel_mask=pixel_mask, labels=labels)
+
 
 @require_torch
 class RfDetrModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
@@ -369,6 +396,10 @@ class RfDetrModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
     def test_rf_detr_object_detection_head_model(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_rf_detr_object_detection_head_model(*config_and_inputs)
+
+    def test_rf_detr_instance_segmentation_head_model(self):
+        config_and_inputs = self.model_tester.prepare_config_and_inputs()
+        self.model_tester.create_and_check_rf_detr_instance_segmentation_head_model(*config_and_inputs)
 
     @unittest.skip(reason="RfDetr does not use inputs_embeds")
     def test_inputs_embeds(self):
@@ -499,7 +530,7 @@ class RfDetrModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
         config, inputs_dict = self.model_tester.prepare_config_and_inputs_for_common()
         config.auxiliary_loss = True
 
-        for model_class in self.all_model_classes[1:]:
+        for model_class in [RfDetrForObjectDetection]:
             model = model_class(config)
             model.to(torch_device)
             inputs = self._prepare_for_class(inputs_dict, model_class, return_labels=True)

@@ -107,6 +107,19 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
 - [x] Verified lint/smoke checks on updated RF-DETR files:
   - `ruff check` passes on modular/generated/converter files,
   - import smoke test confirms `from transformers.models.rf_detr import RfDetrForInstanceSegmentation`.
+- [x] Extended RF-DETR modeling tests with instance-segmentation coverage:
+  - updated `tests/models/rf_detr/test_modeling_rf_detr.py` to import `RfDetrForInstanceSegmentation`,
+  - added `create_and_check_rf_detr_instance_segmentation_head_model` with shape checks for `logits`, `pred_boxes`, and `pred_masks`,
+  - added explicit check that passing `labels` raises `NotImplementedError` (current model limitation),
+  - added `test_rf_detr_instance_segmentation_head_model`.
+- [x] Verified RF-DETR test suite with existing `.venv` after segmentation test updates:
+  - command:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py`,
+  - result: `191 passed, 144 skipped, 14 warnings` (no failures).
+- [x] Verified lint for the updated test file:
+  - command:
+    `source .venv/bin/activate && uv run --no-project --python .venv/bin/python ruff check tests/models/rf_detr/test_modeling_rf_detr.py`,
+  - result: `All checks passed!`.
 
 ## Latest Verification Snapshot
 - Conversion load status: `Missing keys: 0`, `Unexpected keys: 0`.
@@ -116,6 +129,7 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
 - Printed logits/boxes slices are matching up to float tolerance.
 - Printed logits/boxes/masks slices are matching up to float tolerance for segmentation conversion.
 - Real checkpoint parity above was re-run after modular regeneration (same metrics), confirming generated `modeling_rf_detr.py` parity.
+- RF-DETR tests (including new instance-segmentation unit coverage): `191 passed, 144 skipped, 14 warnings`.
 
 ## Notes
 - The RT-DETR small checkpoint can be found at `/Users/nielsrogge/Documents/python_projecten/rf-detr/rf-detr-small.pth`.
