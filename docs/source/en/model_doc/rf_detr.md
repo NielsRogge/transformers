@@ -23,7 +23,7 @@ rendered properly in your Markdown viewer.
 
 # RF-DETR
 
-[RF-DETR](https://huggingface.co/papers/2511.09554) is an end-to-end detector built on top of a DINOv2-style vision backbone and a lightweight DETR decoder. In this Transformers implementation, RF-DETR uses a windowed DINOv2-with-registers backbone and a Group-DETR-style decoder stack inherited from LW-DETR components for efficient object detection.
+[RF-DETR](https://huggingface.co/papers/2511.09554) is an end-to-end detector built on top of a DINOv2-style vision backbone and a lightweight DETR decoder. In this Transformers implementation, RF-DETR uses a windowed DINOv2-with-registers backbone and a Group-DETR-style decoder stack inherited from LW-DETR components for efficient object detection and instance segmentation.
 
 The original project is available at [roboflow/rf-detr](https://github.com/roboflow/rf-detr).
 
@@ -88,17 +88,50 @@ for score, label_id, box in zip(results["scores"], results["labels"], results["b
 </hfoption>
 </hfoptions>
 
+### Instance segmentation
+
+```python
+from transformers import AutoImageProcessor, RfDetrForInstanceSegmentation
+from PIL import Image
+import requests
+import torch
+
+url = "http://images.cocodataset.org/val2017/000000039769.jpg"
+image = Image.open(requests.get(url, stream=True).raw)
+
+image_processor = AutoImageProcessor.from_pretrained("nielsr/rf-detr-seg-small")
+model = RfDetrForInstanceSegmentation.from_pretrained("nielsr/rf-detr-seg-small")
+
+inputs = image_processor(images=image, return_tensors="pt")
+
+with torch.no_grad():
+    outputs = model(**inputs)
+
+results = image_processor.post_process_instance_segmentation(
+    outputs,
+    target_sizes=torch.tensor([image.size[::-1]]),
+    threshold=0.3,
+)[0]
+
+print(results.keys())
+print(results["scores"][:3])
+print(results["labels"][:3])
+print(results["masks"].shape)
+```
+
 ## Notes
 
 - RF-DETR predicts detections from `num_queries * group_detr` query slots during training/inference (`300 * 13 = 3900` by default).
 - The backbone is configured via [`~transformers.RfDetrWindowedDinov2Config`] and can be instantiated as a standalone backbone with [`~transformers.RfDetrWindowedDinov2Backbone`].
-- This implementation currently exposes object detection ([`~transformers.RfDetrForObjectDetection`]) and does not yet expose a dedicated segmentation head.
+- This implementation exposes both object detection ([`~transformers.RfDetrForObjectDetection`]) and instance segmentation ([`~transformers.RfDetrForInstanceSegmentation`]).
+- The instance segmentation head currently supports inference. Training loss for [`~transformers.RfDetrForInstanceSegmentation`] is not implemented yet.
 
 ## Resources
 
 A list of official Hugging Face and community (indicated by 🌎) resources to help you get started with RF-DETR.
 
 <PipelineTag pipeline="object-detection"/>
+<PipelineTag pipeline="image-segmentation"/>
 
 - Scripts for fine-tuning DETR-like object detection models with [`Trainer`] or [Accelerate](https://huggingface.co/docs/accelerate/index) can be found [here](https://github.com/huggingface/transformers/tree/main/examples/pytorch/object-detection).
 - See also: [Object detection task guide](../tasks/object_detection).
@@ -117,6 +150,8 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 
 [[autodoc]] models.rf_detr.modeling_rf_detr.RfDetrObjectDetectionOutput
 
+[[autodoc]] models.rf_detr.modeling_rf_detr.RfDetrInstanceSegmentationOutput
+
 ## RfDetrModel
 
 [[autodoc]] RfDetrModel
@@ -127,7 +162,26 @@ A list of official Hugging Face and community (indicated by 🌎) resources to h
 [[autodoc]] RfDetrForObjectDetection
     - forward
 
+## RfDetrForInstanceSegmentation
+
+[[autodoc]] RfDetrForInstanceSegmentation
+    - forward
+
 ## RfDetrWindowedDinov2Backbone
 
 [[autodoc]] RfDetrWindowedDinov2Backbone
     - forward
+
+## RfDetrImageProcessor
+
+[[autodoc]] RfDetrImageProcessor
+    - preprocess
+    - post_process_object_detection
+    - post_process_instance_segmentation
+
+## RfDetrImageProcessorFast
+
+[[autodoc]] RfDetrImageProcessorFast
+    - preprocess
+    - post_process_object_detection
+    - post_process_instance_segmentation

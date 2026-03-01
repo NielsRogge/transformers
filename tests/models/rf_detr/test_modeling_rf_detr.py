@@ -348,9 +348,15 @@ class RfDetrModelTester:
 
 @require_torch
 class RfDetrModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestCase):
-    all_model_classes = (RfDetrModel, RfDetrForObjectDetection, RfDetrForInstanceSegmentation) if is_torch_available() else ()
+    all_model_classes = (
+        (RfDetrModel, RfDetrForObjectDetection, RfDetrForInstanceSegmentation) if is_torch_available() else ()
+    )
     pipeline_model_mapping = (
-        {"image-feature-extraction": RfDetrModel, "object-detection": RfDetrForObjectDetection, "image-segmentation": RfDetrForInstanceSegmentation}
+        {
+            "image-feature-extraction": RfDetrModel,
+            "object-detection": RfDetrForObjectDetection,
+            "image-segmentation": RfDetrForInstanceSegmentation,
+        }
         if is_torch_available()
         else {}
     )

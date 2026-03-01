@@ -219,6 +219,11 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
   - full RF-DETR modeling suite:
     `source .venv/bin/activate && uv run --no-project --python .venv/bin/python pytest -q tests/models/rf_detr/test_modeling_rf_detr.py`
     -> `190 passed, 145 skipped, 14 warnings`.
+- [x] Updated RF-DETR docs page at `docs/source/en/model_doc/rf_detr.md`:
+  - added `RfDetrForInstanceSegmentation` to model docs + autodoc sections,
+  - added `RfDetrImageProcessor` and `RfDetrImageProcessorFast` autodoc sections with RF-DETR post-processing methods,
+  - added an instance segmentation usage example using `AutoImageProcessor` + `RfDetrForInstanceSegmentation`,
+  - updated notes to reflect current support (instance segmentation inference available; segmentation training loss not implemented yet).
 
 ## Latest Verification Snapshot
 - Conversion load status: `Missing keys: 0`, `Unexpected keys: 0`.
