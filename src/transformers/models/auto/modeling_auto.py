@@ -384,6 +384,7 @@ MODEL_MAPPING_NAMES = OrderedDict(
         ("sam2_vision_model", "Sam2VisionModel"),
         ("sam3", "Sam3Model"),
         ("sam3_lite_text", "Sam3LiteTextModel"),
+        ("sam3_lite_text_vision_model", "Sam3LiteTextVisionModel"),
         ("sam3_lite_text_vit_model", "Sam3LiteTextViTModel"),
         ("sam3_lite_text_vit_model", "Sam3LiteTextViTModel"),
         ("sam3_lite_text_vit_model", "Sam3LiteTextViTModel"),
