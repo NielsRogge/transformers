@@ -262,6 +262,29 @@ class Mask2FormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestC
         outputs = model(**inputs)
         self.assertTrue(outputs.loss is not None)
 
+    def test_loss_ignores_ignore_value_pixels(self):
+        from transformers.models.mask2former.modeling_mask2former import Mask2FormerLoss
+
+        config = self.model_tester.get_config()
+        config.ignore_value = 255
+        loss_module = Mask2FormerLoss(
+            config=config,
+            weight_dict={"loss_cross_entropy": 1.0, "loss_mask": 1.0, "loss_dice": 1.0},
+        ).to(torch_device)
+
+        masks_queries_logits = torch.zeros((1, 2, 2, 2), device=torch_device)
+        indices = [(torch.tensor([0]), torch.tensor([0]))]
+
+        target_mask = torch.tensor([[[1.0, 255.0], [0.0, 1.0]]], device=torch_device)
+        losses = loss_module.loss_masks(masks_queries_logits, [target_mask], indices, num_masks=1)
+
+        masks_queries_logits_changed = masks_queries_logits.clone()
+        masks_queries_logits_changed[0, 0, 0, 1] = 1000
+        losses_changed = loss_module.loss_masks(masks_queries_logits_changed, [target_mask], indices, num_masks=1)
+
+        self.assertTrue(torch.allclose(losses["loss_mask"], losses_changed["loss_mask"]))
+        self.assertTrue(torch.allclose(losses["loss_dice"], losses_changed["loss_dice"]))
+
     def test_hidden_states_output(self):
         config, inputs = self.model_tester.prepare_config_and_inputs_for_common()
         self.model_tester.create_and_check_mask2former_model(config, **inputs, output_hidden_states=True)
