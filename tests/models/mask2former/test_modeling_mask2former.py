@@ -276,10 +276,12 @@ class Mask2FormerModelTest(ModelTesterMixin, PipelineTesterMixin, unittest.TestC
         indices = [(torch.tensor([0]), torch.tensor([0]))]
 
         target_mask = torch.tensor([[[1.0, 255.0], [0.0, 1.0]]], device=torch_device)
+        torch.manual_seed(0)
         losses = loss_module.loss_masks(masks_queries_logits, [target_mask], indices, num_masks=1)
 
         masks_queries_logits_changed = masks_queries_logits.clone()
         masks_queries_logits_changed[0, 0, 0, 1] = 1000
+        torch.manual_seed(0)
         losses_changed = loss_module.loss_masks(masks_queries_logits_changed, [target_mask], indices, num_masks=1)
 
         self.assertTrue(torch.allclose(losses["loss_mask"], losses_changed["loss_mask"]))
