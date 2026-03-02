@@ -275,3 +275,30 @@ Implement RF-DETR in Transformers based on `/Users/nielsrogge/Documents/python_p
 - [x] Verified with existing virtual environment:
   - command: `.venv/bin/python utils/check_config_attributes.py`
   - result: no errors.
+
+## 2026-03-02 Refactor: Converter Cleanup
+- [x] Refactored `src/transformers/models/rf_detr/convert_rf_detr_to_hf.py` to reduce duplication and improve maintainability.
+- [x] Consolidated model metadata/defaults:
+  - replaced large repeated per-model dict blocks with shared default templates (`_DETECTION_COMMON_DEFAULT_ARGS`, `_SEGMENTATION_COMMON_DEFAULT_ARGS`),
+  - introduced compact variant tables (`_OBJECT_DETECTION_VARIANTS`, `_INSTANCE_SEGMENTATION_VARIANTS`) and generated `MODEL_SPECS` from them,
+  - removed parallel metadata map maintenance in favor of direct lookups from `MODEL_SPECS` in model-name resolution, checkpoint-path inference, and filename resolution.
+- [x] Simplified conversion flow:
+  - added helper functions to split responsibilities:
+    - `_extract_num_labels_from_state_dict`
+    - `_build_model_and_processors`
+    - `_convert_state_dict`
+    - `_add_missing_register_tokens_if_needed`
+    - `_run_postprocess`
+    - `_print_max_abs_diff`
+    - `_verify_postprocess_outputs`
+    - `_verify_conversion_with_original`
+  - replaced the long inline verification block inside `convert_rf_detr_checkpoint` with a single helper call.
+- [x] Preserved behavior and verified after refactor:
+  - syntax check: `.venv/bin/python -m py_compile src/transformers/models/rf_detr/convert_rf_detr_to_hf.py`
+  - lint check: `ruff check src/transformers/models/rf_detr/convert_rf_detr_to_hf.py`
+  - smoke conversion:
+    `uv run --no-project --python .venv/bin/python src/transformers/models/rf_detr/convert_rf_detr_to_hf.py --model_name small --checkpoint_repo_id nielsr/rf-detr-checkpoints --pytorch_dump_folder_path /tmp/rf-detr-small-hf-smoke`
+    -> `Missing keys: 0`, `Unexpected keys: 0`.
+- [x] Line-count reduction:
+  - before: `1409` lines,
+  - after: `1263` lines.

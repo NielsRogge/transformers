@@ -131,362 +131,266 @@ LABEL_FILES_DATASET_FILENAMES = {
     LABEL_DATASET_COCO: "coco-detection-id2label.json",
     LABEL_DATASET_OBJECT365: "object365-id2label.json",
 }
-MODEL_NAME_TO_LABEL_DATASET = {
-    "nano": LABEL_DATASET_COCO,
-    "small": LABEL_DATASET_COCO,
-    "medium": LABEL_DATASET_COCO,
-    "large": LABEL_DATASET_COCO,
-    "base": LABEL_DATASET_COCO,
-    "base-2": LABEL_DATASET_COCO,
-    "base-o365": LABEL_DATASET_OBJECT365,
-    "seg-preview": LABEL_DATASET_COCO,
-    "seg-nano": LABEL_DATASET_COCO,
-    "seg-small": LABEL_DATASET_COCO,
-    "seg-medium": LABEL_DATASET_COCO,
-    "seg-large": LABEL_DATASET_COCO,
-    "seg-xlarge": LABEL_DATASET_COCO,
-    "seg-2xlarge": LABEL_DATASET_COCO,
+DEFAULT_RF_DETR_CHECKPOINT_REPO_ID = "nielsr/rf-detr-checkpoints"
+
+
+def _merge_args(base_args: dict, **overrides) -> dict:
+    return base_args | overrides
+
+
+_DETECTION_COMMON_DEFAULT_ARGS = {
+    "encoder": "dinov2_windowed_small",
+    "projector_scale": ["P4"],
+    "hidden_dim": 256,
+    "dec_n_points": 2,
+    "sa_nheads": 8,
+    "ca_nheads": 16,
+    "num_queries": 300,
+    "group_detr": 13,
+    "vit_encoder_num_layers": 12,
+    "aux_loss": True,
+    "num_classes": 90,
+}
+_DETECTION_SMALL_BACKBONE_DEFAULT_ARGS = _merge_args(
+    _DETECTION_COMMON_DEFAULT_ARGS,
+    out_feature_indexes=[3, 6, 9, 12],
+    dinov2_patch_size=16,
+    dinov2_num_windows=2,
+)
+_DETECTION_BASE_BACKBONE_DEFAULT_ARGS = _merge_args(
+    _DETECTION_COMMON_DEFAULT_ARGS,
+    out_feature_indexes=[2, 5, 8, 11],
+    dinov2_patch_size=14,
+    dinov2_num_windows=4,
+)
+OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS = {
+    "nano": _merge_args(_DETECTION_SMALL_BACKBONE_DEFAULT_ARGS, dec_layers=2, resolution=384),
+    "small": _merge_args(_DETECTION_SMALL_BACKBONE_DEFAULT_ARGS, dec_layers=3, resolution=512),
+    "medium": _merge_args(_DETECTION_SMALL_BACKBONE_DEFAULT_ARGS, dec_layers=4, resolution=576),
+    "large": _merge_args(_DETECTION_SMALL_BACKBONE_DEFAULT_ARGS, dec_layers=4, resolution=704),
+    "base": _merge_args(_DETECTION_BASE_BACKBONE_DEFAULT_ARGS, dec_layers=3, resolution=560),
+    "base-2": _merge_args(_DETECTION_BASE_BACKBONE_DEFAULT_ARGS, dec_layers=3, resolution=560),
+    "base-o365": _merge_args(_DETECTION_BASE_BACKBONE_DEFAULT_ARGS, dec_layers=3, resolution=560),
 }
 
-DEFAULT_RF_DETR_CHECKPOINT_REPO_ID = "nielsr/rf-detr-checkpoints"
-OBJECT_DETECTION_CHECKPOINT_CANDIDATES = {
-    "nano": ["rf-detr-nano.pth"],
-    "small": ["rf-detr-small.pth"],
-    "medium": ["rf-detr-medium.pth"],
-    "large": ["rf-detr-large-2026.pth"],
-    "base": ["rf-detr-base.pth"],
-    "base-2": ["rf-detr-base-2.pth"],
-    "base-o365": ["rf-detr-base-o365.pth"],
-}
-OBJECT_DETECTION_MODEL_NAME_ALIASES = {
-    "nano": {"nano", "rfdetrnano"},
-    "small": {"small", "rfdetrsmall"},
-    "medium": {"medium", "rfdetrmedium"},
-    "large": {"large", "large2026", "rfdetrlarge", "rfdetrlarge2026"},
-    "base": {"base", "rfdetrbase"},
-    "base-2": {"base2", "rfdetrbase2"},
-    "base-o365": {"baseo365", "o365", "rfdetrbaseo365"},
-}
-INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES = {
-    "seg-preview": ["rf-detr-seg-preview.pt"],
-    "seg-nano": ["rf-detr-seg-nano.pt"],
-    "seg-small": ["rf-detr-seg-small.pt"],
-    "seg-medium": ["rf-detr-seg-medium.pt"],
-    "seg-large": ["rf-detr-seg-large.pt"],
-    "seg-xlarge": ["rf-detr-seg-xlarge.pt"],
-    "seg-2xlarge": ["rf-detr-seg-2xlarge.pt", "rf-detr-seg-xxlarge.pt"],
-}
-INSTANCE_SEGMENTATION_MODEL_NAME_ALIASES = {
-    "seg-preview": {"segpreview", "rfdetrsegpreview", "instsegpreview", "instancesegpreview"},
-    "seg-nano": {"segnano", "rfdetrsegnano", "instsegnano", "instancesegnano"},
-    "seg-small": {"segsmall", "rfdetrsegsmall", "instsegsmall", "instancesegsmall"},
-    "seg-medium": {"segmedium", "rfdetrsegmedium", "instsegmedium", "instancesegmedium"},
-    "seg-large": {"seglarge", "rfdetrseglarge", "instseglarge", "instanceseglarge"},
-    "seg-xlarge": {"segxlarge", "rfdetrsegxlarge", "instsegxlarge", "instancesegxlarge"},
-    "seg-2xlarge": {
-        "seg2xlarge",
-        "segxxlarge",
-        "rfdetrseg2xlarge",
-        "rfdetrsegxxlarge",
-        "instseg2xlarge",
-        "instsegxxlarge",
-        "instanceseg2xlarge",
-        "instancesegxxlarge",
-    },
-}
-OBJECT_DETECTION_MODEL_NAME_PATTERNS = {
-    "nano": [r"(?:.*/)?rf[-_]?detr[-_]?nano(?:[-_].*)?\.pth$"],
-    "small": [r"(?:.*/)?rf[-_]?detr[-_]?small(?:[-_].*)?\.pth$"],
-    "medium": [r"(?:.*/)?rf[-_]?detr[-_]?medium(?:[-_].*)?\.pth$"],
-    "large": [r"(?:.*/)?rf[-_]?detr[-_]?large[-_]?2026(?:[-_].*)?\.pth$"],
-    "base": [r"(?:.*/)?rf[-_]?detr[-_]?base(?:[-_].*)?\.pth$"],
-    "base-2": [r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?2(?:[-_].*)?\.pth$"],
-    "base-o365": [r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?o365(?:[-_].*)?\.pth$"],
-}
-INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS = {
-    "seg-preview": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?preview(?:[-_].*)?\.(?:pt|pth)$"],
-    "seg-nano": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?nano(?:[-_].*)?\.(?:pt|pth)$"],
-    "seg-small": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?small(?:[-_].*)?\.(?:pt|pth)$"],
-    "seg-medium": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?medium(?:[-_].*)?\.(?:pt|pth)$"],
-    "seg-large": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?large(?:[-_].*)?\.(?:pt|pth)$"],
-    "seg-xlarge": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?xlarge(?:[-_].*)?\.(?:pt|pth)$"],
-    "seg-2xlarge": [r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?(?:2xlarge|xxlarge)(?:[-_].*)?\.(?:pt|pth)$"],
-}
-OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS = {
-    "nano": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 2,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 384,
-        "dinov2_patch_size": 16,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
-    "small": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 3,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 512,
-        "dinov2_patch_size": 16,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
-    "medium": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 4,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 576,
-        "dinov2_patch_size": 16,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
-    "large": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 4,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 704,
-        "dinov2_patch_size": 16,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
-    "base": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [2, 5, 8, 11],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 3,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 560,
-        "dinov2_patch_size": 14,
-        "dinov2_num_windows": 4,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
-    "base-2": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [2, 5, 8, 11],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 3,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 560,
-        "dinov2_patch_size": 14,
-        "dinov2_num_windows": 4,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
-    "base-o365": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [2, 5, 8, 11],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 3,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "group_detr": 13,
-        "resolution": 560,
-        "dinov2_patch_size": 14,
-        "dinov2_num_windows": 4,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-    },
+_SEGMENTATION_COMMON_DEFAULT_ARGS = {
+    "encoder": "dinov2_windowed_small",
+    "out_feature_indexes": [3, 6, 9, 12],
+    "projector_scale": ["P4"],
+    "hidden_dim": 256,
+    "dec_n_points": 2,
+    "sa_nheads": 8,
+    "ca_nheads": 16,
+    "group_detr": 13,
+    "dinov2_patch_size": 12,
+    "vit_encoder_num_layers": 12,
+    "aux_loss": True,
+    "num_classes": 90,
+    "segmentation_head": True,
+    "mask_downsample_ratio": 4,
 }
 INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS = {
-    "seg-preview": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 4,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 200,
-        "num_select": 200,
-        "group_detr": 13,
-        "resolution": 432,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
-    "seg-nano": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 4,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 100,
-        "num_select": 100,
-        "group_detr": 13,
-        "resolution": 312,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 1,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
-    "seg-small": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 4,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 100,
-        "group_detr": 13,
-        "resolution": 384,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
-    "seg-medium": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 5,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 200,
-        "num_select": 200,
-        "group_detr": 13,
-        "resolution": 432,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
-    "seg-large": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 5,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "num_select": 300,
-        "group_detr": 13,
-        "resolution": 504,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
-    "seg-xlarge": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 6,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "num_select": 300,
-        "group_detr": 13,
-        "resolution": 624,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
-    "seg-2xlarge": {
-        "encoder": "dinov2_windowed_small",
-        "out_feature_indexes": [3, 6, 9, 12],
-        "projector_scale": ["P4"],
-        "hidden_dim": 256,
-        "dec_n_points": 2,
-        "dec_layers": 6,
-        "sa_nheads": 8,
-        "ca_nheads": 16,
-        "num_queries": 300,
-        "num_select": 300,
-        "group_detr": 13,
-        "resolution": 768,
-        "dinov2_patch_size": 12,
-        "dinov2_num_windows": 2,
-        "vit_encoder_num_layers": 12,
-        "aux_loss": True,
-        "num_classes": 90,
-        "segmentation_head": True,
-        "mask_downsample_ratio": 4,
-    },
+    "seg-preview": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=4,
+        num_queries=200,
+        num_select=200,
+        resolution=432,
+        dinov2_num_windows=2,
+    ),
+    "seg-nano": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=4,
+        num_queries=100,
+        num_select=100,
+        resolution=312,
+        dinov2_num_windows=1,
+    ),
+    "seg-small": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=4,
+        num_queries=100,
+        resolution=384,
+        dinov2_num_windows=2,
+    ),
+    "seg-medium": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=5,
+        num_queries=200,
+        num_select=200,
+        resolution=432,
+        dinov2_num_windows=2,
+    ),
+    "seg-large": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=5,
+        num_queries=300,
+        num_select=300,
+        resolution=504,
+        dinov2_num_windows=2,
+    ),
+    "seg-xlarge": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=6,
+        num_queries=300,
+        num_select=300,
+        resolution=624,
+        dinov2_num_windows=2,
+    ),
+    "seg-2xlarge": _merge_args(
+        _SEGMENTATION_COMMON_DEFAULT_ARGS,
+        dec_layers=6,
+        num_queries=300,
+        num_select=300,
+        resolution=768,
+        dinov2_num_windows=2,
+    ),
+}
+
+
+def _build_model_spec(
+    task: str,
+    label_dataset: str,
+    checkpoint_filenames: list[str],
+    aliases: set[str],
+    filename_patterns: list[str],
+    default_args: dict,
+) -> dict:
+    return {
+        "task": task,
+        "label_dataset": label_dataset,
+        "checkpoint_filenames": checkpoint_filenames,
+        "aliases": aliases,
+        "filename_patterns": filename_patterns,
+        "default_args": default_args,
+    }
+
+
+_OBJECT_DETECTION_VARIANTS = [
+    (
+        "nano",
+        ["rf-detr-nano.pth"],
+        {"nano", "rfdetrnano"},
+        r"(?:.*/)?rf[-_]?detr[-_]?nano(?:[-_].*)?\.pth$",
+        LABEL_DATASET_COCO,
+    ),
+    (
+        "small",
+        ["rf-detr-small.pth"],
+        {"small", "rfdetrsmall"},
+        r"(?:.*/)?rf[-_]?detr[-_]?small(?:[-_].*)?\.pth$",
+        LABEL_DATASET_COCO,
+    ),
+    (
+        "medium",
+        ["rf-detr-medium.pth"],
+        {"medium", "rfdetrmedium"},
+        r"(?:.*/)?rf[-_]?detr[-_]?medium(?:[-_].*)?\.pth$",
+        LABEL_DATASET_COCO,
+    ),
+    (
+        "large",
+        ["rf-detr-large-2026.pth"],
+        {"large", "large2026", "rfdetrlarge", "rfdetrlarge2026"},
+        r"(?:.*/)?rf[-_]?detr[-_]?large[-_]?2026(?:[-_].*)?\.pth$",
+        LABEL_DATASET_COCO,
+    ),
+    (
+        "base",
+        ["rf-detr-base.pth"],
+        {"base", "rfdetrbase"},
+        r"(?:.*/)?rf[-_]?detr[-_]?base(?:[-_].*)?\.pth$",
+        LABEL_DATASET_COCO,
+    ),
+    (
+        "base-2",
+        ["rf-detr-base-2.pth"],
+        {"base2", "rfdetrbase2"},
+        r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?2(?:[-_].*)?\.pth$",
+        LABEL_DATASET_COCO,
+    ),
+    (
+        "base-o365",
+        ["rf-detr-base-o365.pth"],
+        {"baseo365", "o365", "rfdetrbaseo365"},
+        r"(?:.*/)?rf[-_]?detr[-_]?base[-_]?o365(?:[-_].*)?\.pth$",
+        LABEL_DATASET_OBJECT365,
+    ),
+]
+_INSTANCE_SEGMENTATION_VARIANTS = [
+    (
+        "seg-preview",
+        ["rf-detr-seg-preview.pt"],
+        {"segpreview", "rfdetrsegpreview", "instsegpreview", "instancesegpreview"},
+        r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?preview(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+    (
+        "seg-nano",
+        ["rf-detr-seg-nano.pt"],
+        {"segnano", "rfdetrsegnano", "instsegnano", "instancesegnano"},
+        r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?nano(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+    (
+        "seg-small",
+        ["rf-detr-seg-small.pt"],
+        {"segsmall", "rfdetrsegsmall", "instsegsmall", "instancesegsmall"},
+        r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?small(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+    (
+        "seg-medium",
+        ["rf-detr-seg-medium.pt"],
+        {"segmedium", "rfdetrsegmedium", "instsegmedium", "instancesegmedium"},
+        r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?medium(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+    (
+        "seg-large",
+        ["rf-detr-seg-large.pt"],
+        {"seglarge", "rfdetrseglarge", "instseglarge", "instanceseglarge"},
+        r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?large(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+    (
+        "seg-xlarge",
+        ["rf-detr-seg-xlarge.pt"],
+        {"segxlarge", "rfdetrsegxlarge", "instsegxlarge", "instancesegxlarge"},
+        r"(?:.*/)?rf[-_]?detr[-_]?seg[-_]?xlarge(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+    (
+        "seg-2xlarge",
+        ["rf-detr-seg-2xlarge.pt", "rf-detr-seg-xxlarge.pt"],
+        {
+            "seg2xlarge",
+            "segxxlarge",
+            "rfdetrseg2xlarge",
+            "rfdetrsegxxlarge",
+            "instseg2xlarge",
+            "instsegxxlarge",
+            "instanceseg2xlarge",
+            "instancesegxxlarge",
+        },
+        r"(?:.*/)?rf[-_]?detr[-_]?(?:seg[-_]?(?:2xlarge|xxlarge))(?:[-_].*)?\.(?:pt|pth)$",
+    ),
+]
+
+MODEL_SPECS = {
+    model_name: _build_model_spec(
+        task=MODEL_TASK_OBJECT_DETECTION,
+        label_dataset=label_dataset,
+        checkpoint_filenames=checkpoint_filenames,
+        aliases=aliases,
+        filename_patterns=[filename_pattern],
+        default_args=OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS[model_name],
+    )
+    for model_name, checkpoint_filenames, aliases, filename_pattern, label_dataset in _OBJECT_DETECTION_VARIANTS
+} | {
+    model_name: _build_model_spec(
+        task=MODEL_TASK_INSTANCE_SEGMENTATION,
+        label_dataset=LABEL_DATASET_COCO,
+        checkpoint_filenames=checkpoint_filenames,
+        aliases=aliases,
+        filename_patterns=[filename_pattern],
+        default_args=INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS[model_name],
+    )
+    for model_name, checkpoint_filenames, aliases, filename_pattern in _INSTANCE_SEGMENTATION_VARIANTS
 }
 
 
@@ -586,10 +490,8 @@ def _resolve_label_dataset_name(
     resolved_model_name: str | None,
     checkpoint_num_labels: int | None,
 ) -> str | None:
-    if resolved_model_name is not None:
-        label_dataset_name = MODEL_NAME_TO_LABEL_DATASET.get(resolved_model_name)
-        if label_dataset_name is not None:
-            return label_dataset_name
+    if resolved_model_name in MODEL_SPECS:
+        return MODEL_SPECS[resolved_model_name]["label_dataset"]
 
     dataset_file = str(checkpoint_args.get("dataset_file", "")).lower()
     if "o365" in dataset_file or "obj365" in dataset_file or "objects365" in dataset_file:
@@ -626,16 +528,19 @@ def _normalize_model_name(model_name: str) -> str:
 def _resolve_model_spec_from_name(model_name: str) -> tuple[str, str]:
     normalized_model_name = _normalize_model_name(model_name)
 
-    for canonical_name, aliases in OBJECT_DETECTION_MODEL_NAME_ALIASES.items():
-        if normalized_model_name == _normalize_model_name(canonical_name) or normalized_model_name in aliases:
-            return MODEL_TASK_OBJECT_DETECTION, canonical_name
+    for canonical_name, spec in MODEL_SPECS.items():
+        normalized_aliases = {_normalize_model_name(alias) for alias in spec["aliases"]} | {
+            _normalize_model_name(canonical_name)
+        }
+        if normalized_model_name in normalized_aliases:
+            return spec["task"], canonical_name
 
-    for canonical_name, aliases in INSTANCE_SEGMENTATION_MODEL_NAME_ALIASES.items():
-        if normalized_model_name == _normalize_model_name(canonical_name) or normalized_model_name in aliases:
-            return MODEL_TASK_INSTANCE_SEGMENTATION, canonical_name
-
-    available_detection_model_names = ", ".join(sorted(OBJECT_DETECTION_CHECKPOINT_CANDIDATES))
-    available_segmentation_model_names = ", ".join(sorted(INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES))
+    available_detection_model_names = ", ".join(
+        sorted(name for name, spec in MODEL_SPECS.items() if spec["task"] == MODEL_TASK_OBJECT_DETECTION)
+    )
+    available_segmentation_model_names = ", ".join(
+        sorted(name for name, spec in MODEL_SPECS.items() if spec["task"] == MODEL_TASK_INSTANCE_SEGMENTATION)
+    )
     raise ValueError(
         f"Unsupported RF-DETR model name: `{model_name}`. "
         "Supported object-detection model names are: "
@@ -648,21 +553,13 @@ def _resolve_model_spec_from_name(model_name: str) -> tuple[str, str]:
 def _infer_model_spec_from_checkpoint_path(checkpoint_path: str) -> tuple[str, str] | None:
     checkpoint_filename = Path(checkpoint_path).name.lower()
 
-    for canonical_name, candidate_filenames in OBJECT_DETECTION_CHECKPOINT_CANDIDATES.items():
-        if checkpoint_filename in {name.lower() for name in candidate_filenames}:
-            return MODEL_TASK_OBJECT_DETECTION, canonical_name
+    for canonical_name, spec in MODEL_SPECS.items():
+        if checkpoint_filename in {name.lower() for name in spec["checkpoint_filenames"]}:
+            return spec["task"], canonical_name
 
-    for canonical_name, candidate_filenames in INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES.items():
-        if checkpoint_filename in {name.lower() for name in candidate_filenames}:
-            return MODEL_TASK_INSTANCE_SEGMENTATION, canonical_name
-
-    for canonical_name, patterns in OBJECT_DETECTION_MODEL_NAME_PATTERNS.items():
-        if any(re.fullmatch(pattern, checkpoint_filename) for pattern in patterns):
-            return MODEL_TASK_OBJECT_DETECTION, canonical_name
-
-    for canonical_name, patterns in INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS.items():
-        if any(re.fullmatch(pattern, checkpoint_filename) for pattern in patterns):
-            return MODEL_TASK_INSTANCE_SEGMENTATION, canonical_name
+    for canonical_name, spec in MODEL_SPECS.items():
+        if any(re.fullmatch(pattern, checkpoint_filename) for pattern in spec["filename_patterns"]):
+            return spec["task"], canonical_name
 
     return None
 
@@ -711,26 +608,21 @@ def _prepare_checkpoint_args(
         if inferred_model_spec is not None:
             resolved_model_task, resolved_model_name = inferred_model_spec
 
-    if resolved_model_task == MODEL_TASK_INSTANCE_SEGMENTATION:
-        default_args_by_model_name = INSTANCE_SEGMENTATION_CHECKPOINT_DEFAULT_ARGS
-    else:
-        default_args_by_model_name = OBJECT_DETECTION_CHECKPOINT_DEFAULT_ARGS
-
+    default_args = MODEL_SPECS.get(resolved_model_name, {}).get("default_args", {})
     if checkpoint_args is None:
         if resolved_model_name is None:
             raise ValueError(
                 "Checkpoint did not contain an `args` entry and model name could not be inferred from checkpoint path. "
                 "Please pass `--model_name`."
             )
-        if resolved_model_name not in default_args_by_model_name:
+        if not default_args:
             raise ValueError(
                 f"No default conversion args available for `{resolved_model_name}`. "
                 "Please pass a checkpoint with embedded `args`."
             )
-        return dict(default_args_by_model_name[resolved_model_name]), resolved_model_name, resolved_model_task
+        return dict(default_args), resolved_model_name, resolved_model_task
 
     normalized_args = vars(checkpoint_args) if not isinstance(checkpoint_args, dict) else dict(checkpoint_args)
-    default_args = default_args_by_model_name.get(resolved_model_name, {})
 
     for key, default_value in default_args.items():
         if normalized_args.get(key) is None:
@@ -796,21 +688,16 @@ def _resolve_checkpoint_filename_for_model_name(model_name: str, checkpoint_repo
     if not checkpoint_files:
         raise ValueError(f"No RF-DETR `{model_task}` checkpoints were found in Hub repo `{checkpoint_repo_id}`.")
 
-    if model_task == MODEL_TASK_OBJECT_DETECTION:
-        checkpoint_candidates = OBJECT_DETECTION_CHECKPOINT_CANDIDATES
-        checkpoint_patterns = OBJECT_DETECTION_MODEL_NAME_PATTERNS
-    else:
-        checkpoint_candidates = INSTANCE_SEGMENTATION_CHECKPOINT_CANDIDATES
-        checkpoint_patterns = INSTANCE_SEGMENTATION_MODEL_NAME_PATTERNS
+    model_spec = MODEL_SPECS[canonical_model_name]
 
     basename_to_repo_file = {Path(file_name).name: file_name for file_name in checkpoint_files}
-    for preferred_filename in checkpoint_candidates[canonical_model_name]:
+    for preferred_filename in model_spec["checkpoint_filenames"]:
         if preferred_filename in basename_to_repo_file:
             return basename_to_repo_file[preferred_filename]
 
     matching_files = []
     for file_name in checkpoint_files:
-        for pattern in checkpoint_patterns[canonical_model_name]:
+        for pattern in model_spec["filename_patterns"]:
             if re.fullmatch(pattern, file_name.lower()):
                 matching_files.append(file_name)
                 break
@@ -943,6 +830,7 @@ def build_original_rfdetr_model(
     _with_default(args, "drop_path", 0.0)
     _with_default(args, "shape", (args.resolution, args.resolution))
     _with_default(args, "backbone_lora", False)
+    _with_default(args, "gradient_checkpointing", False)
     _with_default(args, "decoder_norm", "LN")
     _with_default(args, "layer_norm", True)
     _with_default(args, "two_stage", True)
@@ -1029,6 +917,273 @@ def build_rf_detr_config_from_checkpoint(checkpoint_args: dict, num_labels: int 
     )
 
 
+def _extract_num_labels_from_state_dict(state_dict: dict[str, torch.Tensor]) -> int | None:
+    for key in ("class_embed.bias", "class_embed.weight"):
+        if key in state_dict:
+            return int(state_dict[key].shape[0])
+    return None
+
+
+def _build_model_and_processors(
+    config: RfDetrConfig, is_instance_segmentation: bool, num_top_queries: int
+) -> tuple[torch.nn.Module, RfDetrImageProcessor, RfDetrImageProcessorFast]:
+    model_class = RfDetrForInstanceSegmentation if is_instance_segmentation else RfDetrForObjectDetection
+    model = model_class(config).eval()
+    image_size = config.backbone_config.image_size
+    processor_kwargs = {"size": {"height": image_size, "width": image_size}, "num_top_queries": num_top_queries}
+    image_processor = RfDetrImageProcessor(**processor_kwargs)
+    image_processor_fast = RfDetrImageProcessorFast(**processor_kwargs)
+    return model, image_processor, image_processor_fast
+
+
+def _convert_state_dict(
+    state_dict: dict[str, torch.Tensor], config: RfDetrConfig, is_instance_segmentation: bool
+) -> dict[str, torch.Tensor]:
+    state_dict = read_in_decoder_q_k_v(dict(state_dict), config)
+    key_mapping = ORIGINAL_TO_CONVERTED_KEY_MAPPING | get_backbone_projector_sampling_key_mapping(config)
+    if is_instance_segmentation:
+        key_mapping = key_mapping | INSTANCE_SEGMENTATION_TO_CONVERTED_KEY_MAPPING
+
+    new_keys = convert_old_keys_to_new_keys(list(state_dict), key_mapping)
+    return {new_keys[key]: value for key, value in state_dict.items() if new_keys[key]}
+
+
+def _add_missing_register_tokens_if_needed(model: torch.nn.Module, converted_state_dict: dict[str, torch.Tensor]):
+    register_tokens_key = "model.backbone.backbone.embeddings.register_tokens"
+    if register_tokens_key not in converted_state_dict:
+        converted_state_dict[register_tokens_key] = (
+            model.model.backbone.backbone.embeddings.register_tokens.detach().clone()
+        )
+
+
+def _run_postprocess(
+    image_processor: RfDetrImageProcessor | RfDetrImageProcessorFast,
+    outputs: dict[str, torch.Tensor],
+    target_sizes: torch.Tensor,
+    num_top_queries: int,
+    is_instance_segmentation: bool,
+) -> list[dict[str, torch.Tensor]]:
+    if is_instance_segmentation:
+        return image_processor.post_process_instance_segmentation(
+            outputs=outputs,
+            threshold=0.0,
+            mask_threshold=0.0,
+            target_sizes=target_sizes,
+            num_top_queries=num_top_queries,
+        )
+    return image_processor.post_process_object_detection(
+        outputs=outputs,
+        threshold=0.0,
+        target_sizes=target_sizes,
+        num_top_queries=num_top_queries,
+    )
+
+
+def _print_max_abs_diff(name: str, tensor_a: torch.Tensor, tensor_b: torch.Tensor) -> float:
+    max_abs_diff = (tensor_a - tensor_b).abs().max().item()
+    print(f"{name}={max_abs_diff:.10f}")
+    return max_abs_diff
+
+
+def _verify_postprocess_outputs(
+    original_output: dict[str, torch.Tensor],
+    hf_output: dict[str, torch.Tensor],
+    hf_fast_output: dict[str, torch.Tensor],
+    is_instance_segmentation: bool,
+):
+    for metric_name, left, right, message in [
+        (
+            "max_abs_postprocess_scores_diff",
+            original_output["scores"],
+            hf_output["scores"],
+            "Object detection postprocess score mismatch with original RF-DETR implementation.",
+        ),
+        (
+            "max_abs_postprocess_boxes_diff",
+            original_output["boxes"],
+            hf_output["boxes"],
+            "Object detection postprocess box mismatch with original RF-DETR implementation.",
+        ),
+        (
+            "max_abs_postprocess_scores_fast_diff",
+            original_output["scores"],
+            hf_fast_output["scores"],
+            "Object detection postprocess score mismatch with RfDetrImageProcessorFast.",
+        ),
+        (
+            "max_abs_postprocess_boxes_fast_diff",
+            original_output["boxes"],
+            hf_fast_output["boxes"],
+            "Object detection postprocess box mismatch with RfDetrImageProcessorFast.",
+        ),
+        (
+            "max_abs_postprocess_slow_fast_scores_diff",
+            hf_output["scores"],
+            hf_fast_output["scores"],
+            "Postprocess score mismatch between slow and fast RF-DETR image processors.",
+        ),
+        (
+            "max_abs_postprocess_slow_fast_boxes_diff",
+            hf_output["boxes"],
+            hf_fast_output["boxes"],
+            "Postprocess box mismatch between slow and fast RF-DETR image processors.",
+        ),
+    ]:
+        _print_max_abs_diff(metric_name, left, right)
+        if not torch.allclose(left, right):
+            raise AssertionError(message)
+
+    for metric_name, left, right, message in [
+        (
+            "postprocess_labels_match",
+            original_output["labels"],
+            hf_output["labels"],
+            "Object detection postprocess labels mismatch with original RF-DETR implementation.",
+        ),
+        (
+            "postprocess_labels_fast_match",
+            original_output["labels"],
+            hf_fast_output["labels"],
+            "Object detection postprocess labels mismatch with RfDetrImageProcessorFast.",
+        ),
+        (
+            "postprocess_slow_fast_labels_match",
+            hf_output["labels"],
+            hf_fast_output["labels"],
+            "Postprocess labels mismatch between slow and fast RF-DETR image processors.",
+        ),
+    ]:
+        is_match = torch.equal(left, right)
+        print(f"{metric_name}={is_match}")
+        if not is_match:
+            raise AssertionError(message)
+
+    if not is_instance_segmentation:
+        return
+
+    for metric_name, left, right, message in [
+        (
+            "postprocess_masks_match",
+            original_output["masks"],
+            hf_output["masks"],
+            "Instance segmentation postprocess masks mismatch with original RF-DETR implementation.",
+        ),
+        (
+            "postprocess_masks_fast_match",
+            original_output["masks"],
+            hf_fast_output["masks"],
+            "Instance segmentation postprocess masks mismatch with RfDetrImageProcessorFast.",
+        ),
+        (
+            "postprocess_slow_fast_masks_match",
+            hf_output["masks"],
+            hf_fast_output["masks"],
+            "Instance segmentation postprocess masks mismatch between slow and fast RF-DETR image processors.",
+        ),
+    ]:
+        is_match = torch.equal(left, right)
+        print(f"{metric_name}={is_match}")
+        if not is_match:
+            raise AssertionError(message)
+
+
+def _verify_conversion_with_original(
+    *,
+    model: torch.nn.Module,
+    image_processor: RfDetrImageProcessor,
+    image_processor_fast: RfDetrImageProcessorFast,
+    original_repo_path: str,
+    checkpoint_args: dict,
+    original_state_dict: dict[str, torch.Tensor],
+    image_size: int,
+    is_instance_segmentation: bool,
+    num_top_queries: int,
+):
+    import torchvision.transforms.functional as torchvision_transforms
+
+    original_checkpoint_args = dict(checkpoint_args)
+    checkpoint_num_labels = _extract_num_labels_from_state_dict(original_state_dict)
+    if checkpoint_num_labels is not None:
+        original_checkpoint_args["num_classes"] = checkpoint_num_labels - 1
+
+    original_model = build_original_rfdetr_model(original_repo_path, original_checkpoint_args)
+    original_model.load_state_dict(original_state_dict, strict=True)
+    original_model.eval()
+
+    rng = np.random.default_rng(seed=0)
+    dummy_image_height = image_size + 15
+    dummy_image_width = image_size - 13 if image_size > 32 else image_size + 3
+    dummy_image = rng.integers(0, 256, size=(dummy_image_height, dummy_image_width, 3), dtype=np.uint8)
+
+    original_preprocessed = torchvision_transforms.to_tensor(dummy_image)
+    original_preprocessed = torchvision_transforms.normalize(
+        original_preprocessed, image_processor.image_mean, image_processor.image_std
+    )
+    original_preprocessed = torchvision_transforms.resize(
+        original_preprocessed,
+        (image_size, image_size),
+        interpolation=image_processor.resample,
+    )
+    original_preprocessed = original_preprocessed.unsqueeze(0)
+    hf_preprocessed = image_processor(images=dummy_image, return_tensors="pt").pixel_values
+    hf_preprocessed_fast = image_processor_fast(images=dummy_image, return_tensors="pt").pixel_values
+
+    _print_max_abs_diff("max_abs_preprocess_diff", original_preprocessed, hf_preprocessed)
+    _print_max_abs_diff("max_abs_preprocess_fast_diff", original_preprocessed, hf_preprocessed_fast)
+    _print_max_abs_diff("max_abs_slow_fast_preprocess_diff", hf_preprocessed, hf_preprocessed_fast)
+    print("original_preprocess_slice", original_preprocessed.flatten()[:8])
+    print("hf_preprocess_slice", hf_preprocessed.flatten()[:8])
+    print("hf_fast_preprocess_slice", hf_preprocessed_fast.flatten()[:8])
+    if not torch.equal(original_preprocessed, hf_preprocessed):
+        raise AssertionError("Preprocessing mismatch between original RF-DETR and RfDetrImageProcessor.")
+    if not torch.allclose(original_preprocessed, hf_preprocessed_fast, atol=1e-6, rtol=0.0):
+        raise AssertionError("Preprocessing mismatch between original RF-DETR and RfDetrImageProcessorFast.")
+    if not torch.allclose(hf_preprocessed, hf_preprocessed_fast, atol=1e-6, rtol=0.0):
+        raise AssertionError("Preprocessing mismatch between RfDetrImageProcessor and RfDetrImageProcessorFast.")
+
+    pixel_values = hf_preprocessed
+    original_outputs = original_model(pixel_values)
+    hf_outputs = model(pixel_values=pixel_values)
+
+    _print_max_abs_diff("max_abs_logits_diff", original_outputs["pred_logits"], hf_outputs.logits)
+    _print_max_abs_diff("max_abs_boxes_diff", original_outputs["pred_boxes"], hf_outputs.pred_boxes)
+    if is_instance_segmentation:
+        _print_max_abs_diff("max_abs_masks_diff", original_outputs["pred_masks"], hf_outputs.pred_masks)
+    print("original_logits_slice", original_outputs["pred_logits"].flatten()[:8])
+    print("hf_logits_slice", hf_outputs.logits.flatten()[:8])
+    print("original_boxes_slice", original_outputs["pred_boxes"].flatten()[:8])
+    print("hf_boxes_slice", hf_outputs.pred_boxes.flatten()[:8])
+    if is_instance_segmentation:
+        print("original_masks_slice", original_outputs["pred_masks"].flatten()[:8])
+        print("hf_masks_slice", hf_outputs.pred_masks.flatten()[:8])
+
+    target_sizes = torch.tensor([[dummy_image_height, dummy_image_width]], device=pixel_values.device)
+    original_postprocessor = build_original_rfdetr_postprocessor(
+        original_repo_path=original_repo_path, num_select=num_top_queries
+    )
+    original_postprocessed = original_postprocessor(original_outputs, target_sizes)[0]
+    hf_postprocessed = _run_postprocess(
+        image_processor=image_processor,
+        outputs=original_outputs,
+        target_sizes=target_sizes,
+        num_top_queries=num_top_queries,
+        is_instance_segmentation=is_instance_segmentation,
+    )[0]
+    hf_postprocessed_fast = _run_postprocess(
+        image_processor=image_processor_fast,
+        outputs=original_outputs,
+        target_sizes=target_sizes,
+        num_top_queries=num_top_queries,
+        is_instance_segmentation=is_instance_segmentation,
+    )[0]
+    _verify_postprocess_outputs(
+        original_output=original_postprocessed,
+        hf_output=hf_postprocessed,
+        hf_fast_output=hf_postprocessed_fast,
+        is_instance_segmentation=is_instance_segmentation,
+    )
+
+
 @torch.no_grad()
 def convert_rf_detr_checkpoint(
     checkpoint_path: str,
@@ -1040,10 +1195,8 @@ def convert_rf_detr_checkpoint(
     repo_id: str | None = None,
 ):
     checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    if "model" in checkpoint:
-        state_dict = checkpoint["model"]
-    elif "state_dict" in checkpoint:
-        state_dict = checkpoint["state_dict"]
+    if isinstance(checkpoint, dict):
+        state_dict = checkpoint.get("model") or checkpoint.get("state_dict") or checkpoint
     else:
         state_dict = checkpoint
 
@@ -1054,17 +1207,11 @@ def convert_rf_detr_checkpoint(
         checkpoint_path=checkpoint_path,
         model_name=model_name,
     )
-    checkpoint_num_labels = None
-    if "class_embed.bias" in state_dict:
-        checkpoint_num_labels = state_dict["class_embed.bias"].shape[0]
-    elif "class_embed.weight" in state_dict:
-        checkpoint_num_labels = state_dict["class_embed.weight"].shape[0]
+    checkpoint_num_labels = _extract_num_labels_from_state_dict(state_dict)
 
     if resolved_model_name is not None:
-        if resolved_model_task is not None:
-            print(f"Resolved RF-DETR model variant: {resolved_model_name} ({resolved_model_task})")
-        else:
-            print(f"Resolved RF-DETR model variant: {resolved_model_name}")
+        model_spec_suffix = f" ({resolved_model_task})" if resolved_model_task is not None else ""
+        print(f"Resolved RF-DETR model variant: {resolved_model_name}{model_spec_suffix}")
 
     config = build_rf_detr_config_from_checkpoint(checkpoint_args, num_labels=checkpoint_num_labels)
     label_dataset_name = _resolve_label_dataset_name(
@@ -1086,44 +1233,16 @@ def convert_rf_detr_checkpoint(
         "segmentation_head", False
     )
     num_top_queries = int(checkpoint_args.get("num_select", config.num_queries))
+    image_size = int(config.backbone_config.image_size)
 
-    if is_instance_segmentation:
-        model = RfDetrForInstanceSegmentation(config).eval()
-    else:
-        model = RfDetrForObjectDetection(config).eval()
-
-    image_size = config.backbone_config.image_size
-    image_processor = RfDetrImageProcessor(
-        size={"height": image_size, "width": image_size},
+    model, image_processor, image_processor_fast = _build_model_and_processors(
+        config=config,
+        is_instance_segmentation=is_instance_segmentation,
         num_top_queries=num_top_queries,
     )
-    image_processor_fast = RfDetrImageProcessorFast(
-        size={"height": image_size, "width": image_size},
-        num_top_queries=num_top_queries,
-    )
-
     original_state_dict = dict(state_dict)
-    state_dict = dict(state_dict)
-    state_dict = read_in_decoder_q_k_v(state_dict, config)
-
-    key_mapping = ORIGINAL_TO_CONVERTED_KEY_MAPPING | get_backbone_projector_sampling_key_mapping(config)
-    if is_instance_segmentation:
-        key_mapping = key_mapping | INSTANCE_SEGMENTATION_TO_CONVERTED_KEY_MAPPING
-    all_keys = list(state_dict.keys())
-    new_keys = convert_old_keys_to_new_keys(all_keys, key_mapping)
-
-    converted_state_dict = {}
-    for key in all_keys:
-        new_key = new_keys[key]
-        if new_key == "":
-            continue
-        converted_state_dict[new_key] = state_dict[key]
-
-    register_tokens_key = "model.backbone.backbone.embeddings.register_tokens"
-    if register_tokens_key not in converted_state_dict:
-        converted_state_dict[register_tokens_key] = (
-            model.model.backbone.backbone.embeddings.register_tokens.detach().clone()
-        )
+    converted_state_dict = _convert_state_dict(state_dict, config, is_instance_segmentation)
+    _add_missing_register_tokens_if_needed(model, converted_state_dict)
 
     missing_keys, unexpected_keys = model.load_state_dict(converted_state_dict, strict=False)
     print(f"Missing keys: {len(missing_keys)}")
@@ -1148,191 +1267,17 @@ def convert_rf_detr_checkpoint(
     if verify_with_original:
         if original_repo_path is None:
             raise ValueError("`--original_repo_path` is required when `--verify_with_original` is set.")
-        original_checkpoint_args = dict(checkpoint_args)
-        if "class_embed.bias" in original_state_dict:
-            original_checkpoint_args["num_classes"] = original_state_dict["class_embed.bias"].shape[0] - 1
-        elif "class_embed.weight" in original_state_dict:
-            original_checkpoint_args["num_classes"] = original_state_dict["class_embed.weight"].shape[0] - 1
-
-        original_model = build_original_rfdetr_model(original_repo_path, original_checkpoint_args)
-        original_model.load_state_dict(original_state_dict, strict=True)
-        original_model.eval()
-
-        import torchvision.transforms.functional as torchvision_transforms
-
-        rng = np.random.default_rng(seed=0)
-        dummy_image_height = image_size + 15
-        dummy_image_width = image_size - 13 if image_size > 32 else image_size + 3
-        dummy_image = rng.integers(0, 256, size=(dummy_image_height, dummy_image_width, 3), dtype=np.uint8)
-
-        original_preprocessed = torchvision_transforms.to_tensor(dummy_image)
-        original_preprocessed = torchvision_transforms.normalize(
-            original_preprocessed,
-            image_processor.image_mean,
-            image_processor.image_std,
-        )
-        original_preprocessed = torchvision_transforms.resize(
-            original_preprocessed,
-            (image_size, image_size),
-            interpolation=image_processor.resample,
-        )
-        original_preprocessed = original_preprocessed.unsqueeze(0)
-        hf_preprocessed = image_processor(images=dummy_image, return_tensors="pt").pixel_values
-        hf_preprocessed_fast = image_processor_fast(images=dummy_image, return_tensors="pt").pixel_values
-
-        max_abs_preprocess_diff = (original_preprocessed - hf_preprocessed).abs().max().item()
-        max_abs_preprocess_fast_diff = (original_preprocessed - hf_preprocessed_fast).abs().max().item()
-        max_abs_slow_fast_preprocess_diff = (hf_preprocessed - hf_preprocessed_fast).abs().max().item()
-        print(f"max_abs_preprocess_diff={max_abs_preprocess_diff:.10f}")
-        print(f"max_abs_preprocess_fast_diff={max_abs_preprocess_fast_diff:.10f}")
-        print(f"max_abs_slow_fast_preprocess_diff={max_abs_slow_fast_preprocess_diff:.10f}")
-        print("original_preprocess_slice", original_preprocessed.flatten()[:8])
-        print("hf_preprocess_slice", hf_preprocessed.flatten()[:8])
-        print("hf_fast_preprocess_slice", hf_preprocessed_fast.flatten()[:8])
-        if not torch.equal(original_preprocessed, hf_preprocessed):
-            raise AssertionError("Preprocessing mismatch between original RF-DETR and RfDetrImageProcessor.")
-        if not torch.allclose(original_preprocessed, hf_preprocessed_fast, atol=1e-6, rtol=0.0):
-            raise AssertionError("Preprocessing mismatch between original RF-DETR and RfDetrImageProcessorFast.")
-        if not torch.allclose(hf_preprocessed, hf_preprocessed_fast, atol=1e-6, rtol=0.0):
-            raise AssertionError("Preprocessing mismatch between RfDetrImageProcessor and RfDetrImageProcessorFast.")
-
-        pixel_values = hf_preprocessed
-
-        original_outputs = original_model(pixel_values)
-        hf_outputs = model(pixel_values=pixel_values)
-
-        max_abs_logits_diff = (original_outputs["pred_logits"] - hf_outputs.logits).abs().max().item()
-        max_abs_boxes_diff = (original_outputs["pred_boxes"] - hf_outputs.pred_boxes).abs().max().item()
-
-        print(f"max_abs_logits_diff={max_abs_logits_diff:.10f}")
-        print(f"max_abs_boxes_diff={max_abs_boxes_diff:.10f}")
-        if is_instance_segmentation:
-            max_abs_masks_diff = (original_outputs["pred_masks"] - hf_outputs.pred_masks).abs().max().item()
-            print(f"max_abs_masks_diff={max_abs_masks_diff:.10f}")
-        print("original_logits_slice", original_outputs["pred_logits"].flatten()[:8])
-        print("hf_logits_slice", hf_outputs.logits.flatten()[:8])
-        print("original_boxes_slice", original_outputs["pred_boxes"].flatten()[:8])
-        print("hf_boxes_slice", hf_outputs.pred_boxes.flatten()[:8])
-        if is_instance_segmentation:
-            print("original_masks_slice", original_outputs["pred_masks"].flatten()[:8])
-            print("hf_masks_slice", hf_outputs.pred_masks.flatten()[:8])
-
-        target_sizes = torch.tensor([[dummy_image_height, dummy_image_width]], device=pixel_values.device)
-        original_postprocessor = build_original_rfdetr_postprocessor(
+        _verify_conversion_with_original(
+            model=model,
+            image_processor=image_processor,
+            image_processor_fast=image_processor_fast,
             original_repo_path=original_repo_path,
-            num_select=num_top_queries,
+            checkpoint_args=checkpoint_args,
+            original_state_dict=original_state_dict,
+            image_size=image_size,
+            is_instance_segmentation=is_instance_segmentation,
+            num_top_queries=num_top_queries,
         )
-        original_postprocessed_outputs = original_postprocessor(original_outputs, target_sizes)
-
-        if is_instance_segmentation:
-            hf_postprocessed_outputs = image_processor.post_process_instance_segmentation(
-                outputs=original_outputs,
-                threshold=0.0,
-                mask_threshold=0.0,
-                target_sizes=target_sizes,
-                num_top_queries=num_top_queries,
-            )
-            hf_postprocessed_outputs_fast = image_processor_fast.post_process_instance_segmentation(
-                outputs=original_outputs,
-                threshold=0.0,
-                mask_threshold=0.0,
-                target_sizes=target_sizes,
-                num_top_queries=num_top_queries,
-            )
-        else:
-            hf_postprocessed_outputs = image_processor.post_process_object_detection(
-                outputs=original_outputs,
-                threshold=0.0,
-                target_sizes=target_sizes,
-                num_top_queries=num_top_queries,
-            )
-            hf_postprocessed_outputs_fast = image_processor_fast.post_process_object_detection(
-                outputs=original_outputs,
-                threshold=0.0,
-                target_sizes=target_sizes,
-                num_top_queries=num_top_queries,
-            )
-
-        postprocess_scores_diff = (
-            (original_postprocessed_outputs[0]["scores"] - hf_postprocessed_outputs[0]["scores"]).abs().max().item()
-        )
-        postprocess_boxes_diff = (
-            (original_postprocessed_outputs[0]["boxes"] - hf_postprocessed_outputs[0]["boxes"]).abs().max().item()
-        )
-        postprocess_scores_fast_diff = (
-            (original_postprocessed_outputs[0]["scores"] - hf_postprocessed_outputs_fast[0]["scores"])
-            .abs()
-            .max()
-            .item()
-        )
-        postprocess_boxes_fast_diff = (
-            (original_postprocessed_outputs[0]["boxes"] - hf_postprocessed_outputs_fast[0]["boxes"]).abs().max().item()
-        )
-        postprocess_slow_fast_scores_diff = (
-            (hf_postprocessed_outputs[0]["scores"] - hf_postprocessed_outputs_fast[0]["scores"]).abs().max().item()
-        )
-        postprocess_slow_fast_boxes_diff = (
-            (hf_postprocessed_outputs[0]["boxes"] - hf_postprocessed_outputs_fast[0]["boxes"]).abs().max().item()
-        )
-        postprocess_labels_match = torch.equal(
-            original_postprocessed_outputs[0]["labels"], hf_postprocessed_outputs[0]["labels"]
-        )
-        postprocess_labels_fast_match = torch.equal(
-            original_postprocessed_outputs[0]["labels"], hf_postprocessed_outputs_fast[0]["labels"]
-        )
-        postprocess_slow_fast_labels_match = torch.equal(
-            hf_postprocessed_outputs[0]["labels"], hf_postprocessed_outputs_fast[0]["labels"]
-        )
-        print(f"max_abs_postprocess_scores_diff={postprocess_scores_diff:.10f}")
-        print(f"max_abs_postprocess_boxes_diff={postprocess_boxes_diff:.10f}")
-        print(f"max_abs_postprocess_scores_fast_diff={postprocess_scores_fast_diff:.10f}")
-        print(f"max_abs_postprocess_boxes_fast_diff={postprocess_boxes_fast_diff:.10f}")
-        print(f"max_abs_postprocess_slow_fast_scores_diff={postprocess_slow_fast_scores_diff:.10f}")
-        print(f"max_abs_postprocess_slow_fast_boxes_diff={postprocess_slow_fast_boxes_diff:.10f}")
-        print(f"postprocess_labels_match={postprocess_labels_match}")
-        print(f"postprocess_labels_fast_match={postprocess_labels_fast_match}")
-        print(f"postprocess_slow_fast_labels_match={postprocess_slow_fast_labels_match}")
-        if not torch.allclose(original_postprocessed_outputs[0]["scores"], hf_postprocessed_outputs[0]["scores"]):
-            raise AssertionError("Object detection postprocess score mismatch with original RF-DETR implementation.")
-        if not torch.allclose(original_postprocessed_outputs[0]["boxes"], hf_postprocessed_outputs[0]["boxes"]):
-            raise AssertionError("Object detection postprocess box mismatch with original RF-DETR implementation.")
-        if not postprocess_labels_match:
-            raise AssertionError("Object detection postprocess labels mismatch with original RF-DETR implementation.")
-        if not torch.allclose(original_postprocessed_outputs[0]["scores"], hf_postprocessed_outputs_fast[0]["scores"]):
-            raise AssertionError("Object detection postprocess score mismatch with RfDetrImageProcessorFast.")
-        if not torch.allclose(original_postprocessed_outputs[0]["boxes"], hf_postprocessed_outputs_fast[0]["boxes"]):
-            raise AssertionError("Object detection postprocess box mismatch with RfDetrImageProcessorFast.")
-        if not postprocess_labels_fast_match:
-            raise AssertionError("Object detection postprocess labels mismatch with RfDetrImageProcessorFast.")
-        if not torch.allclose(hf_postprocessed_outputs[0]["scores"], hf_postprocessed_outputs_fast[0]["scores"]):
-            raise AssertionError("Postprocess score mismatch between slow and fast RF-DETR image processors.")
-        if not torch.allclose(hf_postprocessed_outputs[0]["boxes"], hf_postprocessed_outputs_fast[0]["boxes"]):
-            raise AssertionError("Postprocess box mismatch between slow and fast RF-DETR image processors.")
-        if not postprocess_slow_fast_labels_match:
-            raise AssertionError("Postprocess labels mismatch between slow and fast RF-DETR image processors.")
-        if is_instance_segmentation:
-            postprocess_masks_match = torch.equal(
-                original_postprocessed_outputs[0]["masks"], hf_postprocessed_outputs[0]["masks"]
-            )
-            postprocess_masks_fast_match = torch.equal(
-                original_postprocessed_outputs[0]["masks"], hf_postprocessed_outputs_fast[0]["masks"]
-            )
-            postprocess_slow_fast_masks_match = torch.equal(
-                hf_postprocessed_outputs[0]["masks"], hf_postprocessed_outputs_fast[0]["masks"]
-            )
-            print(f"postprocess_masks_match={postprocess_masks_match}")
-            print(f"postprocess_masks_fast_match={postprocess_masks_fast_match}")
-            print(f"postprocess_slow_fast_masks_match={postprocess_slow_fast_masks_match}")
-            if not postprocess_masks_match:
-                raise AssertionError(
-                    "Instance segmentation postprocess masks mismatch with original RF-DETR implementation."
-                )
-            if not postprocess_masks_fast_match:
-                raise AssertionError("Instance segmentation postprocess masks mismatch with RfDetrImageProcessorFast.")
-            if not postprocess_slow_fast_masks_match:
-                raise AssertionError(
-                    "Instance segmentation postprocess masks mismatch between slow and fast RF-DETR image processors."
-                )
 
 
 def main():
