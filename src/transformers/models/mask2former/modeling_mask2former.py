@@ -275,7 +275,7 @@ def sample_point(
 
 
 # Copied from transformers.models.maskformer.modeling_maskformer.dice_loss
-def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int) -> Tensor:
+def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int, valid_labels: Tensor | None = None) -> Tensor:
     r"""
     Compute the DICE loss, similar to generalized IOU for masks as follows:
 
@@ -298,14 +298,22 @@ def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int) -> Tensor:
         `torch.Tensor`: The computed loss.
     """
     probs = inputs.sigmoid().flatten(1)
-    numerator = 2 * (probs * labels).sum(-1)
-    denominator = probs.sum(-1) + labels.sum(-1)
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1)
+
+    numerator = 2 * (probs * labels * valid_labels).sum(-1)
+    denominator = (probs * valid_labels).sum(-1) + (labels * valid_labels).sum(-1)
     loss = 1 - (numerator + 1) / (denominator + 1)
     loss = loss.sum() / num_masks
     return loss
 
 
-def sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor, num_masks: int) -> torch.Tensor:
+def sigmoid_cross_entropy_loss(
+    inputs: torch.Tensor, labels: torch.Tensor, num_masks: int, valid_labels: Tensor | None = None
+) -> torch.Tensor:
     r"""
     Args:
         inputs (`torch.Tensor`):
@@ -320,12 +328,18 @@ def sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor, num_m
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     cross_entropy_loss = criterion(inputs, labels)
 
-    loss = cross_entropy_loss.mean(1).sum() / num_masks
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    valid_labels = valid_labels.flatten(1)
+    cross_entropy_loss = cross_entropy_loss * valid_labels
+    num_points = valid_labels.sum(1).clamp_min(1.0)
+
+    loss = (cross_entropy_loss.flatten(1).sum(1) / num_points).sum() / num_masks
     return loss
 
 
 # Copied from transformers.models.maskformer.modeling_maskformer.pair_wise_dice_loss
-def pair_wise_dice_loss(inputs: Tensor, labels: Tensor) -> Tensor:
+def pair_wise_dice_loss(inputs: Tensor, labels: Tensor, valid_labels: Tensor | None = None) -> Tensor:
     """
     A pair wise version of the dice loss, see `dice_loss` for usage.
 
@@ -340,14 +354,23 @@ def pair_wise_dice_loss(inputs: Tensor, labels: Tensor) -> Tensor:
         `torch.Tensor`: The computed loss between each pairs.
     """
     inputs = inputs.sigmoid().flatten(1)
-    numerator = 2 * torch.matmul(inputs, labels.T)
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1)
+
+    weighted_labels = labels * valid_labels
+    numerator = 2 * torch.matmul(inputs, weighted_labels.T)
     # using broadcasting to get a [num_queries, NUM_CLASSES] matrix
-    denominator = inputs.sum(-1)[:, None] + labels.sum(-1)[None, :]
+    denominator = torch.matmul(inputs, valid_labels.T) + weighted_labels.sum(-1)[None, :]
     loss = 1 - (numerator + 1) / (denominator + 1)
     return loss
 
 
-def pair_wise_sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def pair_wise_sigmoid_cross_entropy_loss(
+    inputs: torch.Tensor, labels: torch.Tensor, valid_labels: Tensor | None = None
+) -> torch.Tensor:
     r"""
     A pair wise version of the cross entropy loss, see `sigmoid_cross_entropy_loss` for usage.
 
@@ -362,15 +385,20 @@ def pair_wise_sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Ten
         loss (`torch.Tensor`): The computed loss between each pairs.
     """
 
-    height_and_width = inputs.shape[1]
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1)
 
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     cross_entropy_loss_pos = criterion(inputs, torch.ones_like(inputs))
     cross_entropy_loss_neg = criterion(inputs, torch.zeros_like(inputs))
 
-    loss_pos = torch.matmul(cross_entropy_loss_pos / height_and_width, labels.T)
-    loss_neg = torch.matmul(cross_entropy_loss_neg / height_and_width, (1 - labels).T)
-    loss = loss_pos + loss_neg
+    loss_pos = torch.matmul(cross_entropy_loss_pos, (labels * valid_labels).T)
+    loss_neg = torch.matmul(cross_entropy_loss_neg, ((1 - labels) * valid_labels).T)
+    num_points = valid_labels.sum(-1).clamp_min(1.0)[None, :]
+    loss = (loss_pos + loss_neg) / num_points
     return loss
 
 
@@ -384,7 +412,12 @@ class Mask2FormerHungarianMatcher(nn.Module):
     """
 
     def __init__(
-        self, cost_class: float = 1.0, cost_mask: float = 1.0, cost_dice: float = 1.0, num_points: int = 12544
+        self,
+        cost_class: float = 1.0,
+        cost_mask: float = 1.0,
+        cost_dice: float = 1.0,
+        num_points: int = 12544,
+        ignore_value: int = 255,
     ):
         """Creates the matcher
 
@@ -408,6 +441,7 @@ class Mask2FormerHungarianMatcher(nn.Module):
         self.cost_class = cost_class
         self.cost_mask = cost_mask
         self.cost_dice = cost_dice
+        self.ignore_value = ignore_value
 
     @torch.no_grad()
     def forward(
@@ -456,14 +490,16 @@ class Mask2FormerHungarianMatcher(nn.Module):
 
             target_coordinates = point_coordinates.repeat(target_mask.shape[0], 1, 1)
             target_mask = sample_point(target_mask, target_coordinates, align_corners=False).squeeze(1)
+            valid_target_mask = target_mask != self.ignore_value
+            target_mask = target_mask.masked_fill(~valid_target_mask, 0.0)
 
             pred_coordinates = point_coordinates.repeat(pred_mask.shape[0], 1, 1)
             pred_mask = sample_point(pred_mask, pred_coordinates, align_corners=False).squeeze(1)
 
             # compute the cross entropy loss between each mask pairs -> shape (num_queries, num_labels)
-            cost_mask = pair_wise_sigmoid_cross_entropy_loss(pred_mask, target_mask)
+            cost_mask = pair_wise_sigmoid_cross_entropy_loss(pred_mask, target_mask, valid_target_mask)
             # Compute the dice loss between each mask pairs -> shape (num_queries, num_labels)
-            cost_dice = pair_wise_dice_loss(pred_mask, target_mask)
+            cost_dice = pair_wise_dice_loss(pred_mask, target_mask, valid_target_mask)
             # final cost matrix
             cost_matrix = self.cost_mask * cost_mask + self.cost_class * cost_class + self.cost_dice * cost_dice
             # eliminate infinite values in cost_matrix to avoid the error ``ValueError: cost matrix is infeasible``
@@ -499,6 +535,7 @@ class Mask2FormerLoss(nn.Module):
         requires_backends(self, ["scipy"])
         self.num_labels = config.num_labels
         self.weight_dict = weight_dict
+        self.ignore_value = config.ignore_value
 
         # Weight to apply to the null class
         self.eos_coef = config.no_object_weight
@@ -516,6 +553,7 @@ class Mask2FormerLoss(nn.Module):
             cost_dice=config.dice_weight,
             cost_mask=config.mask_weight,
             num_points=self.num_points,
+            ignore_value=self.ignore_value,
         )
 
     def _max_by_axis(self, sizes: list[list[int]]) -> list[int]:
@@ -627,12 +665,14 @@ class Mask2FormerLoss(nn.Module):
             )
 
             point_labels = sample_point(target_masks, point_coordinates, align_corners=False).squeeze(1)
+            valid_point_labels = point_labels != self.ignore_value
+            point_labels = point_labels.masked_fill(~valid_point_labels, 0.0)
 
         point_logits = sample_point(pred_masks, point_coordinates, align_corners=False).squeeze(1)
 
         losses = {
-            "loss_mask": sigmoid_cross_entropy_loss(point_logits, point_labels, num_masks),
-            "loss_dice": dice_loss(point_logits, point_labels, num_masks),
+            "loss_mask": sigmoid_cross_entropy_loss(point_logits, point_labels, num_masks, valid_point_labels),
+            "loss_dice": dice_loss(point_logits, point_labels, num_masks, valid_point_labels),
         }
 
         del pred_masks
