@@ -21,13 +21,13 @@ import torch.nn.functional as F
 from torch import nn
 
 from ...activations import ACT2CLS
+from ...backbone_utils import load_backbone
 from ...modeling_outputs import BaseModelOutput
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs
 from ..d_fine.configuration_d_fine import DFineConfig
 from ..d_fine.modeling_d_fine import (
     DFineDecoderOutput,
-    DFineHybridEncoder,
     DFineIntegral,
     DFineMLP,
     DFineMultiscaleDeformableAttention,
@@ -38,12 +38,12 @@ from ..d_fine.modeling_d_fine import (
 from ..rt_detr.image_processing_rt_detr import RTDetrImageProcessor, RTDetrImageProcessorKwargs
 from ..rt_detr.image_processing_rt_detr_fast import RTDetrImageProcessorFast
 from ..rt_detr.modeling_rt_detr import (
-    RTDetrConvEncoder,
     RTDetrForObjectDetection,
     RTDetrModelOutput,
     RTDetrObjectDetectionOutput,
     RTDetrPreTrainedModel,
     get_contrastive_denoising_training_group,
+    replace_batch_norm,
 )
 
 
@@ -144,17 +144,24 @@ class Deimv2Gate(nn.Module):
 
 class Deimv2ConvNormLayer(nn.Module):
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: int,
-        stride: int,
-        groups: int = 1,
-        padding: int | None = None,
-        bias: bool = False,
-        activation: str | None = None,
+        self, *args, groups: int = 1, padding: int | None = None, bias: bool = False, activation: str | None = None
     ):
         super().__init__()
+        if len(args) >= 1 and isinstance(args[0], Deimv2Config):
+            config = args[0]
+            args = args[1:]
+            activation = config.activation_function if activation is None else activation
+
+        if len(args) == 4:
+            in_channels, out_channels, kernel_size, stride = args
+        elif len(args) == 5:
+            in_channels, out_channels, kernel_size, stride, groups = args
+        else:
+            raise ValueError(
+                "Deimv2ConvNormLayer expects either (config, in_channels, out_channels, kernel_size, stride) "
+                "or (in_channels, out_channels, kernel_size, stride), with an optional final groups argument."
+            )
+
         self.conv = nn.Conv2d(
             in_channels,
             out_channels,
@@ -182,6 +189,38 @@ class Deimv2GAPFusion(nn.Module):
         pooled_hidden_states = F.adaptive_avg_pool2d(hidden_states, 1)
         hidden_states = hidden_states + pooled_hidden_states
         return self.cv(hidden_states)
+
+
+class Deimv2SpatialPriorModulev2(nn.Module):
+    def __init__(self, inplanes: int = 16):
+        super().__init__()
+        self.stem = nn.Sequential(
+            nn.Conv2d(3, inplanes, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(inplanes),
+            nn.GELU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+        )
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(inplanes, 2 * inplanes, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(2 * inplanes),
+        )
+        self.conv3 = nn.Sequential(
+            nn.GELU(),
+            nn.Conv2d(2 * inplanes, 4 * inplanes, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(4 * inplanes),
+        )
+        self.conv4 = nn.Sequential(
+            nn.GELU(),
+            nn.Conv2d(4 * inplanes, 4 * inplanes, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm2d(4 * inplanes),
+        )
+
+    def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        hidden_states = self.stem(hidden_states)
+        c2 = self.conv2(hidden_states)
+        c3 = self.conv3(c2)
+        c4 = self.conv4(c3)
+        return c2, c3, c4
 
 
 class Deimv2VGGBlock(nn.Module):
@@ -223,17 +262,37 @@ class Deimv2CSPLayer2(nn.Module):
 
 
 class Deimv2RepNCSPELAN4(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        hidden_channels: int,
-        bottleneck_channels: int,
-        num_blocks: int = 3,
-        bias: bool = False,
-        activation: str = "silu",
-    ):
+    def __init__(self, *args, **kwargs):
         super().__init__()
+        num_blocks = kwargs.pop("num_blocks", kwargs.pop("numb_blocks", 3))
+        bias = kwargs.pop("bias", False)
+        activation = kwargs.pop("activation", "silu")
+
+        if len(args) == 1 and isinstance(args[0], Deimv2Config):
+            config = args[0]
+            out_channels = config.encoder_hidden_dim
+            in_channels = out_channels * 2
+            hidden_channels = int(out_channels * config.hidden_expansion)
+            bottleneck_channels = int(out_channels * config.hidden_expansion)
+            activation = config.activation_function
+        elif len(args) == 4:
+            in_channels, out_channels, hidden_channels, bottleneck_channels = args
+        elif len(args) == 0 and {"in_channels", "out_channels", "hidden_channels", "bottleneck_channels"} <= set(
+            kwargs
+        ):
+            in_channels = kwargs.pop("in_channels")
+            out_channels = kwargs.pop("out_channels")
+            hidden_channels = kwargs.pop("hidden_channels")
+            bottleneck_channels = kwargs.pop("bottleneck_channels")
+        else:
+            raise ValueError(
+                "Deimv2RepNCSPELAN4 expects either (config,) or "
+                "(in_channels, out_channels, hidden_channels, bottleneck_channels)."
+            )
+
+        if kwargs:
+            raise ValueError(f"Unexpected kwargs for Deimv2RepNCSPELAN4: {sorted(kwargs.keys())}")
+
         self.c = hidden_channels // 2
         self.cv1 = Deimv2ConvNormLayer(in_channels, hidden_channels, 1, 1, bias=bias, activation=activation)
 
@@ -328,6 +387,288 @@ class Deimv2LiteEncoder(nn.Module):
         outputs.append(self.pan_block(fused_features))
 
         return BaseModelOutput(last_hidden_state=outputs, hidden_states=None, attentions=None)
+
+
+class Deimv2SCDown(nn.Module):
+    def __init__(self, channels_in: int, channels_out: int, kernel_size: int, stride: int):
+        super().__init__()
+        self.cv1 = Deimv2ConvNormLayer(channels_in, channels_out, 1, 1)
+        self.cv2 = Deimv2ConvNormLayer(channels_out, channels_out, kernel_size, stride, groups=channels_out)
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        return self.cv2(self.cv1(hidden_states))
+
+
+class Deimv2RepNCSPELAN5(nn.Module):
+    def __init__(
+        self,
+        channels_in: int,
+        channels_out: int,
+        channels_split: int,
+        channels_hidden: int,
+        num_blocks: int = 3,
+        bias: bool = False,
+        activation: str = "silu",
+    ):
+        super().__init__()
+        self.split_channels = channels_split // 2
+        self.cv1 = Deimv2ConvNormLayer(channels_in, channels_split, 1, 1, bias=bias, activation=activation)
+        self.cv2 = nn.Sequential(
+            Deimv2CSPLayer2(self.split_channels, channels_hidden, num_blocks, 1, bias=bias, activation=activation)
+        )
+        self.cv3 = nn.Sequential(
+            Deimv2CSPLayer2(channels_hidden, channels_hidden, num_blocks, 1, bias=bias, activation=activation)
+        )
+        self.cv4 = Deimv2ConvNormLayer(
+            channels_split + (2 * channels_hidden), channels_out, 1, 1, bias=bias, activation=activation
+        )
+
+    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        output_states = list(self.cv1(hidden_states).split((self.split_channels, self.split_channels), 1))
+        output_states.extend(module(output_states[-1]) for module in [self.cv2, self.cv3])
+        return self.cv4(torch.cat(output_states, 1))
+
+
+class Deimv2TransformerEncoderLayer(nn.Module):
+    def __init__(
+        self,
+        hidden_size: int,
+        num_attention_heads: int,
+        intermediate_size: int,
+        dropout: float,
+        activation: str,
+        normalize_before: bool = False,
+    ):
+        super().__init__()
+        self.normalize_before = normalize_before
+
+        self.self_attn = nn.MultiheadAttention(hidden_size, num_attention_heads, dropout, batch_first=True)
+        self.linear1 = nn.Linear(hidden_size, intermediate_size)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(intermediate_size, hidden_size)
+
+        self.norm1 = nn.LayerNorm(hidden_size)
+        self.norm2 = nn.LayerNorm(hidden_size)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
+        self.activation = ACT2CLS[activation]()
+
+    @staticmethod
+    def with_pos_embed(hidden_states: torch.Tensor, pos_embed: torch.Tensor | None) -> torch.Tensor:
+        return hidden_states if pos_embed is None else hidden_states + pos_embed
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        src_mask: torch.Tensor | None = None,
+        pos_embed: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        residual = hidden_states
+        if self.normalize_before:
+            hidden_states = self.norm1(hidden_states)
+        queries = keys = self.with_pos_embed(hidden_states, pos_embed)
+        hidden_states, _ = self.self_attn(queries, keys, value=hidden_states, attn_mask=src_mask)
+
+        hidden_states = residual + self.dropout1(hidden_states)
+        if not self.normalize_before:
+            hidden_states = self.norm1(hidden_states)
+
+        residual = hidden_states
+        if self.normalize_before:
+            hidden_states = self.norm2(hidden_states)
+        hidden_states = self.linear2(self.dropout(self.activation(self.linear1(hidden_states))))
+        hidden_states = residual + self.dropout2(hidden_states)
+        if not self.normalize_before:
+            hidden_states = self.norm2(hidden_states)
+        return hidden_states
+
+
+class Deimv2TransformerEncoder(nn.Module):
+    def __init__(self, encoder_layer: Deimv2TransformerEncoderLayer, num_layers: int):
+        super().__init__()
+        self.layers = nn.ModuleList([copy.deepcopy(encoder_layer) for _ in range(num_layers)])
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        src_mask: torch.Tensor | None = None,
+        pos_embed: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        for layer in self.layers:
+            hidden_states = layer(hidden_states, src_mask=src_mask, pos_embed=pos_embed)
+        return hidden_states
+
+
+class Deimv2HybridEncoder(nn.Module):
+    def __init__(self, config: Deimv2Config):
+        super().__init__()
+        self.in_channels = config.encoder_in_channels
+        self.feat_strides = config.feat_strides
+        self.hidden_dim = config.encoder_hidden_dim
+        self.use_encoder_idx = config.encode_proj_layers
+        self.num_encoder_layers = config.encoder_layers
+        self.pe_temperature = config.positional_encoding_temperature
+        self.eval_spatial_size = config.anchor_image_size
+        self.fuse_op = getattr(config, "encoder_fuse_op", "sum")
+        self.out_channels = [self.hidden_dim for _ in range(len(self.in_channels))]
+        self.out_strides = self.feat_strides
+
+        self.input_proj = nn.ModuleList()
+        for in_channel in self.in_channels:
+            if in_channel != self.hidden_dim:
+                proj = nn.Sequential(
+                    OrderedDict(
+                        [
+                            ("conv", nn.Conv2d(in_channel, self.hidden_dim, kernel_size=1, bias=False)),
+                            ("norm", nn.BatchNorm2d(self.hidden_dim)),
+                        ]
+                    )
+                )
+            else:
+                proj = nn.Identity()
+            self.input_proj.append(proj)
+
+        encoder_layer = Deimv2TransformerEncoderLayer(
+            hidden_size=self.hidden_dim,
+            num_attention_heads=config.encoder_attention_heads,
+            intermediate_size=config.encoder_ffn_dim,
+            dropout=config.dropout,
+            activation=config.encoder_activation_function,
+            normalize_before=config.normalize_before,
+        )
+        self.encoder = nn.ModuleList(
+            [
+                Deimv2TransformerEncoder(copy.deepcopy(encoder_layer), self.num_encoder_layers)
+                for _ in self.use_encoder_idx
+            ]
+        )
+
+        input_dim = self.hidden_dim if self.fuse_op == "sum" else self.hidden_dim * 2
+        lateral_conv = Deimv2ConvNormLayer(self.hidden_dim, self.hidden_dim, 1, 1)
+        downsample_conv = nn.Sequential(Deimv2SCDown(self.hidden_dim, self.hidden_dim, 3, 2))
+
+        channels_in = input_dim
+        channels_out = self.hidden_dim
+        channels_split = self.hidden_dim * 2
+        channels_hidden = round(config.hidden_expansion * self.hidden_dim // 2)
+        num_blocks = round(3 * config.depth_mult)
+        encoder_version = getattr(config, "encoder_version", "deim")
+        encoder_csp_type = getattr(config, "encoder_csp_type", "csp")
+
+        if encoder_version == "dfine":
+            fuse_block = Deimv2RepNCSPELAN4(
+                in_channels=channels_in,
+                out_channels=channels_out,
+                hidden_channels=channels_split,
+                bottleneck_channels=channels_hidden,
+                num_blocks=num_blocks,
+                activation=config.activation_function,
+            )
+        elif encoder_version == "deim":
+            _ = encoder_csp_type
+            fuse_block = Deimv2RepNCSPELAN5(
+                channels_in=channels_in,
+                channels_out=channels_out,
+                channels_split=channels_split,
+                channels_hidden=channels_hidden,
+                num_blocks=num_blocks,
+                activation=config.activation_function,
+            )
+        else:
+            raise ValueError(f"Unsupported encoder version '{encoder_version}'.")
+
+        self.lateral_convs = nn.ModuleList()
+        self.fpn_blocks = nn.ModuleList()
+        for _ in range(len(self.in_channels) - 1, 0, -1):
+            self.lateral_convs.append(copy.deepcopy(lateral_conv))
+            self.fpn_blocks.append(copy.deepcopy(fuse_block))
+
+        self.downsample_convs = nn.ModuleList()
+        self.pan_blocks = nn.ModuleList()
+        for _ in range(len(self.in_channels) - 1):
+            self.downsample_convs.append(copy.deepcopy(downsample_conv))
+            self.pan_blocks.append(copy.deepcopy(fuse_block))
+
+        self._reset_parameters()
+
+    def _reset_parameters(self):
+        if self.eval_spatial_size:
+            for idx in self.use_encoder_idx:
+                stride = self.feat_strides[idx]
+                pos_embed = self.build_2d_sincos_position_embedding(
+                    width=self.eval_spatial_size[1] // stride,
+                    height=self.eval_spatial_size[0] // stride,
+                    embed_dim=self.hidden_dim,
+                    temperature=self.pe_temperature,
+                )
+                setattr(self, f"pos_embed{idx}", pos_embed)
+
+    @staticmethod
+    def build_2d_sincos_position_embedding(
+        width: int, height: int, embed_dim: int = 256, temperature: float = 10000.0
+    ) -> torch.Tensor:
+        grid_w = torch.arange(int(width), dtype=torch.float32)
+        grid_h = torch.arange(int(height), dtype=torch.float32)
+        grid_w, grid_h = torch.meshgrid(grid_w, grid_h, indexing="ij")
+        if embed_dim % 4 != 0:
+            raise ValueError("Embed dimension must be divisible by 4 for 2D sin-cos position embedding.")
+
+        pos_dim = embed_dim // 4
+        omega = torch.arange(pos_dim, dtype=torch.float32) / pos_dim
+        omega = 1.0 / (temperature**omega)
+        out_w = grid_w.flatten()[..., None] @ omega[None]
+        out_h = grid_h.flatten()[..., None] @ omega[None]
+        pos_embed = torch.concat([out_w.sin(), out_w.cos(), out_h.sin(), out_h.cos()], dim=1)[None, :, :]
+        return pos_embed
+
+    def forward(self, features: list[torch.Tensor], **kwargs: Unpack[TransformersKwargs]) -> BaseModelOutput:
+        if len(features) != len(self.in_channels):
+            raise ValueError(f"Expected {len(self.in_channels)} feature maps, got {len(features)}")
+
+        projected_features = [self.input_proj[i](feature) for i, feature in enumerate(features)]
+
+        if self.num_encoder_layers > 0:
+            for i, enc_idx in enumerate(self.use_encoder_idx):
+                height, width = projected_features[enc_idx].shape[2:]
+                source_flatten = projected_features[enc_idx].flatten(2).permute(0, 2, 1)
+                if self.training or self.eval_spatial_size is None:
+                    pos_embed = self.build_2d_sincos_position_embedding(
+                        width, height, self.hidden_dim, self.pe_temperature
+                    ).to(source_flatten.device)
+                else:
+                    pos_embed = getattr(self, f"pos_embed{enc_idx}", None).to(source_flatten.device)
+                memory = self.encoder[i](source_flatten, pos_embed=pos_embed)
+                projected_features[enc_idx] = (
+                    memory.permute(0, 2, 1).reshape(-1, self.hidden_dim, height, width).contiguous()
+                )
+
+        inner_outs = [projected_features[-1]]
+        for idx in range(len(self.in_channels) - 1, 0, -1):
+            feat_high = inner_outs[0]
+            feat_low = projected_features[idx - 1]
+            feat_high = self.lateral_convs[len(self.in_channels) - 1 - idx](feat_high)
+            inner_outs[0] = feat_high
+            upsample_feat = F.interpolate(feat_high, scale_factor=2.0, mode="nearest")
+            fused_feat = (
+                upsample_feat + feat_low if self.fuse_op == "sum" else torch.concat([upsample_feat, feat_low], dim=1)
+            )
+            inner_out = self.fpn_blocks[len(self.in_channels) - 1 - idx](fused_feat)
+            inner_outs.insert(0, inner_out)
+
+        outs = [inner_outs[0]]
+        for idx in range(len(self.in_channels) - 1):
+            feat_low = outs[-1]
+            feat_high = inner_outs[idx + 1]
+            downsample_feat = self.downsample_convs[idx](feat_low)
+            fused_feat = (
+                downsample_feat + feat_high
+                if self.fuse_op == "sum"
+                else torch.concat([downsample_feat, feat_high], dim=1)
+            )
+            out = self.pan_blocks[idx](fused_feat)
+            outs.append(out)
+
+        return BaseModelOutput(last_hidden_state=outs, hidden_states=None, attentions=None)
 
 
 class Deimv2DecoderLayer(nn.Module):
@@ -452,10 +793,14 @@ class Deimv2TransformerDecoder(nn.Module):
         predicted_corners_list = []
         predicted_refs = []
         hidden_states_list = []
+        pre_bboxes = None
+        pre_scores = None
 
         project = weighting_function(self.reg_max, up, reg_scale)
         reference_points_detached = torch.sigmoid(reference_points_unact)
         query_pos_embed = query_pos_head(reference_points_detached).clamp(min=-10, max=10)
+        has_bbox_head = bbox_head is not None
+        has_score_head = score_head is not None
 
         for layer_idx, layer_module in enumerate(self.layers):
             reference_points_input = reference_points_detached.unsqueeze(2)
@@ -473,15 +818,22 @@ class Deimv2TransformerDecoder(nn.Module):
 
             if layer_idx == 0:
                 pre_bboxes = torch.sigmoid(pre_bbox_head(hidden_states) + inverse_sigmoid(reference_points_detached))
-                pre_scores = score_head[0](hidden_states)
+                if has_score_head:
+                    pre_scores = score_head[0](hidden_states)
                 initial_reference_points = pre_bboxes.detach()
 
-            predicted_corners = (
-                bbox_head[layer_idx](hidden_states + hidden_states_detached) + predicted_corners_undetached
-            )
-            inter_ref_bbox = distance2bbox(initial_reference_points, integral(predicted_corners, project), reg_scale)
+            if has_bbox_head:
+                predicted_corners = (
+                    bbox_head[layer_idx](hidden_states + hidden_states_detached) + predicted_corners_undetached
+                )
+                inter_ref_bbox = distance2bbox(
+                    initial_reference_points, integral(predicted_corners, project), reg_scale
+                )
+            else:
+                predicted_corners = None
+                inter_ref_bbox = reference_points_detached
 
-            if self.training or layer_idx == self.eval_idx:
+            if has_bbox_head and has_score_head and (self.training or layer_idx == self.eval_idx):
                 scores = score_head[layer_idx](hidden_states)
                 scores = self.lqe_layers[layer_idx](scores, predicted_corners)
                 predicted_logits.append(scores)
@@ -492,15 +844,16 @@ class Deimv2TransformerDecoder(nn.Module):
                 if not self.training:
                     break
 
-            predicted_corners_undetached = predicted_corners
-            reference_points_detached = inter_ref_bbox.detach()
-            hidden_states_detached = hidden_states.detach()
+            if has_bbox_head:
+                predicted_corners_undetached = predicted_corners
+                reference_points_detached = inter_ref_bbox.detach()
+                hidden_states_detached = hidden_states.detach()
 
         return (
-            torch.stack(predicted_bboxes),
-            torch.stack(predicted_logits),
-            torch.stack(predicted_corners_list),
-            torch.stack(predicted_refs),
+            torch.stack(predicted_bboxes) if predicted_bboxes else None,
+            torch.stack(predicted_logits) if predicted_logits else None,
+            torch.stack(predicted_corners_list) if predicted_corners_list else None,
+            torch.stack(predicted_refs) if predicted_refs else None,
             pre_bboxes,
             pre_scores,
             torch.stack(hidden_states_list),
@@ -541,9 +894,6 @@ class Deimv2Decoder(nn.Module):
         memory_mask=None,
         **kwargs: Unpack[TransformersKwargs],
     ) -> Deimv2DecoderOutput:
-        if self.class_embed is None or self.bbox_embed is None:
-            raise ValueError("Decoder class and box heads must be initialized before running forward.")
-
         (
             out_bboxes,
             out_logits,
@@ -571,10 +921,10 @@ class Deimv2Decoder(nn.Module):
         return Deimv2DecoderOutput(
             last_hidden_state=hidden_states[-1],
             intermediate_hidden_states=hidden_states.permute(1, 0, 2, 3),
-            intermediate_logits=out_logits.permute(1, 0, 2, 3),
-            intermediate_reference_points=out_bboxes.permute(1, 0, 2, 3),
-            intermediate_predicted_corners=out_corners.permute(1, 0, 2, 3),
-            initial_reference_points=out_refs.permute(1, 0, 2, 3),
+            intermediate_logits=out_logits.permute(1, 0, 2, 3) if out_logits is not None else None,
+            intermediate_reference_points=out_bboxes.permute(1, 0, 2, 3) if out_bboxes is not None else None,
+            intermediate_predicted_corners=out_corners.permute(1, 0, 2, 3) if out_corners is not None else None,
+            initial_reference_points=out_refs.permute(1, 0, 2, 3) if out_refs is not None else None,
         )
 
 
@@ -598,12 +948,144 @@ class Deimv2PreTrainedModel(RTDetrPreTrainedModel):
             nn.init.constant_(module.reg_conf.layers[-1].weight, 0)
 
 
-class Deimv2ConvEncoder(RTDetrConvEncoder):
-    pass
+class Deimv2ConvEncoder(nn.Module):
+    def __init__(self, config: Deimv2Config):
+        super().__init__()
+        if config.backbone_config.model_type != "dinov3_vit":
+            self.use_dinov3_adapter = False
+            self.model = load_backbone(config)
+            if config.freeze_backbone_batch_norms:
+                with torch.no_grad():
+                    replace_batch_norm(self.model)
+            self.intermediate_channel_sizes = self.model.channels
+            return
 
+        self.use_dinov3_adapter = True
+        self.model = load_backbone(config)
 
-class Deimv2HybridEncoder(DFineHybridEncoder):
-    pass
+        self.interaction_indexes = getattr(config, "backbone_interaction_indexes", [3, 7, 11])
+        self.normalize_dinov3_intermediate = getattr(
+            config, "backbone_normalize_intermediate", bool(getattr(config.backbone_config, "num_register_tokens", 0))
+        )
+        self.patch_size = config.backbone_config.patch_size
+        self.rope_needs_batch_dims = getattr(config.backbone_config, "num_register_tokens", 0) == 0
+        head_dim = config.backbone_config.hidden_size // config.backbone_config.num_attention_heads
+        default_rope_periods = config.backbone_config.rope_theta ** (
+            2 * torch.arange(head_dim // 4, dtype=torch.float32) / (head_dim // 2)
+        )
+        self.register_buffer("rope_periods", default_rope_periods, persistent=True)
+
+        self.use_sta = getattr(config, "backbone_use_sta", True)
+        conv_inplane = getattr(config, "backbone_conv_inplane", 16)
+        hidden_dim = getattr(config, "backbone_hidden_dim", config.encoder_hidden_dim)
+        embed_dim = config.backbone_config.hidden_size
+
+        if self.use_sta:
+            self.sta = Deimv2SpatialPriorModulev2(inplanes=conv_inplane)
+        else:
+            self.sta = None
+            conv_inplane = 0
+
+        self.convs = nn.ModuleList(
+            [
+                nn.Conv2d(embed_dim + conv_inplane * 2, hidden_dim, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(embed_dim + conv_inplane * 4, hidden_dim, kernel_size=1, stride=1, padding=0, bias=False),
+                nn.Conv2d(embed_dim + conv_inplane * 4, hidden_dim, kernel_size=1, stride=1, padding=0, bias=False),
+            ]
+        )
+        self.norms = nn.ModuleList(
+            [nn.BatchNorm2d(hidden_dim), nn.BatchNorm2d(hidden_dim), nn.BatchNorm2d(hidden_dim)]
+        )
+        self.intermediate_channel_sizes = [hidden_dim, hidden_dim, hidden_dim]
+
+    def _get_dinov3_position_embeddings(self, pixel_values: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        num_patches_height = pixel_values.shape[2] // self.patch_size
+        num_patches_width = pixel_values.shape[3] // self.patch_size
+        dtype = self.rope_periods.dtype
+        device = self.rope_periods.device
+
+        coords_h = torch.arange(0.5, num_patches_height, device=device, dtype=dtype) / num_patches_height
+        coords_w = torch.arange(0.5, num_patches_width, device=device, dtype=dtype) / num_patches_width
+        patch_coords = torch.stack(torch.meshgrid(coords_h, coords_w, indexing="ij"), dim=-1)
+        patch_coords = patch_coords.flatten(0, 1)
+        patch_coords = 2.0 * patch_coords - 1.0
+
+        angles = 2 * math.pi * patch_coords[:, :, None] / self.rope_periods[None, None, :]
+        angles = angles.flatten(1, 2).repeat(1, 2)
+        cos = torch.cos(angles).to(dtype=pixel_values.dtype)
+        sin = torch.sin(angles).to(dtype=pixel_values.dtype)
+
+        if self.rope_needs_batch_dims:
+            cos = cos.unsqueeze(0).unsqueeze(0)
+            sin = sin.unsqueeze(0).unsqueeze(0)
+
+        return cos, sin
+
+    def _get_dinov3_intermediate_layers(self, pixel_values: torch.Tensor) -> list[tuple[torch.Tensor, torch.Tensor]]:
+        pixel_values = pixel_values.to(self.model.embeddings.patch_embeddings.weight.dtype)
+        hidden_states = self.model.embeddings(pixel_values)
+        position_embeddings = self._get_dinov3_position_embeddings(pixel_values)
+
+        collected_layers = []
+        num_prefix_tokens = 1 + getattr(self.model.config, "num_register_tokens", 0)
+        for layer_idx, layer_module in enumerate(self.model.layer):
+            hidden_states = layer_module(hidden_states, position_embeddings=position_embeddings)
+            if layer_idx in self.interaction_indexes:
+                layer_hidden_states = (
+                    self.model.norm(hidden_states) if self.normalize_dinov3_intermediate else hidden_states
+                )
+                patch_tokens = layer_hidden_states[:, num_prefix_tokens:, :]
+                cls_tokens = layer_hidden_states[:, 0]
+                collected_layers.append((patch_tokens, cls_tokens))
+
+        return collected_layers
+
+    def forward(self, pixel_values: torch.Tensor, pixel_mask: torch.Tensor):
+        if not self.use_dinov3_adapter:
+            features = self.model(pixel_values).feature_maps
+            out = []
+            for feature_map in features:
+                mask = nn.functional.interpolate(pixel_mask[None].float(), size=feature_map.shape[-2:]).to(torch.bool)[
+                    0
+                ]
+                out.append((feature_map, mask))
+            return out
+
+        all_layers = self._get_dinov3_intermediate_layers(pixel_values)
+        if len(all_layers) == 1:
+            all_layers = [all_layers[0], all_layers[0], all_layers[0]]
+
+        batch_size = pixel_values.shape[0]
+        base_height = pixel_values.shape[2] // self.patch_size
+        base_width = pixel_values.shape[3] // self.patch_size
+
+        sem_feats = []
+        num_scales = len(all_layers) - 2
+        for layer_idx, layer_output in enumerate(all_layers):
+            patch_tokens, _ = layer_output
+            sem_feat = patch_tokens.transpose(1, 2).view(batch_size, -1, base_height, base_width).contiguous()
+            resize_height = int(base_height * 2 ** (num_scales - layer_idx))
+            resize_width = int(base_width * 2 ** (num_scales - layer_idx))
+            sem_feat = F.interpolate(
+                sem_feat, size=[resize_height, resize_width], mode="bilinear", align_corners=False
+            )
+            sem_feats.append(sem_feat)
+
+        if self.use_sta:
+            detail_feats = self.sta(pixel_values)
+            fused_feats = [
+                torch.cat([sem_feat, detail_feat], dim=1) for sem_feat, detail_feat in zip(sem_feats, detail_feats)
+            ]
+        else:
+            fused_feats = sem_feats
+
+        features = [norm(conv(hidden_state)) for norm, conv, hidden_state in zip(self.norms, self.convs, fused_feats)]
+
+        out = []
+        for feature_map in features:
+            mask = nn.functional.interpolate(pixel_mask[None].float(), size=feature_map.shape[-2:]).to(torch.bool)[0]
+            out.append((feature_map, mask))
+        return out
 
 
 class Deimv2Model(Deimv2PreTrainedModel):
@@ -634,7 +1116,12 @@ class Deimv2Model(Deimv2PreTrainedModel):
         self.enc_bbox_head = Deimv2MLP(config.d_model, config.d_model, 4, 3, act=config.decoder_activation_function)
 
         if config.anchor_image_size:
-            self.anchors, self.valid_mask = self.generate_anchors(dtype=self.dtype)
+            anchors, valid_mask = self.generate_anchors(dtype=self.dtype)
+            self.register_buffer("anchors", anchors)
+            self.register_buffer("valid_mask", valid_mask)
+        else:
+            self.anchors = None
+            self.valid_mask = None
 
         num_backbone_outs = len(config.decoder_in_channels)
         decoder_input_proj = []
@@ -696,7 +1183,7 @@ class Deimv2Model(Deimv2PreTrainedModel):
         anchors = torch.concat(anchors, 1)
         valid_mask = ((anchors > eps) * (anchors < 1 - eps)).all(-1, keepdim=True)
         anchors = torch.log(anchors / (1 - anchors))
-        anchors = torch.where(valid_mask, anchors, torch.tensor(torch.finfo(dtype).max, dtype=dtype, device=device))
+        anchors = torch.where(valid_mask, anchors, torch.tensor(torch.inf, dtype=dtype, device=device))
         return anchors, valid_mask
 
     def forward(
@@ -775,8 +1262,8 @@ class Deimv2Model(Deimv2PreTrainedModel):
             anchors, valid_mask = self.anchors, self.valid_mask
             anchors, valid_mask = anchors.to(device, dtype), valid_mask.to(device, dtype)
 
-        memory = valid_mask.to(source_flatten.dtype) * source_flatten
-        output_memory = self.enc_output(memory)
+        memory = source_flatten
+        output_memory = self.enc_output(valid_mask.to(memory.dtype) * memory)
 
         enc_outputs_class = self.enc_score_head(output_memory)
         enc_outputs_coord_logits = self.enc_bbox_head(output_memory) + anchors
@@ -838,9 +1325,11 @@ class Deimv2Model(Deimv2PreTrainedModel):
 
 class Deimv2ForObjectDetection(RTDetrForObjectDetection):
     _no_split_modules = None
+    loss_type = "DFineForObjectDetection"
 
     def __init__(self, config: Deimv2Config):
         Deimv2PreTrainedModel.__init__(self, config)
+        self.loss_type = "DFineForObjectDetection"
 
         self.model = Deimv2Model(config)
 

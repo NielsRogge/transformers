@@ -95,7 +95,7 @@ class Deimv2ImageProcessingTester:
 
 @require_torch
 @require_vision
-class RtDetrImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase):
+class Deimv2ImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase):
     image_processing_class = Deimv2ImageProcessor if is_vision_available() else None
     fast_image_processing_class = Deimv2ImageProcessorFast if is_torchvision_available() else None
 
@@ -132,7 +132,7 @@ class RtDetrImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase):
 
         for image_processing_class in self.image_processor_list:
             # encode them
-            image_processing = image_processing_class.from_pretrained("PekingU/rtdetr_r50vd")
+            image_processing = image_processing_class(**self.image_processor_dict)
 
             # legal encodings (single image)
             _ = image_processing(images=image, annotations=params, return_tensors="pt")
@@ -169,7 +169,7 @@ class RtDetrImageProcessingTest(ImageProcessingTestMixin, unittest.TestCase):
 
         for image_processing_class in self.image_processor_list:
             # encode them
-            image_processing = image_processing_class.from_pretrained("PekingU/rtdetr_r50vd")
+            image_processing = image_processing_class(**self.image_processor_dict)
             encoding = image_processing(images=image, annotations=target, return_tensors="pt")
 
             # verify pixel values
