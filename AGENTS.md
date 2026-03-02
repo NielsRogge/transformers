@@ -6,13 +6,7 @@
 
 `make style` or `make fix-repo` should be run as the final step before opening a PR. The CI will run `make check-repo` and fail if any issues are found.
 
-## Important
-
-Always use the virtual environment to run Python scripts or install dependencies. Activate it properly.
-
 ## Copies and Modular Models
-
-**New Contributors: See [CONTRIBUTING.md](CONTRIBUTING.md) for complete setup and workflow details.**
 
 We try to avoid direct inheritance between model-specific files in `src/transformers/models/`. We have two mechanisms to manage the resulting code duplication:
 
