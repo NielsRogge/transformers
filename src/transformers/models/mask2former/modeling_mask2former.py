@@ -274,7 +274,6 @@ def sample_point(
     return point_features
 
 
-# Copied from transformers.models.maskformer.modeling_maskformer.dice_loss
 def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int, valid_labels: Tensor | None = None) -> Tensor:
     r"""
     Compute the DICE loss, similar to generalized IOU for masks as follows:
@@ -340,7 +339,6 @@ def sigmoid_cross_entropy_loss(
     return loss
 
 
-# Copied from transformers.models.maskformer.modeling_maskformer.pair_wise_dice_loss
 def pair_wise_dice_loss(inputs: Tensor, labels: Tensor, valid_labels: Tensor | None = None) -> Tensor:
     """
     A pair wise version of the dice loss, see `dice_loss` for usage.

@@ -131,7 +131,9 @@ def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int) -> Tensor:
 
 
 # Copied from transformers.models.mask2former.modeling_mask2former.sigmoid_cross_entropy_loss
-def sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor, num_masks: int) -> torch.Tensor:
+def sigmoid_cross_entropy_loss(
+    inputs: torch.Tensor, labels: torch.Tensor, num_masks: int, valid_labels: Tensor | None = None
+) -> torch.Tensor:
     r"""
     Args:
         inputs (`torch.Tensor`):
@@ -146,7 +148,15 @@ def sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor, num_m
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     cross_entropy_loss = criterion(inputs, labels)
 
-    loss = cross_entropy_loss.mean(1).sum() / num_masks
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.to(labels.dtype)
+    valid_labels = valid_labels.flatten(1)
+    cross_entropy_loss = cross_entropy_loss * valid_labels
+    num_points = valid_labels.sum(1).clamp_min(1.0)
+
+    loss = (cross_entropy_loss.flatten(1).sum(1) / num_points).sum() / num_masks
     return loss
 
 
@@ -174,7 +184,9 @@ def pair_wise_dice_loss(inputs: Tensor, labels: Tensor) -> Tensor:
 
 
 # Copied from transformers.models.mask2former.modeling_mask2former.pair_wise_sigmoid_cross_entropy_loss
-def pair_wise_sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def pair_wise_sigmoid_cross_entropy_loss(
+    inputs: torch.Tensor, labels: torch.Tensor, valid_labels: Tensor | None = None
+) -> torch.Tensor:
     r"""
     A pair wise version of the cross entropy loss, see `sigmoid_cross_entropy_loss` for usage.
 
@@ -189,15 +201,20 @@ def pair_wise_sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Ten
         loss (`torch.Tensor`): The computed loss between each pairs.
     """
 
-    height_and_width = inputs.shape[1]
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1).to(labels.dtype)
 
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     cross_entropy_loss_pos = criterion(inputs, torch.ones_like(inputs))
     cross_entropy_loss_neg = criterion(inputs, torch.zeros_like(inputs))
 
-    loss_pos = torch.matmul(cross_entropy_loss_pos / height_and_width, labels.T)
-    loss_neg = torch.matmul(cross_entropy_loss_neg / height_and_width, (1 - labels).T)
-    loss = loss_pos + loss_neg
+    loss_pos = torch.matmul(cross_entropy_loss_pos, (labels * valid_labels).T)
+    loss_neg = torch.matmul(cross_entropy_loss_neg, ((1 - labels) * valid_labels).T)
+    num_points = valid_labels.sum(-1).clamp_min(1.0)[None, :]
+    loss = (loss_pos + loss_neg) / num_points
     return loss
 
 
@@ -580,6 +597,7 @@ class OneFormerLoss(nn.Module):
         num_points: int,
         oversample_ratio: int,
         importance_sample_ratio: float,
+        valid_masks: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         This function is meant for sampling points in [0, 1] * [0, 1] coordinate space based on their uncertainty. The
@@ -597,6 +615,8 @@ class OneFormerLoss(nn.Module):
                 Oversampling parameter.
             importance_sample_ratio (`float`):
                 Ratio of points that are sampled via importance sampling.
+            valid_masks (`torch.Tensor`, *optional*):
+                Tensor of shape `(num_boxes, 1, height, width)` indicating valid labels for each point.
 
         Returns:
             point_coordinates (`torch.Tensor`):
@@ -609,14 +629,27 @@ class OneFormerLoss(nn.Module):
         # Get random point coordinates
         point_coordinates = torch.rand(num_boxes, num_points_sampled, 2, device=logits.device)
         # Get sampled prediction value for the point coordinates
-        point_logits = sample_point(logits, point_coordinates, align_corners=False)
+        point_logits = sample_point(logits, point_coordinates, mode="nearest", align_corners=False)
         # Calculate the uncertainties based on the sampled prediction values of the points
-        point_uncertainties = uncertainty_function(point_logits)
+        point_uncertainties = uncertainty_function(point_logits)[:, 0, :]
+
+        if valid_masks is not None:
+            valid_points = (
+                sample_point(
+                    valid_masks.to(dtype=point_uncertainties.dtype),
+                    point_coordinates,
+                    mode="nearest",
+                    align_corners=False,
+                )[:, 0, :]
+                > 0.5
+            )
+            min_value = torch.finfo(point_uncertainties.dtype).min
+            point_uncertainties = point_uncertainties.masked_fill(~valid_points, min_value)
 
         num_uncertain_points = int(importance_sample_ratio * num_points)
         num_random_points = num_points - num_uncertain_points
 
-        idx = torch.topk(point_uncertainties[:, 0, :], k=num_uncertain_points, dim=1)[1]
+        idx = torch.topk(point_uncertainties, k=num_uncertain_points, dim=1)[1]
         shift = num_points_sampled * torch.arange(num_boxes, dtype=torch.long, device=logits.device)
         idx += shift[:, None]
         point_coordinates = point_coordinates.view(-1, 2)[idx.view(-1), :].view(num_boxes, num_uncertain_points, 2)

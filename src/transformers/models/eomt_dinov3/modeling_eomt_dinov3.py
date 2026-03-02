@@ -503,7 +503,7 @@ def sample_point(
     return point_features
 
 
-def pair_wise_dice_loss(inputs: Tensor, labels: Tensor) -> Tensor:
+def pair_wise_dice_loss(inputs: Tensor, labels: Tensor, valid_labels: Tensor | None = None) -> Tensor:
     """
     A pair wise version of the dice loss, see `dice_loss` for usage.
 
@@ -518,14 +518,23 @@ def pair_wise_dice_loss(inputs: Tensor, labels: Tensor) -> Tensor:
         `torch.Tensor`: The computed loss between each pairs.
     """
     inputs = inputs.sigmoid().flatten(1)
-    numerator = 2 * torch.matmul(inputs, labels.T)
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1).to(labels.dtype)
+
+    weighted_labels = labels * valid_labels
+    numerator = 2 * torch.matmul(inputs, weighted_labels.T)
     # using broadcasting to get a [num_queries, NUM_CLASSES] matrix
-    denominator = inputs.sum(-1)[:, None] + labels.sum(-1)[None, :]
+    denominator = torch.matmul(inputs, valid_labels.T) + weighted_labels.sum(-1)[None, :]
     loss = 1 - (numerator + 1) / (denominator + 1)
     return loss
 
 
-def pair_wise_sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def pair_wise_sigmoid_cross_entropy_loss(
+    inputs: torch.Tensor, labels: torch.Tensor, valid_labels: Tensor | None = None
+) -> torch.Tensor:
     r"""
     A pair wise version of the cross entropy loss, see `sigmoid_cross_entropy_loss` for usage.
 
@@ -540,15 +549,20 @@ def pair_wise_sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Ten
         loss (`torch.Tensor`): The computed loss between each pairs.
     """
 
-    height_and_width = inputs.shape[1]
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1).to(labels.dtype)
 
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     cross_entropy_loss_pos = criterion(inputs, torch.ones_like(inputs))
     cross_entropy_loss_neg = criterion(inputs, torch.zeros_like(inputs))
 
-    loss_pos = torch.matmul(cross_entropy_loss_pos / height_and_width, labels.T)
-    loss_neg = torch.matmul(cross_entropy_loss_neg / height_and_width, (1 - labels).T)
-    loss = loss_pos + loss_neg
+    loss_pos = torch.matmul(cross_entropy_loss_pos, (labels * valid_labels).T)
+    loss_neg = torch.matmul(cross_entropy_loss_neg, ((1 - labels) * valid_labels).T)
+    num_points = valid_labels.sum(-1).clamp_min(1.0)[None, :]
+    loss = (loss_pos + loss_neg) / num_points
     return loss
 
 
@@ -562,7 +576,12 @@ class EomtDinov3HungarianMatcher(nn.Module):
     """
 
     def __init__(
-        self, cost_class: float = 1.0, cost_mask: float = 1.0, cost_dice: float = 1.0, num_points: int = 12544
+        self,
+        cost_class: float = 1.0,
+        cost_mask: float = 1.0,
+        cost_dice: float = 1.0,
+        num_points: int = 12544,
+        ignore_value: int = 255,
     ):
         """Creates the matcher
 
@@ -586,6 +605,7 @@ class EomtDinov3HungarianMatcher(nn.Module):
         self.cost_class = cost_class
         self.cost_mask = cost_mask
         self.cost_dice = cost_dice
+        self.ignore_value = ignore_value
 
     @torch.no_grad()
     def forward(
@@ -626,7 +646,11 @@ class EomtDinov3HungarianMatcher(nn.Module):
             # Compute the classification cost. Contrary to the loss, we don't use the NLL, but approximate it in 1 - proba[target class]. The 1 is a constant that doesn't change the matching, it can be omitted.
             cost_class = -pred_probs[:, class_labels[i]]
             target_mask = mask_labels[i].to(pred_mask)
+            valid_target_mask = target_mask != self.ignore_value
+            target_mask = target_mask.masked_fill(~valid_target_mask, 0.0)
+
             target_mask = target_mask[:, None]
+            valid_target_mask = valid_target_mask[:, None]
             pred_mask = pred_mask[:, None]
 
             # Sample ground truth and predicted masks
@@ -634,14 +658,23 @@ class EomtDinov3HungarianMatcher(nn.Module):
 
             target_coordinates = point_coordinates.repeat(target_mask.shape[0], 1, 1)
             target_mask = sample_point(target_mask, target_coordinates, align_corners=False).squeeze(1)
+            valid_target_mask = (
+                sample_point(
+                    valid_target_mask.to(dtype=target_mask.dtype),
+                    target_coordinates,
+                    mode="nearest",
+                    align_corners=False,
+                ).squeeze(1)
+                > 0.5
+            )
 
             pred_coordinates = point_coordinates.repeat(pred_mask.shape[0], 1, 1)
-            pred_mask = sample_point(pred_mask, pred_coordinates, align_corners=False).squeeze(1)
+            pred_mask = sample_point(pred_mask, pred_coordinates, mode="nearest", align_corners=False).squeeze(1)
 
             # compute the cross entropy loss between each mask pairs -> shape (num_queries, num_labels)
-            cost_mask = pair_wise_sigmoid_cross_entropy_loss(pred_mask, target_mask)
+            cost_mask = pair_wise_sigmoid_cross_entropy_loss(pred_mask, target_mask, valid_target_mask)
             # Compute the dice loss between each mask pairs -> shape (num_queries, num_labels)
-            cost_dice = pair_wise_dice_loss(pred_mask, target_mask)
+            cost_dice = pair_wise_dice_loss(pred_mask, target_mask, valid_target_mask)
             # final cost matrix
             cost_matrix = self.cost_mask * cost_mask + self.cost_class * cost_class + self.cost_dice * cost_dice
             # eliminate infinite values in cost_matrix to avoid the error ``ValueError: cost matrix is infeasible``
@@ -659,7 +692,7 @@ class EomtDinov3HungarianMatcher(nn.Module):
         return matched_indices
 
 
-def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int) -> Tensor:
+def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int, valid_labels: Tensor | None = None) -> Tensor:
     r"""
     Compute the DICE loss, similar to generalized IOU for masks as follows:
 
@@ -682,14 +715,22 @@ def dice_loss(inputs: Tensor, labels: Tensor, num_masks: int) -> Tensor:
         `torch.Tensor`: The computed loss.
     """
     probs = inputs.sigmoid().flatten(1)
-    numerator = 2 * (probs * labels).sum(-1)
-    denominator = probs.sum(-1) + labels.sum(-1)
+    labels = labels.flatten(1)
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.flatten(1).to(labels.dtype)
+
+    numerator = 2 * (probs * labels * valid_labels).sum(-1)
+    denominator = (probs * valid_labels).sum(-1) + (labels * valid_labels).sum(-1)
     loss = 1 - (numerator + 1) / (denominator + 1)
     loss = loss.sum() / num_masks
     return loss
 
 
-def sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor, num_masks: int) -> torch.Tensor:
+def sigmoid_cross_entropy_loss(
+    inputs: torch.Tensor, labels: torch.Tensor, num_masks: int, valid_labels: Tensor | None = None
+) -> torch.Tensor:
     r"""
     Args:
         inputs (`torch.Tensor`):
@@ -704,7 +745,15 @@ def sigmoid_cross_entropy_loss(inputs: torch.Tensor, labels: torch.Tensor, num_m
     criterion = nn.BCEWithLogitsLoss(reduction="none")
     cross_entropy_loss = criterion(inputs, labels)
 
-    loss = cross_entropy_loss.mean(1).sum() / num_masks
+    if valid_labels is None:
+        valid_labels = torch.ones_like(labels)
+    else:
+        valid_labels = valid_labels.to(labels.dtype)
+    valid_labels = valid_labels.flatten(1)
+    cross_entropy_loss = cross_entropy_loss * valid_labels
+    num_points = valid_labels.sum(1).clamp_min(1.0)
+
+    loss = (cross_entropy_loss.flatten(1).sum(1) / num_points).sum() / num_masks
     return loss
 
 
@@ -726,6 +775,7 @@ class EomtDinov3Loss(nn.Module):
         requires_backends(self, ["scipy"])
         self.num_labels = config.num_labels
         self.weight_dict = weight_dict
+        self.ignore_value = config.ignore_value
 
         # Weight to apply to the null class
         self.eos_coef = config.no_object_weight
@@ -743,6 +793,7 @@ class EomtDinov3Loss(nn.Module):
             cost_dice=config.dice_weight,
             cost_mask=config.mask_weight,
             num_points=self.num_points,
+            ignore_value=self.ignore_value,
         )
 
     def _max_by_axis(self, sizes: list[list[int]]) -> list[int]:
@@ -838,10 +889,13 @@ class EomtDinov3Loss(nn.Module):
         # pad all and stack the targets to the num_labels dimension
         target_masks, _ = self._pad_images_to_max_in_batch(mask_labels)
         target_masks = target_masks[tgt_idx]
+        valid_target_masks = target_masks != self.ignore_value
+        target_masks = target_masks.masked_fill(~valid_target_masks, 0.0)
 
         # No need to upsample predictions as we are using normalized coordinates
         pred_masks = pred_masks[:, None]
         target_masks = target_masks[:, None]
+        valid_target_masks = valid_target_masks[:, None]
 
         # Sample point coordinates
         with torch.no_grad():
@@ -851,15 +905,26 @@ class EomtDinov3Loss(nn.Module):
                 self.num_points,
                 self.oversample_ratio,
                 self.importance_sample_ratio,
+                valid_masks=valid_target_masks,
             )
 
             point_labels = sample_point(target_masks, point_coordinates, align_corners=False).squeeze(1)
+            valid_point_labels = (
+                sample_point(
+                    valid_target_masks.to(dtype=target_masks.dtype),
+                    point_coordinates,
+                    mode="nearest",
+                    align_corners=False,
+                ).squeeze(1)
+                > 0.5
+            )
+            point_labels = point_labels.masked_fill(~valid_point_labels, 0.0)
 
-        point_logits = sample_point(pred_masks, point_coordinates, align_corners=False).squeeze(1)
+        point_logits = sample_point(pred_masks, point_coordinates, mode="nearest", align_corners=False).squeeze(1)
 
         losses = {
-            "loss_mask": sigmoid_cross_entropy_loss(point_logits, point_labels, num_masks),
-            "loss_dice": dice_loss(point_logits, point_labels, num_masks),
+            "loss_mask": sigmoid_cross_entropy_loss(point_logits, point_labels, num_masks, valid_point_labels),
+            "loss_dice": dice_loss(point_logits, point_labels, num_masks, valid_point_labels),
         }
 
         del pred_masks
@@ -902,6 +967,7 @@ class EomtDinov3Loss(nn.Module):
         num_points: int,
         oversample_ratio: int,
         importance_sample_ratio: float,
+        valid_masks: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """
         This function is meant for sampling points in [0, 1] * [0, 1] coordinate space based on their uncertainty. The
@@ -919,6 +985,8 @@ class EomtDinov3Loss(nn.Module):
                 Oversampling parameter.
             importance_sample_ratio (`float`):
                 Ratio of points that are sampled via importance sampling.
+            valid_masks (`torch.Tensor`, *optional*):
+                Tensor of shape `(num_boxes, 1, height, width)` indicating valid labels for each point.
 
         Returns:
             point_coordinates (`torch.Tensor`):
@@ -931,14 +999,27 @@ class EomtDinov3Loss(nn.Module):
         # Get random point coordinates
         point_coordinates = torch.rand(num_boxes, num_points_sampled, 2, device=logits.device)
         # Get sampled prediction value for the point coordinates
-        point_logits = sample_point(logits, point_coordinates, align_corners=False)
+        point_logits = sample_point(logits, point_coordinates, mode="nearest", align_corners=False)
         # Calculate the uncertainties based on the sampled prediction values of the points
-        point_uncertainties = uncertainty_function(point_logits)
+        point_uncertainties = uncertainty_function(point_logits)[:, 0, :]
+
+        if valid_masks is not None:
+            valid_points = (
+                sample_point(
+                    valid_masks.to(dtype=point_uncertainties.dtype),
+                    point_coordinates,
+                    mode="nearest",
+                    align_corners=False,
+                )[:, 0, :]
+                > 0.5
+            )
+            min_value = torch.finfo(point_uncertainties.dtype).min
+            point_uncertainties = point_uncertainties.masked_fill(~valid_points, min_value)
 
         num_uncertain_points = int(importance_sample_ratio * num_points)
         num_random_points = num_points - num_uncertain_points
 
-        idx = torch.topk(point_uncertainties[:, 0, :], k=num_uncertain_points, dim=1)[1]
+        idx = torch.topk(point_uncertainties, k=num_uncertain_points, dim=1)[1]
         shift = num_points_sampled * torch.arange(num_boxes, dtype=torch.long, device=logits.device)
         idx += shift[:, None]
         point_coordinates = point_coordinates.view(-1, 2)[idx.view(-1), :].view(num_boxes, num_uncertain_points, 2)
