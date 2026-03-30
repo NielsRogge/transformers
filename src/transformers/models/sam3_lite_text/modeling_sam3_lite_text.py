@@ -26,7 +26,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision
 from torch import Tensor
 
 from ... import initialization as init
@@ -37,8 +36,9 @@ from ...modeling_outputs import BaseModelOutput, BaseModelOutputWithPooling, Mod
 from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...pytorch_utils import compile_compatible_method_lru_cache
-from ...utils import auto_docstring, can_return_tuple, logging
+from ...utils import auto_docstring, can_return_tuple, is_torchvision_available, logging
 from ...utils.generic import TransformersKwargs, is_flash_attention_requested, merge_with_config_defaults
+from ...utils.import_utils import requires
 from ...utils.output_capturing import capture_outputs
 from ..auto import AutoModel
 from .configuration_sam3_lite_text import (
@@ -50,6 +50,10 @@ from .configuration_sam3_lite_text import (
     Sam3LiteTextVisionConfig,
     Sam3LiteTextViTConfig,
 )
+
+
+if is_torchvision_available():
+    import torchvision
 
 
 logger = logging.get_logger(__name__)
@@ -931,6 +935,7 @@ class Sam3LiteTextViTLayer(GradientCheckpointingLayer):
 
 
 @auto_docstring
+@requires(backends=("torch", "torchvision"))
 class Sam3LiteTextPreTrainedModel(PreTrainedModel):
     config_class = Sam3LiteTextConfig
     base_model_prefix = "sam3_lite_text"
@@ -966,6 +971,7 @@ class Sam3LiteTextPreTrainedModel(PreTrainedModel):
 
 @auto_docstring
 class Sam3LiteTextViTModel(Sam3LiteTextPreTrainedModel):
+    config: Sam3LiteTextViTConfig
     _can_record_outputs = {
         "hidden_states": Sam3LiteTextViTLayer,
         "attentions": Sam3LiteTextViTRoPEAttention,
@@ -2362,9 +2368,7 @@ class Sam3LiteTextMaskDecoder(Sam3LiteTextPreTrainedModel):
 
 class Sam3LiteTextModel(Sam3LiteTextPreTrainedModel):
     input_modalities = ["image", "text"]
-    _checkpoint_conversion_mapping = {
-        r"detector_model.(.+)": r"\1"  # the regex allows to remove the prefix, and add it back in revert mode
-    }
+    base_model_prefix = "detector_model"
     _keys_to_ignore_on_load_unexpected = [
         r"^tracker_model.",
         r"^tracker_neck.",
